@@ -23,6 +23,6 @@
  
  
  4. Spawnpoint Scripts (Attached to Activators)
- a). SpGroupScript (extends ObjectRef)
- b). SpHelperScript (extends ObjectRef)
+ 1. SpGroupScript (extends ObjectRef)
+ 2. SpHelperScript (extends ObjectRef)
   -------------------------------------------------------
