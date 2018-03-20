@@ -1,1 +1,1 @@
-## SOTC - Offical DLCs/Bolt-ons Inventory 
+## SOTC - Official DLCs/Bolt-ons Inventory 
