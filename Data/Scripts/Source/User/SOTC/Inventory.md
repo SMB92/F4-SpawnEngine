@@ -4,6 +4,7 @@
 * MasterQuestScript (extends Quest)
 * ThreadControllerScript (extends RefAlias)
 * WorldAliasScript (extends RefAlias)
+* SpawnTypeMasterScript (extends RefAlias)
 -------------------------------------------------------
  
  
@@ -25,4 +26,10 @@
 **4. Spawnpoint Scripts (Attached to Activators)**
 * SpGroupScript (extends ObjectRef)
 * SpHelperScript (extends ObjectRef)
+-------------------------------------------------------
+
+**5. Feature Scripts (Attached to various)**
+* RR_ControllerQuestScript (extends Quest)
+* RR_DynamicAliasScript (extends RefAlias)
+* SpSevenDaysScript (extends ObjectRef)
 -------------------------------------------------------
