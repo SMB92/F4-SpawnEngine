@@ -8,9 +8,9 @@
  
  
 2. Region Level Scripts (attached to each Region Quest)
- RegionQuestScript (extends Quest)
- RegionTrackerScript (extends RefAlias)
- SpawnTypeRegionalScript (extends RefAlias)
+ .RegionQuestScript (extends Quest)
+ .RegionTrackerScript (extends RefAlias)
+ .SpawnTypeRegionalScript (extends RefAlias)
 -------------------------------------------------------
 
 
