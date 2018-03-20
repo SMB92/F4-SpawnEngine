@@ -1,3 +1,3 @@
-# SOTC - Meshes Inventory
+## SOTC - Meshes Inventory
 
-1. Terminator Models (made by Wapeddel, used with permission)
+**1. Terminator Models (made by Wapeddel, used with permission)**
