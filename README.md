@@ -19,23 +19,22 @@ Please be patient while work continues on both a working test file and official 
 
 ###### HOUSEKEEPING:
 - Corrected wrong version number in Github readme. Was 0.00.05, supposed to be 0.05.00.
-- Updated Notepad++ lang file with some missing variables for scripts and arrays of. 
+- Updated Notepad++ lang file with some missing variables for scripts and arrays of and added new functions. 
+- Corrected some bad commentary/grammar, removed some obsolete comments.
+
+###### SCRIPT OPTIMIZATION & REVISION:
 - Added missing bInit security flag to SpawntypeMasterScript
-- Corrected some bad commentary/grammar, removed some obsolete comments
+- Added missing bInit security flag to ActorWorldPresetsScript
+- Added missing bInit security flag to WorldAliasScript
+- Added missing bInit security flag to RR_ControllerQuestScript
 - Added missing "a" prefix to some parameters
 - Removed unnecessary check from SpawnTypeRegionalScript SingleUpdate Event block
 - Fixed bad indentation in ActorWorldPresetScript
-- Added missing bInit security flag to ActorWorldPresetsScript
 - Fixed variable name kEventPoint from bEventPoint on RegionQuestScript
 - Removed obsolete GetRandomActor(s) functions from RegionQuestScript.
-- Added missing bInit security flag to WorldAliasScript
-- Added missing bInit security flag to RR_ControllerQuestScript
-
-###### SCRIPT OPTIMIZATION & REVISION:
 - Uncommented a function in GroupLoadouts script, while likely remaining unused it could still prove useful later
 - Commented out Spawnpoint object arrays in RegionQuestScript. Currently not planning to track them in this way.
 - Optimized SpawnTypeRegionScript GetRandomActor(s) functions by removing unnecessary bool check (now checks if Int is more than 0)
-- Previously Class Presets were based on Difficulty, so the harder you set this, the more enemies etc you'd get. This undermined the purpose of the major Presets, so now it is based on major Presets. This cuts amount of presets per Class from 5 to 3. Updated scripts accordingly.
 - Corrected SpawnTypeRegionalScript returning Common Actor instead of Uncommon Actor.
 - Uncommented bSpawnWarningEnabled Property on MasterQUestScript and added a function that can be used by SPs. This will show the user 1 of 3 messages whenever a SpawnPoint fires nearby, such as "You hear distant movement"
 - Updated ThreadController DisplayModStatus function to show active NPC and SP counts.
@@ -45,6 +44,7 @@ Please be patient while work continues on both a working test file and official 
 - Fixed SevenDaysQuestScript startup. For some reason I must have gotten confused and coded this all wrong. Added functionality to Master to deal with pending/starting Event Quests after Pipboy is exited. 
 
 ###### MAJOR FEATURE UPDATES:
+- Previously Class Presets were based on Difficulty, so the harder you set this, the more enemies etc you'd get. This undermined the purpose of the major Presets, so now it is based on major Presets. This cuts amount of presets per Class from 5 to 3. Updated scripts accordingly.
 - Extended Spawntypes to now include Class-Based Spawntypes. While I tried to avoid making this necessary to lessen the number of properties overall, I was somewhat restricting the potential and making custom SpawnPoint code (such as the AmbushPoint) a bit more complex/less flexible. Now scripts can link directly to these Spawntype scripts and included Actors can take advantage of the "Rarity" system. The SpawnTypeRegionalScript has undergone some changes that will help it to identify if it's Class-Based and function accordingly, as previously it couldn't return any ClassPresets that weren't one of the "Rarity" based Classes. See the "Classes vs Spawntypes" in-script commentary for more in-depth information. 
 - Furthermore, the Ambush Class was split into two - Ambush (Rush) and Ambush (Static). The former means the actor supports waiting in place and rushing the player when ready, and the latter is for the "hidden" type of ambush, such as buried Mirelurks, Roaches and Molerats. This allows the AmbushPoint to be configured for either type.
 - Added new feature, Random Stampede. An extension of the random Swarm/Infestation mode, supported Actor types can now have a chance to stampede upon successful dice roll. This required a bit of modifcation to the SpGroupScript (main spawnpoint) as it requires a different package. Actors in this mode will receive a single travel location and run there, sandboxing on arrival. In general they will then prefer to run, which should somewhat emulate heard behaviours. Only works on exterior spawnpoints. Denies Random Ambush when active.
