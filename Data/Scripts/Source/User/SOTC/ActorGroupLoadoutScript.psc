@@ -4,9 +4,9 @@ script we are able to define many variations of group loadouts. }
 ;Written by SMB92
 ;Special thanks to J. Ostrus [BigandFlabby] for code contributions that made this mod possible.
 
-;This script is storage for a set list of ActorBase (LvlNPCs) that can be used to create custom
+;This script is mostly storage for an array of ActorBase (LvlNPCs) that can be used to create custom
 ;squads/groups of NPCs to spawn. Can be used as many times as necessary and placed into multiple
-;ClassPresetScript instances. 
+;ClassPresetScript instances.
 
 ;NOTE: Alias order of GroupLoadouts vs ClassPresets is no longer an issue
 
@@ -16,7 +16,7 @@ script we are able to define many variations of group loadouts. }
 ; "a" - (Function/Event Blocks only) Variable was received as function argument OR the variable
 ;was created from a passed-in Struct/Var[] member
 ; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
-; "f,b,i" - The usual Primitives: Float, Bool, Int.
+; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
 
 ;------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
@@ -36,19 +36,17 @@ Bool Property bHasPowerArmorUnits Auto Const
 
 Bool[] Property iClassesToApply Auto Const ;SEE NOTES BELOW
 { Initialise members True on index matching ID No. of Classes this group can be added to.
-Set false if it is not desired. Only add to classes that exist for this Actor. }
-;NOTE: THIRD PARTY MODS can modify this property directly if they want, but it is left const so
+Set false for Classes not desired. Only add to Classes that exist for this Actor. }
+;NOTE: THIRD PARTY MODS can modify this property directly if they want, but it is left Const so
 ;that the value will be updated upon a reshuffle.
 ;REFERENCE LEGEND - CLASSES
 ; [0] - NONE, LEAVE BLANK ALWAYS
 ; [1] - COMMON, REGULAR SPAWN CLASS
 ; [2] - UNCOMMON, REGULAR SPAWN CLASS
 ; [3] - RARE, REGULAR SPAWN CLASS
-; [4] - SNIPER CLASS
-; [5] - AMBUSH CLASS
-; [6] - INFESTATION CLASS
-;Note: Not all Actors have to support each Class, and for the ones that don't
-;leave that index member blank (does not require manual intervention however)
+; [4] - AMBUSH CLASS
+; [5] - SNIPER CLASS
+;Note: Not all Actors have to support each Class. Fill accordingly.
 
 Bool bInit ;Security check to make sure Init events don't fire again while running
 
@@ -73,7 +71,7 @@ Function AddGroupToClassPresets(Bool abAllowPowerArmorGroups)
 
 	if (!bHasPowerArmorUnits) || (abAllowPowerArmorGroups) ;If doesn't OR assume does and parameter is true
 	
-		int iCounter = 1 ;MUST START AT ONE FOR THIS SCRIPT
+		int iCounter = 1 ;MUST START AT ONE FOR THIS SCRIPT, INDEX 0 ON CLASSPRESETS IS ALWAYS NONE.
 		;iCounter actually equals iClass
 		int iSize = iClassesToApply.Length
 		
@@ -96,15 +94,15 @@ EndFunction
 ;------------------------------------------------------------------------------------------------
 
 ;Return one of the above Grouplists. Used rarely from this script, if at all. Best to get from
-;ActorClassPresetScript functions instead (as that is passed directly to spawnpoint anyway)
-;ActorBase[] Function GetGroupLoadout(bool abGetBossList)
+;ActorClassPresetScript functions instead (as that is passed directly to SpawnPoints anyway).
+ActorBase[] Function GetGroupLoadout(bool abGetBossList)
 
-	;if !abGetBossList
-	;	return kGroupUnits
-	;else
-	;	return kBossGroupUnits
-	;endif
+	if !abGetBossList
+		return kGroupUnits
+	else
+		return kBossGroupUnits
+	endif
 	
-;EndFunction
+EndFunction
 
 ;------------------------------------------------------------------------------------------------

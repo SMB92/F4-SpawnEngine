@@ -19,7 +19,7 @@ owning RegionQuest }
 ; "a" - (Function/Event Blocks only) Variable was received as function argument OR the variable
 ;was created from a passed-in Struct/Var[] member
 ; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
-; "f,b,i" - The usual Primitives: Float, Bool, Int.
+; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
 
 ;------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
@@ -34,42 +34,45 @@ Group PrimaryProperties
 	{ Fill with ThreadController Alias }
 
 	SOTC:SpawnTypeMasterScript Property LibraryScript Auto Const
-	{ Fill with corresponding Master for this Spawntype. Provides quick link to Master Properties }
+	{ Fill with corresponding Master for this Spawntype. }
 
 	SOTC:RegionQuestScript Property RegionScript Auto Const
 	{ Fill with owning Region Quest }
 
 	Int Property iSpawnType Auto Const
 	{ Initialise with intended Spawntype ID. Inserts at this index on RegionalQuestScript }
+	
 	;LEGEND - SPAWNTYPES
 	;Spawntypes are essentially "categories" of spawns and species. These are used to provide
 	;variety of spawns in different locations. Each SpawnType has a Master Script, which holds
 	;the Master list of all Actor types in that category, as well as a Regional script, which
 	;defines which Actors of that Spawntype are allowed in that Region (and can also have their
-	;"Rarity" defined for that area). They are as follows: (subject to additional types)
+	;"Rarity" defined for that area). They are as follows: (subject to additional types in future)
+	
 	;(NOTE: It is possible for some Actors to be of "mixed" type and appear in multiple lists)
 	; [0] - MAIN/MIXED RANDOM - consider this like "urban" spawns, the most common type used
 	;This is essentially a random list of anything and everything that would be common enough 
-	;to spawn in an area.
+	;to spawn in a Region.
 	; [1] - URBAN - Minimal Wildlife
 	; [2] - WILD - Common wild area stuff
 	; [3] - RADSPAWN - Radiated areas spawns
 	; [4] - HUMAN
 	; [5] - MUTANT
-	; [6] - WILDLIFE
+	; [6] - FAUNA
 	; [7] - INSECT
 	; [8] - MONSTER
 	; [9] - ROBOT
 	; [10] - AQUATIC - Given the lack of real Aquatic spawns, this includes other things that
 	;might appear in swamp/marsh/waterside etc.
-	; [11] - SNIPER - This end up warranting it's own category. This is also a "Class". Any Actor type
-	;that has this Class defined will be featured in this Spawntype.
-	; [12] - STORY - Story Mode/Actors will not appear in the initial beta and is subject to feedback.
-	;The following were dropped from being a Spawntype:
-	; AMBUSH - This is still a "Class". Reasoning is that one can define specific parameters and group
-	;loadouts in order to create highly customised Ambushes
-	; INFESTATION/SWARM - THis has evolved into a Feature, and while bonus params can still be defined
-	;on the ActorScript, it is no longer a Spawntype and can now happen at anytime (when setting active)
+	; [11] - AMBUSH - RUSH (CLASS-BASED) - Stores all Actors that support rushing the player
+	;style of ambush
+	; [12] - AMBUSH - STATIC (CLASS-BASED) - Stores all Actors that support rushing the player
+	;style of ambush
+	; [13] - SNIPER (CLASS-BASED) - Stores all Actor that support Sniper Class
+	; [14] - SWARM/INFESTATION (CLASS-BASED) - Stores all Actors that support Swarm/Infestation
+	; [15] - STAMPEDE (CLASS-BASED) - Stores all Actors that support extended Swarm feature Stampede.
+	
+	;NOTE: See "CLASSES VS SPAWNTYPES" commentary of the SpawnTypeMasterScript for more in-depth info
 
 	Int Property iWorldID Auto Const
 	{ Fill with correct World ID }
@@ -89,7 +92,24 @@ Group PrimaryProperties
 	
 	Bool Property bCustomSettingsActive Auto
 	{ Init False. Set by Menu when custom settings have been applied. For this script,
-	this is only to tell that Preset has been changed manually }
+	this is only to tell that Preset has been changed manually. }
+	
+	Int Property iBaseClassID Auto Const
+	{ If this is a Class-Based SpawnType, fill with ID of the Class. Else fill 0. }
+	
+	;LEGEND - CLASSES
+	; [0] - NONE, DO NOT USE
+	; [1] - COMMON RARITY
+	; [2] - UNCOMMON RARITY
+	; [3] - RARE RARITY
+	; [4] - AMBUSH - RUSH (Wait for and rush the player)
+	; [5] - AMBUSH - STATIC (for "hidden" ambushes such as Mirelurks and Molerats)
+	; [6] - SNIPER
+	; [7] - SWARM/INFESTATION
+	; [8] - STAMPEDE 
+	
+	String Property sSpawnTypeString Auto
+	{ Fill with defining string for this Spawntype }
 
 EndGroup
 
@@ -97,13 +117,13 @@ EndGroup
 Group ActorLists
 { Dynamic Actor Lists }
 
-	ActorQuestScript[] Property CommonActorList Auto  ;Class 1
+	ActorQuestScript[] Property CommonActorList Auto 
 	{ Initialise one member of None. Fills dynamically upon initialisation }
 
-	ActorQuestScript[] Property UncommonActorList Auto  ;Class 2
+	ActorQuestScript[] Property UncommonActorList Auto 
 	{ Initialise one member of None. Fills dynamically upon initialisation }
 
-	ActorQuestScript[] Property RareActorList Auto  ;Class 3
+	ActorQuestScript[] Property RareActorList Auto
 	{ Initialise one member of None. Fills dynamically upon initialisation }
 
 EndGroup
@@ -130,7 +150,7 @@ Group LootSystemProperties
 EndGroup
 
 ;LEGEND - LOOT SYSTEM
-;There are 2 ways to provide random spawns with a random loot item (or more if using a Use All 
+;There are 2 ways to provide random spawns with a random loot item (or more if using an "Use All" 
 ;flagged Leveled List) - through the SpawnTypeRegionalScript or the ActorQuestScript. Both systems
 ;are identical in function and setup, but can operate independantly. The system works by storing
 ;formlists on each of the scripts, 1 for regular Actors and 1 for Boss Actors. Spawnpoints will
@@ -140,7 +160,7 @@ EndGroup
 ;each Actors inventory, based on a configurable chance value. The single item can be a Leveled List, 
 ;and if it is marked to Use All, will add every item from that list.
 
-;Loot on the Spawntype script should be applicable to all Actors in that Spawntype, this intended
+;Loot on the Spawntype script should be applicable to all Actors in that Spawntype, this is intended
 ;to be a generalised loot table. The reason why this system is included on the Region Spawntype 
 ;script, and not the Master Spawntype, is so we can specify different loot per Region if we wish.
 ;Loot on the ActorQuestScript is obviously so we can supply highly specific loot for each Actor type. 
@@ -148,19 +168,19 @@ EndGroup
 ;loot values can be defined for both Regular and Boss Actors independantly on each script as well. 
 
 ;Fun fact: It was originally an idea to provide loot by using a RefCollectionAlias with specified
-;Leveled Lists, and then add Actors to this coolection so they'd automatically get the loot without
+;Leveled Lists, and then add Actors to this collection so they'd automatically get the loot without
 ;any coding necessary. However, this posed some complications for third-party addons as far as using
 ;scripts to add loot, and thus I developed the formlist approach, so that now addons can both safely
 ;add and remove loot items from the list via script. It is also useful in the same sense for adding
 ;temporary loot to the lists, in case we want to do so for some event such as a quest etc. 
 
-Bool bInit ;Security measure to prevent unwanted Init events
+Bool bInit ;Security check to make sure Init events don't fire again while running
+
 
 ;------------------------------------------------------------------------------------------------
 ;INITIALISATION & SETTINGS EVENTS
 ;------------------------------------------------------------------------------------------------
 
-;First startup event
 Event OnAliasInit()
 
 	if !bInit
@@ -172,23 +192,25 @@ Event OnAliasInit()
 EndEvent
 
 
-;Received by all SPawntypes, but only proceeds if ID number matches. 
+;Received by all Spawntypes, but only proceeds if ID number matches. 
 Event SOTC:MasterQuestScript.SingleSpawntypePresetUpdate(SOTC:MasterQuestScript akSender, Var[] akArgs)
 
-	if (akArgs[0] as Int == iSpawnType) && (!bCustomSettingsActive) || (akArgs[1] as Bool) ;If not Custom OR Override = true
+	if akArgs[0] as Int == iSpawnType
 	
-			ReshuffleDynActorLists(true, akArgs[2] as Int) ;(akArgs[2]) Preset to Set
-			
+			ReshuffleDynActorLists(akArgs[1] as Bool, akArgs[2] as Int) 
+			;(akArgs[1]) = Custom settings override flag
+			;(akArgs[2]) = Preset to Set
+
 	endif
 
 EndEvent
 
 
 ;Usually called by Region script during Preset changes
-Function ReshuffleDynActorLists(Bool bForceReset, int aiPreset)
+Function ReshuffleDynActorLists(Bool abForceReset, int aiPreset)
 
-	if (bCustomSettingsActive) && (!bForceReset)
-		return ;DENIED
+	if (bCustomSettingsActive) && (!abForceReset)
+		return ;DENIED, return immediately. 
 	endif
 	;else continue.
 	
@@ -201,8 +223,7 @@ Function ReshuffleDynActorLists(Bool bForceReset, int aiPreset)
 EndFunction
 
 
-;Fill Actor lists on this script, placing into correct lists as per Preset. This script does not
-;have to be aware of the iCurrentPreset value on the Master. 
+;Fill Actor lists on this script, placing into correct lists as per Preset. 
 Function FillDynActorLists()
 
 	ActorQuestScript[] ActorList = LibraryScript.ActorLibrary ;Link to master array
@@ -215,7 +236,6 @@ Function FillDynActorLists()
 	while iCounter < iSize ;Won't overshoot
 	
 		iActorPreset = ActorList[iCounter].WorldPresets[iWorldID].GetActorRegionPreset(iRegionID, iCurrentPreset)
-		;This is a necessary evil
 		
 		if iActorPreset == 1 ;Common
 			CommonActorList.Add(ActorList[iCounter])
@@ -225,7 +245,6 @@ Function FillDynActorLists()
 			RareActorList.Add(ActorList[iCounter])
 		;else
 			;Do nothing, Actor is disabled in this Region or unexpected Int returned
-			;Maybe add debug here if this seems to be an issue
 		endif
 		
 		iCounter += 1
@@ -248,44 +267,62 @@ EndFunction
 ;RETURN FUNCTIONS
 ;------------------------------------------------------------------------------------------------
 
-;Return single instance of ActorClassPresetScript (single Actor)
-;NOTE - This returns class presets directly, as this saves storing/determining "rarity" elsewhere
-SOTC:ActorClassPresetScript Function GetRandomActor(bool abForcedRarity, int aiForcedRarity)
-;WARNING - Using "forced" params can only be used to get "Rarity" based Classes from here!
-	
-	int iRarity 
-	
-	if abForcedRarity ;Check if we are forcing a specific rarity list to be used
+;Return single instance of ActorClassPresetScript (single Actor).
+;NOTE - This returns class presets directly, as this saves storing/determining "rarity" elsewhere.
+;We can still access the ActorQuestScript in the calling script from here.
+SOTC:ActorClassPresetScript Function GetRandomActor(int aiForcedRarity)
+;WARNING - Using "forced" params can only be used to get "Rarity" based Classes from here as it has
+;no way to know if an Actor supports other classes without having to perform slow checks and rerolls.
+
+	int iRarity ;which list to use
+	int iSize ;size of list to use
+		
+	if aiForcedRarity > 0 ;Check if we are forcing a specific rarity list to be used
 		iRarity = aiForcedRarity
 	else
 		iRarity = MasterScript.RollForRarity() ;Roll if not
 	endif
 	
-	int iSize ;Put into top block in case of reuse
 	
 	if iRarity == 1
+		
 		iSize = CommonActorList.Length - 1
-		return CommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[iRarity] ;GTFO
+		if iBaseClassID == 0 ;More likely to be 0 so check this first for speed. 
+			return CommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[iRarity]
+		else ;Shouldn't need to check, will fail/return wrong Class if Int not set correctly
+			return CommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[iBaseClassID]
+		endif
+			
 		
 	elseif iRarity == 2
-		iSize = UncommonActorList.Length - 1
-		return CommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[iRarity] ;GTFO
 		
-	else ;Not going to bother checking for 3, if somehow its not 1,2 or 3, Rare will be selected
+		iSize = UncommonActorList.Length - 1
+		if iBaseClassID == 0 ;More likely to be 0 so check this first for speed. 
+			return UncommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[iRarity]
+		else ;Shouldn't need to check, will fail/return wrong Class if Int not set correctly
+			return UncommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[iBaseClassID]
+		endif
+		
+	else ;Not going to bother checking for 3, if somehow its not 1, 2 or 3, Rare will be selected
+		
 		iSize = RareActorList.Length - 1
-		return RareActorList[(Utility.RandomInt(0,iSize))].ClassPresets[iRarity] ;GTFO
+		if iBaseClassID == 0 ;More likely to be 0 so check this first for speed. 
+			return RareActorList[(Utility.RandomInt(0,iSize))].ClassPresets[3]
+		else ;Shouldn't need to check, will fail/return wrong Class if Int not set correctly
+			return RareActorList[(Utility.RandomInt(0,iSize))].ClassPresets[iBaseClassID]
+		endif
 		
 	endif
 	
 EndFunction
 
-;NOTE - All functionality for random swarms and ambushes is moved to Spawnpoint script. It remains
-;possible the code could be moved back to here if a nicer method is found.
 
-;Return array of ActorClassPresetScript (multiple Actors)
-;NOTE - This returns class presets directly, as this saves storing/determining "rarity" elsewhere
-SOTC:ActorClassPresetScript[] Function GetRandomActors(bool abForcedRarity, int aiForcedRarity, int aiNumActorsRequired)
-;WARNING - Using "forced" params can only be used to get "Rarity" based Classes from here!
+;Return array of ActorClassPresetScript (multiple Actors).
+;NOTE - This returns class presets directly, as this saves storing/determining "rarity" elsewhere.
+;We can still access the ActorQuestScript in the calling script from here.
+SOTC:ActorClassPresetScript[] Function GetRandomActors(int aiForcedRarity, int aiNumActorsRequired)
+;WARNING - Using "forced" params can only be used to get "Rarity" based Classes from here as it has
+;no way to know if an Actor supports other classes without having to perform slow checks and rerolls.
 	
 	ActorClassPresetScript[] ActorListToReturn = new ActorClassPresetScript[0] ;Temp array used to send back
 	int iRarity ;which list to use
@@ -296,23 +333,37 @@ SOTC:ActorClassPresetScript[] Function GetRandomActors(bool abForcedRarity, int 
 	
 	while iCounter < aiNumActorsRequired ;Maximum of 5 in default mod. Modders may use more.
 		
-		if abForcedRarity ;
+		if aiForcedRarity > 0 ;;Check if we are forcing a specific rarity list to be used
 			iRarity = aiForcedRarity
 		else
 			iRarity = MasterScript.RollForRarity() ;Roll each time
 		endif
 		
 		if iRarity == 1
-			iSize = CommonActorList.Length - 1
-			ActorListToReturn.Add((CommonActorList[(Utility.RandomInt(0,iSize))]).ClassPresets[iRarity]) ;Add to list
 			
+			iSize = CommonActorList.Length - 1
+			if iBaseClassID == 0 ;More likely to be 0 so check this first for speed. 
+				ActorListToReturn.Add((CommonActorList[(Utility.RandomInt(0,iSize))]).ClassPresets[iRarity])
+			else ;Shouldn't need to check, will fail/return wrong Class if Int not set correctly
+				ActorListToReturn.Add((CommonActorList[(Utility.RandomInt(0,iSize))]).ClassPresets[iBaseClassID])
+			endif
+				
 		elseif iRarity == 2
+			
 			iSize = UncommonActorList.Length - 1
-			ActorListToReturn.Add((UncommonActorList[(Utility.RandomInt(0,iSize))]).ClassPresets[iRarity]) ;Add to list
+			if iBaseClassID == 0 ;More likely to be 0 so check this first for speed. 
+				ActorListToReturn.Add((UncommonActorList[(Utility.RandomInt(0,iSize))]).ClassPresets[iRarity])
+			else ;Shouldn't need to check, will fail/return wrong Class if Int not set correctly
+				ActorListToReturn.Add((UncommonActorList[(Utility.RandomInt(0,iSize))]).ClassPresets[iBaseClassID])
+			endif
 			
 		else ;Not going to bother checking for 3, if somehow its not 1,2 or 3, Rare will be selected
 			iSize = RareActorList.Length - 1
-			ActorListToReturn.Add((RareActorList[(Utility.RandomInt(0,iSize))]).ClassPresets[3]) ;Add to list
+			if iBaseClassID == 0 ;More likely to be 0 so check this first for speed. 
+				ActorListToReturn.Add((RareActorList[(Utility.RandomInt(0,iSize))]).ClassPresets[3])
+			else ;Shouldn't need to check, will fail/return wrong Class if Int not set correctly
+				ActorListToReturn.Add((RareActorList[(Utility.RandomInt(0,iSize))]).ClassPresets[iBaseClassID])
+			endif
 			
 		endif
 		
@@ -323,6 +374,10 @@ SOTC:ActorClassPresetScript[] Function GetRandomActors(bool abForcedRarity, int 
 	return ActorListToReturn ;GTFO
 	
 EndFunction
+
+;NOTE - All functionality for random swarms and ambushes is moved to SpawnPoint scripts. It remains
+;possible the code could be moved back to here if a nicer method is found or it becomes necessary for
+;at least some types of SpawnPoints.
 
 
 ;------------------------------------------------------------------------------------------------
@@ -350,7 +405,7 @@ Function DoLootPass(Actor[] akGroupList, Int aiBossCount)
 			
 	endwhile
 		
-	if aiBossCount > 0
+	if aiBossCount > 0 ;Check if any Bosses and do their loot pass
 	
 		iLootListSize = (kBossLootList.GetSize()) -1 ;Actual index count
 		iCounter = (iGroupSize) - (aiBossCount) ;Start Counter where Bosses start on the list

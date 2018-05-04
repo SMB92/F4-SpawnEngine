@@ -9,7 +9,7 @@ Scriptname SOTC:RegionQuestScript extends Quest
 ; "a" - (Function/Event Blocks only) Variable was received as function argument OR the variable
 ;was created from a passed-in Struct/Var[] member
 ; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
-; "f,b,i" - The usual Primitives: Float, Bool, Int.
+; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
 
 ;------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
@@ -27,13 +27,13 @@ Group PrimaryProperties
 	{ Fill with ThreadController Alias }
 
 	SOTC:RegionTrackerScript Property CleanupManager Auto
-	{ Initialise with one member of None. WIll dynamically fill upon Init }
+	{ Initialise with one member of None. Fills dynamically. }
 
 	SOTC:SpawnTypeRegionalScript[] Property SpawnTypes Auto
-	{ Initialise with one member of None. WIll dynamically fill upon Init }
+	{ Initialise with one member of None. Fills dynamically. }
 
 	Int Property iWorldID Auto Const
-	{ Initialise with ID No. of World this Regions intended for }
+	{ Initialise with ID No. of this Region's World }
 	;LEGEND - WORLD IDs
 	; [0] - COMMONWEALTH
 	; [1] - FAR HARBOR
@@ -43,6 +43,8 @@ Group PrimaryProperties
 	{ Initialise with Region No. in World }
 	
 	RegionPresetDetailsStruct[] Property PresetDetails Auto
+	{ Init one member for each Preset on index 1-3, leave index 0 as None. 
+	Fill struct members/settings accordingly. }
 
 EndGroup
 
@@ -53,14 +55,16 @@ Group ObjectInventory
 	ObjectReference[] Property kTravelLocs Auto
 	{ Fill with all "Travel Location" Xmarkers placed in world }
 
-	ObjectReference[] Property kSpawnPoints Auto ;May not be necessary, or even can be moved to tracking script
-	{ Fill with all SpawnPoints placed in Region (not MiniPoints) }
+	;ObjectReference[] Property kSpawnPoints Auto ;May not be necessary, or even can be moved to tracking script
+	;{ Fill with all SpawnPoints placed in Region (not MiniPoints) }
 
-	ObjectReference[] Property kMiniPoints Auto ;May not be necessary, or can move to tracking script
-	{ Fill with all MiniPoints, if any, in this Region }
+	;ObjectReference[] Property kMiniPoints Auto ;May not be necessary, or can move to tracking script
+	;{ Fill with all MiniPoints, if any, in this Region }
 	
-	ObjectReference[] Property kPatrolPoints Auto ;May not be necessary, or can move to tracking script
-	{ Fill with all PatrolPoints, if any, in this Region }
+	;ObjectReference[] Property kPatrolPoints Auto ;May not be necessary, or can move to tracking script
+	;{ Fill with all PatrolPoints, if any, in this Region }
+	
+	;SPAWNPOINTS have been commented out for now. This may be introduced again if necessary.
 
 EndGroup
 
@@ -100,13 +104,13 @@ Group RegionSettings
 { Various settings for this Region }
 
 	Bool Property bRegionEnabled Auto ;On/Off switch for this Region
-	{ Initialise with 0. Set by Menu }
+	{ Initialise true. Set in Menu. Disables the mod in this Region if set false. }
 
 	Int Property iCurrentPreset Auto
-	{ Initialise with 0. Set by Menu }
+	{ Initialise 0. Set by Menu/Preset. }
 
 	Int Property iCurrentDifficulty Auto
-	{ Initialise with 0. Set by Menu }
+	{ Initialise 0. Set in Menu. }
 	;LEGEND - DIFFICULTY LEVELS
 	;Same as Vanilla. Only in Bethesda games does None = 4 (value 4 is "No" difficulty, scale to player)
 	; 0 - Easy
@@ -116,31 +120,31 @@ Group RegionSettings
 	; 4 - NONE - Scale to player.
 	
 	Bool Property bCustomSettingsActive Auto
-	{ Init False. Set by Menu when custom settings have been applied }
+	{ Init False. Flagged by Menu when custom settings have been applied. }
 
 EndGroup
 
 
 Group FeatureSettings
-{ Settings for various features supported on the Regional level }
+{ Settings for various features supported on the Regional level. }
 
 	Int Property iRandomSwarmChance Auto
-	{ Initialise 0, set in Menu. If any value above 0, there is a chance of a random infestation }
+	{ Initialise 0, set in Menu. If any value above 0, there is a chance of a random swarm/infestation. }
+	
+	Int Property iRandomStampedeChance Auto
+	{ Initialise 0, set in Menu. Can only occur during a successful Swarm/Infestation, and if Actor
+	supports this mode. If any value above 0, there is a chance of a stampede. }
 	
 	Int Property iRandomAmbushChance Auto
-	{ Initialise 0, set in Menu. If any value above 0, there is a chance of a random infestation }
+	{ Initialise 0, set in Menu. If any value above 0, there is a chance of a random swarm/infestation. }
 
 EndGroup
 
 
 ;Timers
 
-;Moved to CleanupManager for now
-;Int iRegionResetTimerID = 2 Const ;Does not need to be a Property
-;Int Property iRegionResetTimerClock Auto
-;{Initialise 0. Clock for Area Reset. Fills with settings from Master/Menu}
 Float fTrackerWaitClock ;Wait timer based on Init order. Staggers the startup of the Trackers
-;cleanup timer, in an attempt to prevent all Regions cleanup timers for firing simultaneously.
+;cleanup timer, in an attempt to prevent all Regions cleanup timers from firing simultaneously.
 
 
 ;Temp Variables
@@ -148,8 +152,7 @@ Float fTrackerWaitClock ;Wait timer based on Init order. Staggers the startup of
 Bool bInit ;Security check to make sure Init events don't fire again while running
 ;NOTE - Random events are currently not fully implemented on the Regional level.
 Bool bEventThreadLockEngaged ;Used to skip/block spawn event checker
-ObjectReference bEventPoint ;When an event fires, this will set with the intercepted calling point
-
+ObjectReference kEventPoint ;When an event fires, this will set with the intercepted calling point
 
 
 ;------------------------------------------------------------------------------------------------
@@ -159,12 +162,18 @@ ObjectReference bEventPoint ;When an event fires, this will set with the interce
 Event OnQuestInit()
 	
 	if !bInit
+		
 		MasterScript.Worlds[iWorldID].Regions.Insert(Self, iRegionID) ;Add self to Master array
+		
 		RegisterForCustomEvent(MasterScript, "PresetUpdate")
 		RegisterForCustomEvent(MasterScript, "ForceResetAllSps")
 		RegisterForCustomEvent(MasterScript, "MasterSingleSettingUpdate")
+		
 		fTrackerWaitClock = ThreadController.IncrementActiveRegionsCount(1) as float
+		;This function returns the current count of Regions, so we can use this for our stagger timer.
+		
 		bInit = true
+		
 	endif
 	
 EndEvent
@@ -226,6 +235,10 @@ Event SOTC:MasterQuestScript.MasterSingleSettingUpdate(SOTC:MasterQuestScript ak
 	
 		iRandomSwarmChance = akArgs[1] as Int
 		
+	elseif (akArgs[0] as string) == "RegionStampedeChance"
+	
+		iRandomStampedeChance = akArgs[1] as Int
+		
 	elseif (akArgs[0] as string) == "RegionAmbushChance"
 	
 		iRandomAmbushChance = akArgs[1] as Int
@@ -236,7 +249,6 @@ Event SOTC:MasterQuestScript.MasterSingleSettingUpdate(SOTC:MasterQuestScript ak
 		
 	endif
 	
-	;Currently only supports those two settings.
 	;No need for iEventFlagCount for these events.
 	
 EndEvent
@@ -244,7 +256,7 @@ EndEvent
 
 Event SOTC:MasterQuestScript.ForceResetAllSps(SOTC:MasterQuestScript akSender, Var[] akArgs)
 
-	;This event does not require user to exit Menu mode as it will not restart timers.
+	;This event does not require the user to exit Menu mode as it will not restart timers.
 	CleanupManager.ResetSpentPoints()
 	ThreadController.iEventFlagCount += 1 ;Flag as complete
 
@@ -254,13 +266,14 @@ EndEvent
 ;For the tracker to get the stagger timer. 
 Float Function GetTrackerWaitClock()
 
-	return fTrackerWaitClock
+	return fTrackerWaitClock 
+	;Doesn't need to be an Property IMO but it might be faster if it was.
 	
 EndFunction
 	
 
-;This function SERIALIZES reshuffle of Spawntype Actor Lists
-Function ReshuffleActorLists(Bool abForceReset)
+;This function SERIALIZES reshuffle of Spawntype Actor Lists. Should be safe to run in Menu mode.
+Function ReshuffleActorLists(Bool abForceReset) ;All Spawntypes attached.
 
 	Bool bEnabled
 	
@@ -307,13 +320,13 @@ Function MenuSetPreset(Int aiPreset, Bool abForceResetSpawnTypes)
 	;NOTE: Menu will warn if Region is running custom settings and ask before Overwriting so no check here.
 	
 	iCurrentPreset = aiPreset ;Set the Preset Int
-	if aiPreset == 4 ;Check if it was Custom
+	if aiPreset == 4 ;Check if it was set as Custom now.
 		bCustomSettingsActive = true ;4th preset is the custom user defined.
 	else
 		bCustomSettingsActive = false ;Overridden with normal Preset now.
 	endif
 	
-	ReshuffleActorLists(abForceResetSpawnTypes)
+	ReshuffleActorLists(abForceResetSpawnTypes) ;Optionally forcing reset despite any custom settings.
 	
 EndFunction
 
@@ -334,7 +347,8 @@ EndFunction
 ;Check for a pending event, check preset restriction of calling point.
 Bool Function RegionSpawnCheck(ObjectReference akCallingPoint, Int aiPresetRestriction)
 	
-	;NOTE - Random events are currently not fully implemented on the Regional level.
+	;NOTE - Random events are currently not fully implemented on the Regional level. No code iSize
+	;included here for them yet. 
 	
 	if !bRegionEnabled
 		return false ;Red light.
@@ -349,7 +363,7 @@ EndFunction
 ObjectReference[] Function GetRandomTravelLocs(int aiNumLocations)
 ;Sends 3 random locations in an array to SpawnPoint for Actor group to travel to.
 ;Note: It is possible that this function can return the same location (markers) 2 or all 3 times.
-;In that event, we don't really care because they'll just sandbox the location if they get there.
+;In that event, we don't really care because they'll just sandbox that location, if they get there.
 
 	ObjectReference[] kLocListToSend = new ObjectReference[0]
 	Int iSize = kTravelLocs.Length - 1
@@ -373,7 +387,7 @@ EndFunction
 ;Gets a single random Ez from this script, based on current mode.
 EncounterZone Function GetRandomEz()
 
-	EncounterZone[] kEzListToUse ;went this direction for ease of reading
+	EncounterZone[] kEzListToUse
 	EncounterZone kEzToReturn
 
 	
@@ -400,8 +414,7 @@ EncounterZone Function GetRandomEz()
 
 	endif
 
-	
-	Int iSize = (kEzListToUse.Length) - 1
+	Int iSize = (kEzListToUse.Length) - 1 ;Get actual index count
 	kEzToReturn = kEzListToUse[Utility.RandomInt(0, iSize)]
 
 	return kEzToReturn
@@ -409,11 +422,10 @@ EncounterZone Function GetRandomEz()
 EndFunction
 
 
-;Gets a list of random Ezs from this script and returns it
-;UNUSED in Main Spawnpoint script, exists if needed
+;Gets a list of random Ezs from this script and returns it, if needed.
 EncounterZone[] Function GetRandomEzList(int aiNumEzsRequired)
 
-	EncounterZone[] kEzListToUse ;went this direction for ease of reading
+	EncounterZone[] kEzListToUse
 	EncounterZone[] kEzListToReturn = new EncounterZone[0] ;The new list to build and return
 	
 	if iEzBorderMode == 0 ;Default mode, uses normal list (enemies don't follow indoors)
@@ -500,6 +512,17 @@ Bool Function RollForSwarm()
 
 EndFunction
 
+;Random roll for Stampede, following a successful roll for Swarm
+Bool Function RollForStampede()
+
+	if (Utility.RandomInt(1,100)) < iRandomStampedeChance
+		return true
+	else
+		return false
+	endif
+
+EndFunction
+
 ;Random roll for Ambush - not the same as an AmbushPoint.
 Bool Function RollForAmbush()
 
@@ -513,32 +536,3 @@ EndFunction
 
 
 ;------------------------------------------------------------------------------------------------
-;UNUSED/OBSOLETE FUNCTIONS
-;------------------------------------------------------------------------------------------------
-
-;Pull random ActorQuestScript from SpawnType script and return
-;Moved directly to SpawnTypeRegionalScript
-;ActorQuestScript Function GetRandomActor(int iSpawnType)
-;
-;	return SpawnTypes[iSpawnType].GetRandomActor ;May move this call direct to SpawnPoint
-;	
-;EndFunction
-;
-;
-;Pull multiple ActorQuestScripts from SpawnType script and return array
-;Moved directly to SpawnTypeRegionalScript
-;ActorQuestScript[] Function GetMultipleRandomActors(int iSpawnType, int iActorCount)
-;
-;	ActorQuestScript[] ActorsToReturn = new ActorQuestScript[0] ;Init a temp array
-;	
-;	int iCounter = 0
-;	while iCounter < iActorCount
-;		ActorToReturn.Add((SpawnTypes[iSpawnType].GetRandomActor)) ;Add new member
-;	endwhile
-;	
-;	return ActorsToReturn ;Return the list
-;	
-;EndFunction
-
-;------------------------------------------------------------------------------------------------
-

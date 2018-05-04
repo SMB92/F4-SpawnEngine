@@ -10,7 +10,7 @@ links to any sub classes which are instanced via Aliases on the Quest }
 ; "a" - (Function/Event Blocks only) Variable was received as function argument OR the variable
 ;was created from a passed-in Struct/Var[] member
 ; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
-; "f,b,i" - The usual Primitives: Float, Bool, Int.
+; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
 
 ;------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
@@ -23,22 +23,22 @@ Group PrimaryProperties
 	{ Fill with MasterQuest }
 
 	SOTC:SpawnTypeMasterScript Property MasterActorList Auto Const
-	{ Fill with Master SpawnType 0 Script (same as MasterScript.SpawnTypeMasters[0]). This holds all Actors }
+	{ Fill with Master SpawnType 0 Script (same as MasterScript.SpawnTypeMasters[0]). This holds all Actors. }
 
 	String Property sActorType Auto Const
-	{ Fill with generic label for this Actor Type, used for sorting/displaying }
+	{ Fill with generic name for this Actor (i.e Raider), used for sorting/displaying. }
 
 	Int Property iActorID Auto Const
-	{ Permanent ID number of this Actor. Index of Master Array }
+	{ Permanent ID number of this Actor. Index of this Actor on the MasterActorList array. }
 
 	Bool[] Property bAllowedSpawnTypes Auto Const
-	{ Set true or false on each member for each SpawnType to include this Actor in }
+	{ Set true or false on each member for each SpawnType to include this Actor in. }
 
 	SOTC:ActorClassPresetScript[] Property ClassPresets Auto
-	{ Initialise one member of None. Fills dynamically. Used for Class preset storage }
+	{ Initialise one member of None. Fills dynamically. Used for Class preset storage. }
 
 	SOTC:ActorWorldPresetsScript[] Property WorldPresets Auto
-	{ Initialise one member of None. Fills dynamically. Used for Region preset storage }
+	{ Initialise one member of None. Fills dynamically. Used for Region preset storage. }
 
 	SOTC:ActorGroupLoadoutScript[] Property GroupLoadouts Auto
 	{ Init one member of None. Fills dynamically. All GroupLoadouts scripts will add themselves here }
@@ -52,16 +52,19 @@ Group SettingsProperties
 { Properties used in spawning etc }
 
 	Bool Property bActorEnabled Auto
-	{ Init True. Change in Menu. Will not appear in random spawns if false }
+	{ Init true. Change in Menu. Will not appear in random spawns if set false }
 
 	Bool Property bIsFriendlyNeutralToPlayer Auto
 	{ Init with correct starting value for this Actor. Used to prevent random hostile events }
 	
 	Bool Property bIsOversizedActor Auto Const
-	{ If the Actor is unsafe to spawn in confined areas, set this true }
+	{ Set true if this Actor is unsafe to spawn in confined areas. }
 
 	Bool Property bSupportsSwarm Auto Const
-	{ Set True if this Actor can cause an Infestation }
+	{ Set true if this Actor can cause an Infestation/Swarm. }
+	
+	Bool Property bSupportsStampede Auto Const
+	{ Set true if this Actor can cause a Stampede. }
 
 	;NOTE: Could have used a struct here for Swarm properties
 
@@ -85,7 +88,7 @@ EndGroup
 Group LootSystemProperties
 
 	Bool Property bLootSystemEnabled Auto 
-	{ Init False. Set in Menu. When on, spawned Actors of this type may possibly 
+	{ Init false. Set in Menu. When on, spawned Actors of this type may possibly 
 	receive a loot item from one of the Formlists below }
 	
 	Formlist Property kRegularLootList Auto Const
@@ -103,7 +106,7 @@ Group LootSystemProperties
 EndGroup
 
 ;LEGEND - LOOT SYSTEM
-;There are 2 ways to provide random spawns with a random loot item (or more if using a Use All 
+;There are 2 ways to provide random spawns with a random loot item (or more if using an "Use All" 
 ;flagged Leveled List) - through the SpawnTypeRegionalScript or the ActorQuestScript. Both systems
 ;are identical in function and setup, but can operate independantly. The system works by storing
 ;formlists on each of the scripts, 1 for regular Actors and 1 for Boss Actors. Spawnpoints will
@@ -113,7 +116,7 @@ EndGroup
 ;each Actors inventory, based on a configurable chance value. The single item can be a Leveled List, 
 ;and if it is marked to Use All, will add every item from that list.
 
-;Loot on the Spawntype script should be applicable to all Actors in that Spawntype, this intended
+;Loot on the Spawntype script should be applicable to all Actors in that Spawntype, this is intended
 ;to be a generalised loot table. The reason why this system is included on the Region Spawntype 
 ;script, and not the Master Spawntype, is so we can specify different loot per Region if we wish.
 ;Loot on the ActorQuestScript is obviously so we can supply highly specific loot for each Actor type. 
@@ -121,7 +124,7 @@ EndGroup
 ;loot values can be defined for both Regular and Boss Actors independantly on each script as well. 
 
 ;Fun fact: It was originally an idea to provide loot by using a RefCollectionAlias with specified
-;Leveled Lists, and then add Actors to this coolection so they'd automatically get the loot without
+;Leveled Lists, and then add Actors to this collection so they'd automatically get the loot without
 ;any coding necessary. However, this posed some complications for third-party addons as far as using
 ;scripts to add loot, and thus I developed the formlist approach, so that now addons can both safely
 ;add and remove loot items from the list via script. It is also useful in the same sense for adding
@@ -136,26 +139,25 @@ Int iInitTimerID = 1 Const ;This timer appears whenever we need to delay some wo
 ;INITIALISATION FUNCTIONS & EVENTS
 ;------------------------------------------------------------------------------------------------
 
-Event OnQuestInit() ;This may not be feasible to use here, because Aliases need be filled first
+Event OnQuestInit()
 	
 	if !bInit
 		MasterActorList.ActorLibrary.Insert(Self, iActorID) ;Insert on the Master list.
-		;MasterScript.AddActorToMasterLists(Self, sSpawnTypeRaceString, bSupportedClasses) ;Will
-		;iterate the MasterActorList after all inserted instead. Left for reference.
 		bInit = true
 	endif
 	
-	StartTimer(5, iInitTimerID) ;Defer until we are sure Alias scripts have added to above arrays.
-	;5 seconds should suffice
+	StartTimer(2, iInitTimerID) ;Defer until we are sure Alias scripts have added to above arrays.
+	;2 seconds should suffice. Work continues in OnTimer block.
 	
 EndEvent
+
 
 
 Event OnTimer(int aiTimerID)
 
 	if aiTimerID == iInitTimerID
 	
-		InitResetGroupLoadouts(false)
+		InitResetGroupLoadouts(false) ;Initialise and sort GroupLoadouts
 		
 	endif
 	
@@ -168,8 +170,6 @@ Function InitResetGroupLoadouts(Bool abReset)
 	Bool bAllowPaGroups = MasterScript.bAllowPowerArmorGroups
 	Int iCounter
 	Int iSize
-	
-	;If PA groups are disallowed, external function call returns immediately and loop continues.
 
 	if !abReset ;Add/Init
 	
@@ -177,6 +177,7 @@ Function InitResetGroupLoadouts(Bool abReset)
 			
 		while iCounter < iSize
 			GroupLoadouts[iCounter].AddGroupToClassPresets(bAllowPaGroups)
+			;If PA groups are disallowed, external function call returns immediately and loop continues.
 			iCounter += 1
 		endwhile
 
@@ -186,16 +187,17 @@ Function InitResetGroupLoadouts(Bool abReset)
 		iSize = ClassPresets.Length
 		
 		while iCounter < iSize
-			ClassPresets[iCounter].GroupLoadouts.Clear()
+			ClassPresets[iCounter].GroupLoadouts.Clear() ;Clear before refilling.
 			iCounter += 1
 		endwhile
 		
-		;Re-init
+		;Refill/init
 		iCounter = 0
 		iSize = GroupLoadouts.Length
 			
 		while iCounter < iSize
 			GroupLoadouts[iCounter].AddGroupToClassPresets(bAllowPaGroups)
+			;If PA groups are disallowed, external function call returns immediately and loop continues.
 			iCounter += 1
 		endwhile
 		
@@ -247,7 +249,7 @@ SOTC:ActorClassPresetScript Function GetRandomRarityBasedClass()
 
 	Int iClass = Utility.RandomInt(1,3) ;Class to use from ClassPresets
 	return ClassPresets[iClass]
-	;The caller should now determine iDifficulty settings and pull the GroupLoadout.
+	;The caller should now determine iDifficulty setting and pull the GroupLoadout.
 	
 EndFunction
 
@@ -264,7 +266,7 @@ Function DoLootPass(Actor[] akGroupList, Int aiBossCount)
 	Int iLootListSize = (kRegularLootList.GetSize()) -1 ;Actual index count
 	Form kLootItem
 	
-	;Regular Actors inlcuing Bosses if present
+	;Regular Actors inlcuding Bosses if present
 	
 	while iCounter < iGroupSize
 		
@@ -277,7 +279,7 @@ Function DoLootPass(Actor[] akGroupList, Int aiBossCount)
 			
 	endwhile
 		
-	if aiBossCount > 0
+	if aiBossCount > 0 ;Check if any Bosses and do their loot pass
 	
 		iLootListSize = (kBossLootList.GetSize()) -1 ;Actual index count
 		iCounter = (iGroupSize) - (aiBossCount) ;Start Counter where Bosses start on the list

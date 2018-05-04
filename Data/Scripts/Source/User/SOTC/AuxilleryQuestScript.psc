@@ -12,7 +12,7 @@ Scriptname SOTC:AuxilleryQuestScript extends Quest
 ; "a" - (Function/Event Blocks only) Variable was received as function argument OR the variable
 ;was created from a passed-in Struct/Var[] member
 ; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
-; "f,b,i" - The usual Primitives: Float, Bool, Int.
+; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
 
 ;------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
@@ -25,10 +25,19 @@ Holotape Property SOTC_AuxMenuTape Auto Const
 { Auto-Fills with AuxMenuTape }
 
 Quest[] Property ActorQuests Auto
-{ Fill with all default Actor Quests. Index order is not essential }
+{ Fill with all default Actor Quests. Index order is not essential. }
 
 Quest[] Property RegionQuests Auto
-{ Fill with all default Region Quests. Index order is not essential }
+{ Fill with all default Region Quests. Index order is not essential. }
+
+GlobalVariable Property SOTC_MasterGlobal Auto Const
+{ Auto-fill. IO status of mod }
+
+GlobalVariable Property SOTC_Global_MenuSettingsMode Auto Const
+{ Auto-fill }
+
+;Int the default mod, there won't be more than 128 of either of the above, so therefore using arrays
+;here is okay. Addons should have their own auxillery controller. 
 
 ;Variables
 ;----------
@@ -47,10 +56,8 @@ Bool bSpawnEngineStarting ;Security measure to be sure we want to start
 Event OnQuestInit()
 
 	if !bInit
-	
 		bInit == true ;Never want to receive this event again.
-		Game.GetPlayer().AddItem(SOTC_AuxMenuTape, 1, false) ;We want to know it's been added.
-
+		Game.GetPlayer().AddItem(SOTC_AuxMenuTape, 1, false) ;We want to know it's been added
 	endif
 	
 EndEvent
@@ -63,6 +70,7 @@ EndEvent
 Function PrepareToInitSpawnEngine()
 
 	bSpawnEngineStarting = true ;Security measure to be sure we want to start
+	SOTC_Global_MenuSettingsMode.SetValue(10.0) ;Lock menu. 
 	RegisterForMenuOpenCloseEvent("PipboyMenu") ;Quests cannot start in menu mode, so we register
 	;for the menu exit event before starting quests. Same applies to starting Timers.	
 
@@ -74,9 +82,9 @@ Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
 
 	if (asMenuName == "PipboyMenu") && (!abOpening) && (bSpawnEngineStarting)
 	
-		Game.GetPlayer().RemoveItem(SOTC_AuxMenuTape, 1) ;We want to know it's been removed.
+		Game.GetPlayer().RemoveItem(SOTC_AuxMenuTape, 1, true) ;Silently remove
 		InitSpawnEngine()
-		UnregisterForAllMenuOpenCloseEvents()
+		;UnregisterForAllMenuOpenCloseEvents() ;Calling Stop in above function call instead.
 		
 	endif
 	
@@ -113,6 +121,9 @@ Function InitSpawnEngine()
 	;DEV NOTE: This script will need to be updated to include Random Event framework Quests
 	
 	Debug.MessageBox("SpawnEngine is now initialised. You will need to set a Preset in order to complete setup. Until you do this, no spawns will occur. Instructions are included in the Holotape Menu that has been added to your inventory.")
+	
+	SOTC_Global_MenuSettingsMode.SetValue(1.0) ;Put menu into first start state
+	
 	(Self as Quest).Stop() ;Shutdown this auxillery quest. 
 	
 EndFunction

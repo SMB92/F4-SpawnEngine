@@ -4,32 +4,45 @@ Scriptname SOTC:RR_ControllerQuestScript extends Quest
 ;Designed by request of Keith [KKTheBeast]
 ;Special Thanks to Dylan [Cancerous1] for example code
 
+;LEGEND - PREFIX CONVENTION
+; Variables and Properties are treated the same. Script types do not have prefixes, unless they
+;are explicitly received as function arguments and are multi-instance scripts.
+; "a" - (Function/Event Blocks only) Variable was received as function argument OR the variable
+;was created from a passed-in Struct/Var[] member
+; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
+; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
+
 ;------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
 ;------------------------------------------------------------------------------------------------
 
 Actor Property PlayerRef Auto
-{Yours truly, if needed}
+{ Yours truly, if needed }
 
 Static Property SOTC_RR_DistanceTracker Auto Const
-{Object that follows the player around and executes refresh of spawn aliases}
+{ Object that follows the player around and executes refresh of spawn aliases. }
 
 Quest Property SOTC_RandomRoachesDynamicQuest Auto Const
-{The other quest containing dynamic aliases}
+{ The other Quest containing dynamic aliases. }
 
 ObjectReference akWorkshop
 
 ObjectReference akDistanceTracker
 ;The actual instance of create tracker
 
+Bool bInit ;Security check to make sure Init events don't fire again while running
+
 ;------------------------------------------------------------------------------------------------
 ;FUNCTIONS & EVENTS
 ;------------------------------------------------------------------------------------------------
 
 Event OnQuestInit()
-
-	akDistanceTracker = PlayerRef.PlaceAtMe(akDistanceTracker) ;Create the tracker object
-	RegisterForDistanceGreaterThanEvent(PlayerRef, akDistanceTracker, 2048) ;About half a cell @2048 
+	
+	if !bInit
+		akDistanceTracker = PlayerRef.PlaceAtMe(akDistanceTracker) ;Create the tracker object
+		RegisterForDistanceGreaterThanEvent(PlayerRef, akDistanceTracker, 2048) ;About half a cell @2048
+		bInit = true
+	endif
 	
 EndEvent
 

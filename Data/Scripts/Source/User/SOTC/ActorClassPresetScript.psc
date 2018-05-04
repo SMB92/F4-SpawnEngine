@@ -14,7 +14,7 @@ Scriptname SOTC:ActorClassPresetScript extends ReferenceAlias
 ; "a" - (Function/Event Blocks only) Variable was received as function argument OR the variable
 ;was created from a passed-in Struct/Var[] member
 ; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
-; "f,b,i" - The usual Primitives: Float, Bool, Int.
+; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
 
 ;------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
@@ -26,19 +26,33 @@ SOTC:ActorQuestScript Property ActorScript Auto Const
 { Link to the owning Actor Quest }
 
 Int Property iClassID Auto Const
-{ Fill with intended Class ID }
+{ Fill with intended Class ID (Will become index on ClassPresets array on ActorQuestScript }
+
 ;LEGEND - CLASSES
 ; [0] - NONE, DO NOT USE
 ; [1] - COMMON RARITY
 ; [2] - UNCOMMON RARITY
 ; [3] - RARE RARITY
-; [4] - AMBUSH
-; [5] - SNIPER
+; [4] - AMBUSH - RUSH (Wait for and rush the player)
+; [5] - AMBUSH - STATIC (for "hidden" ambushes such as Mirelurks and Molerats)
+; [6] - SNIPER
+; [7] - SWARM/INFESTATION
+; [8] - STAMPEDE 
+
+;NOTE: See "CLASSES VS SPAWNTYPES" commentary of the SpawnTypeMasterScript for more in-depth info
 	
 ClassDetailsStruct[] Property ClassDetails Auto
-{ Fill with appropriate values for this Class. Each member represents Difficulty level (0-4) }
+{ Init and fill members 1-3, ignore member 0/set items as None. Fill each struct with appropriate 
+values for this Class. Only members 1-3 (based on current Preset) will ever be needed. }
+
+;LEGEND - PRESETS
+; [1] SOTC ("Spawns of the Commonwealth" default) - Easiest, suit vanilla/passive player.
+; [2] WOTC ("War of the Commonwealth") - Higher chances of spawns and group numbers etc.
+; [3] COTC (Carnage of the Commonwealth") - What it says on the tin.
+
 ;LEGEND - DIFFICULTY LEVELS
 ;Same as Vanilla. Only in Bethesda games does None = 4 (value 4 is "No" difficulty, scale to player)
+;Only affects this mod. 
 ; 0 - Easy
 ; 1 - Medium
 ; 2 - Hard
@@ -86,19 +100,19 @@ EndFunction
 ;RETURN FUNCTIONS
 ;------------------------------------------------------------------------------------------------
 
-;This function return a single group loadout for spawning (ActorBase[] version)
+;This function returns a single group loadout for spawning (ActorBase[] version)
 ActorBase[] Function GetRandomGroupLoadout(bool abGetBossList)
 
 	Int iSize
 
 	if !abGetBossList
 	
-		iSize = GroupLoadouts.Length - 1
+		iSize = GroupLoadouts.Length - 1 ;Get actual index count
 		return GroupLoadouts[(Utility.RandomInt(0,iSize))].kGroupUnits
 		
 	else
 		
-		iSize = GroupLoadouts.Length - 1
+		iSize = GroupLoadouts.Length - 1 ;Get actual index count
 		return GroupLoadouts[(Utility.RandomInt(0,iSize))].kBossGroupUnits
 		
 	endif
@@ -127,12 +141,3 @@ ActorGroupLoadoutScript Function GetRandomGroupScript(bool abGetBossList)
 EndFunction
 
 ;------------------------------------------------------------------------------------------------
-
-;DEV NOTE: There is another method that I could have used to do what I'm doing with this script,
-;however I abandoned it in favor of simplicity for third party modders. The other method would be
-;as follows:
-; 1. On ActorQuestScript, have an array of ClassDetailsStruct, add a new member "GroupLoadoutsList"
-; 2. Change this script to only hold an array of "GroupLoadoutsScript"
-; 3. Same method as here for group loadouts.
-;I deem this potentially too confusing for modders. With the current method, if it is decided to
-;add a new "class", everything can be done from this one script. 

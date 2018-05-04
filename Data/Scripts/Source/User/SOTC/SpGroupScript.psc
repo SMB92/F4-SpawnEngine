@@ -11,7 +11,7 @@ Scriptname SOTC:SpGroupScript extends ObjectReference
 ; "a" - (Function/Event Blocks only) Variable was received as function argument OR the variable
 ;was created from a passed-in Struct/Var[] member
 ; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
-; "f,b,i" - The usual Primitives: Float, Bool, Int.
+; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
 
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
@@ -23,13 +23,13 @@ Group RelevantScriptLinks
 { Links to relevant Master and Global scripts }
 
 	SOTC:MasterQuestScript Property MasterScript Auto Const
-	{ Fill with Master Script }
+	{ Fill with MasterQuest }
 
 	SOTC:ThreadControllerScript Property ThreadController Auto Const
-	{ Fill with ThreadController script }
+	{ Fill with ThreadController Alias }
 
 	SOTC:RegionQuestScript Property RegionScript Auto Const
-	{ Fill with this Region's Master Script }
+	{ Fill with this Region's Quest }
 	
 	SOTC:RegionTrackerScript Property CleanupManager Auto Const
 	{ Fill with RefAlias attached to above RegionQuest }
@@ -46,60 +46,67 @@ Group PrimaryProperties
 { Critical Properties defining this Spawnpoint }
 
 	Int Property iChanceToFire Auto Const
-	{ Use this define an extra chance/dice roll for this SP or set 100 for always }
+	{ Use this define an extra chance/dice roll for this SP or set 100 for always. }
 
 	ReferenceAlias Property kPackage Auto Const
-	{ Fill with the desired package }
+	{ Fill with the desired package, typically SOTC_TravelPackage02. }
 	
 	ReferenceAlias Property kPackageAmbush Auto Const Mandatory
 	{ Fill with SOTC_AmbushPackageRandom01. This gets filled the same on EVERY instance of this marker. }
 	
+	ReferenceAlias Property kPackageStampede Auto Const Mandatory
+	{ Fill with SOTC_AmbushPackageStampede01. This gets filled the same on EVERY instance of this marker. }
+	;This package is different as it causes the Actors to run to a single location and sandbox there. 
+	
 	;LEGEND - PACKAGE TYPES (ALL)
-	; [0] - TRAVEL - RANDOM SPAWN (2 RANDOM LOCATIONS)
-	; [1] - SANDBOX AND GUARD
-	; [2] - HOLD POSITION/SNIPER
-	; [3] - PATROL (USE CUSTOM LOC MARKERS, NOT IDLE MARKERS)
+	; TRAVEL - RANDOM SPAWN (2 OR MORE RANDOM LOCATIONS)
+	; SANDBOX (AND GUARD IF APPLICABLE)
+	; HOLD POSITION (SNIPER)
+	; PATROL (USE CUSTOM LOC MARKERS OR IDLE MARKERS)
+	; AMBUSH - RUSH THE PLAYER (EITHER ON SPAWN OR WAIT)
 
 	Keyword[] Property kPackageKeywords Auto Const
-	{ Fill with as many package keywords as needed (even if just 1). Used for linking to package marker(s) }
+	{ Fill with as many package keywords as needed (even if just 1). Used for linking to package marker(s) i.e Travel Locations. }
 	
 	Int Property iNumPackageLocs Auto Const
 	{ Set 0 to use Self as Package location, or set to number of locations expected by the Package set above }
 	
 	Bool Property bTravelling Auto Const
-	{ If Package is travelling, set True }
+	{ If Package is travelling, set True (most common use). }
 
 	Bool Property bAllowVanilla Auto Const
-	{ Set true if only wanting this point to be allowed in Vanilla Mode }
+	{ Set true only if wanting this point to be allowed in Vanilla Mode. }
 
 	Int Property iPresetRestriction Auto Const
-	{ Fill this (1-3) if it is desired to restrict this point to a certain Master preset level }
+	{ Fill this (1-3) if it is desired to restrict this point to a certain Master preset level. }
 	
 	Int Property iRarityOverride Auto ;Left auto in case we might want to manipulate later
-	{ Fill this 1-3, if wanting to force grab a certain "rarity" of actor }
+	{ Fill this 1-3, if wanting to force grab a certain "rarity" of actor. }
 	
 	Bool Property bIsMultiPoint Auto Const
-	{ Set true if using child markers to randomise placement of groups. DO NOT USE IN CONFINED SPACES }
-	;WARNING: DO NOT USE MULTIPOINTS IN CONFINED SPACES WITH SPAWNTYPES THAT HAVE OVERSIZED ACTORS - USE MULTIPLE SINGLE POINTS INSTEAD
+	{ Set true if using child markers to randomise placement of groups. DO NOT USE IN CONFINED SPACES. }
+	;WARNING: DO NOT USE MULTIPOINTS IN CONFINED SPACES WITH SPAWNTYPES THAT HAVE OVERSIZED ACTORS - USE MULTIPLE SINGLE POINTS INSTEAD.
 
 	Bool Property bIsInteriorPoint Auto Const
-	{ Set true if interior cell, will behave differently with child markers }
+	{ Set true if placed in an interior cell, will behave differently with child markers distribution.
+	Can be used in exterior cells if desired, i.e open buildings. }
 	
 	Bool Property bIsConfinedSpace Auto Const
 	{ If the SP is placed in a confined area, set True so Oversized Actors will not spawn here.
 	And yes, this is required for interiors as not all interiors are confined. }
 
 	Activator Property kMultiPointHelper Auto Const
-	{ Fill with generic helper script object to instance if bMultiPoint is true, other wise None }
-	;NOTE: This will have to be cast to it's script type in functions, after creation
+	{ Fill with generic helper script object to instance if bMultiPoint is true, other wise set None. }
+	;NOTE: This will have to be cast to it's script type in functions, after creation.
 
-	ObjectReference[] Property kChildMarkers Auto ;AUTO so can be modified at runtime
+	ObjectReference[] Property kChildMarkers Auto ;AUTO so can be modified at runtime.
 	{ If using child markers, fill with these from render window, or initialise with one member of None.
 	This can also be used to set up a separate package location(s) from this SPs location. }
 	
 	Int Property iThreadsRequired Auto
-	{ Fill with a score value of 1 - 3, depending how busy this point is expected to be }
-	;NOTE: Will be released immediately if Master intercepts for a Random Event
+	{ Fill with a value of 1 - 3, depending how busy this point is expected to be. Usually 1 but can be more if desired. }
+	;NOTE: Will be released immediately if Master intercepts for a Random Event. MultiPoint helpers will force add threads
+	;on instantation, which can intentionally exceed the max thread threshold.
 
 EndGroup
 
@@ -112,10 +119,9 @@ EndGroup
 ;This will usually be 0 and will use this marker (self) as the location. Set bTravelling False
 ;2. IF above is anything other than 0, define Package loc markers in the kChildMarkers array. This array
 ;serves dual purposes, in Multigroup mode it holds spawn locations around this marker (self).
-; FOR TRAVEL PACKAGES (Supported by Moth SIngle/Multi Point modes):
-; 1. Set iNumPackageLocs to number of Locations defined on the filled Alias Property's Package
-; 2. Set bTravelling to true. This will cause the ApplyPackageData function to NOT look at the
-;kChildMarkers array, but instead get a random list of destinations from the RegionScript
+; FOR TRAVEL PACKAGES (Supported by Both Single/Multi Point modes):
+; 1. Set iNumPackageLocs to number of Locations defined on the filled Alias Property's Package.
+; 2. Set bTravelling to true. 
 ; MULTI GROUP MODE - MUST HAVE SINGLE TRAVEL LOC PACKAGE SET
 ;Multigroup spawns are deliberately designed to create spawning "battles", therefore they are all given
 ;a single travel destination so they will run into each other. All other Package parameters will be
@@ -127,22 +133,26 @@ EndGroup
 ;The Helper code only looks at the size of the passed in kPackageLocs array when applying linked refs to
 ;Actors spawned, therefore it is possible to use this elsewhere/pass in a multi-location sandbox package. 
 ;It is imperative that the passed-in kPackageLocs have equal number of members to the number of locations 
-;defined on the passed-in package.
+;defined on the passed-in package, or it will try to link with potentially non-existant markers.
 ; RANDOM AMBUSH PACKAGE (Single Group Mode ONLY)
 ;It is possible to allow a random chance that a single spawned group come directly after the player. Not
 ;the same as the as the more specific SpAmbushPointScript however, but entirely optional (defined on a per
 ;Region basis). This package is defined on every SpGroupPointScript, and will simply send the group running
 ;from their spawned location straight to the player where they will likely engage in combat. Survivors will
-;return to the original spawnpoint location and sandbox a wide area. There is also a setting defined on each
+;then travel to a single location and sandbox until killed/cleaned. There is also a setting defined on each
 ;ActorQuestScript for each Actor that can define/turn them friendly to player, preventing this feature from
 ;ever occurring on a known friendly Actor/faction group.
+; STAMPEDE PACKAGE
+;Added in version 0.06.01, this is an extension of the Swarm/Infestation feature. Cetain Actors that support
+;this mode can cause a Stampede upon a successful Swarm roll, and in this case they will get a single travel
+;location and a special package applied which makes them run to and sandbox that location. 
 
 
 ;------------------------------------------------------------------------------------------------------------
 
-;--------------
-;TempVariables
-;--------------
+;---------------
+;LocalVariables
+;---------------
 
 ;TimerIDs
 Int iStaggerStartupTimerID = 1 Const
@@ -151,7 +161,8 @@ Int iSpCooldownTimerID = 2 Const
 Bool bSpawnpointActive ;Condition check. Once SP is activated this is set true.
 
 ActorClassPresetScript ActorParamsScript
-;NOTE: We never get the ActorQuestScript, we go straight for the Class in order to get parameters.
+;NOTE: We never get the ActorQuestScript, we go straight for the ClassPresetScript in order to get parameters.
+;We can and will still access the ActorQUestScript from here.
 ;The GetRandomActor(s) function on the SpawnTypeRegionalScript returns this. 
 
 Actor[] kGrouplist ;Stores all Actors spawned on this instance
@@ -164,8 +175,9 @@ ObjectReference[] kActiveHelpers ;Actual SpawnHelper instances placed at child m
 ;Spawn Info, listed in expect order of setting. Not all are required, depending on SpawnType etc
 Bool bRandomiseEZs ;Used in spawn loop to check if random EZ needs to be randomised (iEzApplyMode = 2)
 
-Bool bApplyAmbushPackage ;Quick flag is Random Ambush mode has been enabled
-;Was placed into empty state due to needing to check which package to remove at cleanup time.
+Bool bApplyAmbushPackage ;Quick flag to set Random Ambush enabled
+Bool bApplyStampedePackage ;Quick flag to set Random Stampede enabled
+;Placed into empty state due to needing to check which package to remove at cleanup time.
 
 
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -194,12 +206,12 @@ Event OnTimer(int aiTimerID)
 			if MasterScript.MasterSpawnCheck(Self as ObjectReference, bAllowVanilla) ;MASTER CHECK: If true, denied
 				;Master script assuming control, kill this thread and disable
 				Self.Disable()
-				CleanupManager.AddSpentPoint(Self as ObjectReference) ;All points can be added by Object rather than script type				
+				CleanupManager.AddSpentPoint(Self as ObjectReference) ;All points are added by Object rather than script type				
 				return
 			endif
 			
-			;Region Level checks/intercept
-			;NOTE - This will send in local spawn parameters if no intercept takes place.
+			;Region Level checks/intercept. This will send in local spawn parameters if no intercept takes place.
+			;NOTE: as of version 0.06.01, no events are defined on RegionScript, will always return false. 
 			if RegionScript.RegionSpawnCheck(Self as ObjectReference, iPresetRestriction) ;REGION CHECK: If true, denied
 				;Region script assuming control, kill this thread and disable
 				Self.Disable()
@@ -227,10 +239,11 @@ Event OnTimer(int aiTimerID)
 	
 EndEvent
 
-Function PrepareLocalSpawn() ;Determine how we need to proceed
+
+Function PrepareLocalSpawn() ;Determine how to proceed
 
 	if bIsInteriorPoint ;Distributes the group across different parts of the Interior
-	;NOTE - Master Random Events framework can spawn in Interiors UNLESS it is coded not to.
+	;DEV NOTE - Master Random Events framework needs an update for interiors.
 		if (Self as ObjectReference).GetCurrentLocation().IsCleared()
 			PrepareInteriorSpawn()
 		else ;Nip it in the bud
@@ -239,7 +252,7 @@ Function PrepareLocalSpawn() ;Determine how we need to proceed
 			StartTimer(ThreadController.iSpCooldownTimerClock, iSpCooldownTimerID)
 		endif
 		
-	elseif bIsMultiPoint ;Uses helper objects to create multi group spawns
+	elseif bIsMultiPoint ;Uses helper objects to create multi-group spawns
 	
 		PrepareMultiGroupSpawn()
 		
@@ -251,7 +264,7 @@ Function PrepareLocalSpawn() ;Determine how we need to proceed
 	
 	Self.Disable()
 	bSpawnpointActive = true
-	CleanupManager.AddSpentPoint(Self as ObjectReference) ;All points can be added by Object rather than script type
+	CleanupManager.AddSpentPoint(Self as ObjectReference) ;All points are added by Object rather than script type
 	;Cleanup will be handled by the CleanupManager upon Region reset timer firing.
 	ThreadController.ReleaseThreads(iThreadsRequired) ;Spawning done, threads can be released.
 	;NOTE - Thinking of implementing 2 other options on ThreadController - one for Max active SPs and max number of NPCs
@@ -268,11 +281,15 @@ EndFunction
 Function FactoryReset()
 
 	if bIsMultiPoint ;No groups stored here.
+		
 		CleanupHelperRefs()
 		ResetChildMarkers()
 		
 	else ;Single and Interior modes can both use this.
-		if bApplyAmbushPackage ;Properly check this value.
+		
+		if bApplyAmbushPackage
+			CleanupActorRefs(kPackageAmbush)
+		elseif bApplyStampedePackage
 			CleanupActorRefs(kPackageAmbush)
 		else
 			CleanupActorRefs(kPackage)
@@ -284,8 +301,7 @@ Function FactoryReset()
 
 EndFunction
  
- 
-;Cleans up all Actors in GroupList
+
 Function CleanupActorRefs(ReferenceAlias akPackage) ;Decided to pass the package in here. 
 
 	int iCounter = 0
@@ -293,8 +309,8 @@ Function CleanupActorRefs(ReferenceAlias akPackage) ;Decided to pass the package
         
 	while iCounter < iSize
 
-		akPackage.RemoveFromRef(kGroupList[iCounter]) ;Remove package data. Perhaps not necessary either?
-		;NOTE; Removed code that removes linked refs. Unnecesary
+		akPackage.RemoveFromRef(kGroupList[iCounter]) ;Remove package data. Perhaps not necessary?
+		;NOTE; Removed code that removes linked refs. Unnecesary.
 		kGroupList[iCounter].DeleteWhenAble()
 		iCounter += 1
 	
@@ -306,7 +322,6 @@ Function CleanupActorRefs(ReferenceAlias akPackage) ;Decided to pass the package
 EndFunction
 
 
-;Commands any Helper instances to begin Cleanup
 Function CleanupHelperRefs()
 
 	int iCounter = 0
@@ -314,7 +329,7 @@ Function CleanupHelperRefs()
 	
 	while iCounter < iSize
 	
-		(kActiveHelpers[iCounter] as SOTC:SpHelperScript).HelperFactoryReset() ;Possibly better to use a variable instead?
+		(kActiveHelpers[iCounter] as SOTC:SpHelperScript).HelperFactoryReset()
 		kActiveHelpers[iCounter].DeleteWhenAble()
 		iCounter += 1
 		
@@ -350,9 +365,9 @@ Function PrepareSingleGroupSpawn()
 	
 	;Get a random Actor, pulling the ClassPresetScript directly.
 	if iRarityOverride > 0 && iRarityOverride < 4 ;Security measure, cannot get rarity outside 1-3
-		ActorParamsScript = SpawnTypeScript.GetRandomActor(True, iRarityOverride) ;ActorClassPresetType
+		ActorParamsScript = SpawnTypeScript.GetRandomActor(iRarityOverride) ;ActorClassPresetType
 	else 
-		ActorParamsScript = SpawnTypeScript.GetRandomActor(false, 0)
+		ActorParamsScript = SpawnTypeScript.GetRandomActor(0) 
 	endif
 	
 	;Create direct links to ActorQuestScript and ClassDetailsStruct
@@ -363,24 +378,26 @@ Function PrepareSingleGroupSpawn()
 	;Now we'll check if we are in a confined space and Actor is oversized
 	while (bIsConfinedSpace) && (ActorMainScript.bIsOversizedActor)
 		if iRarityOverride > 0 && iRarityOverride < 4 ;Security measure, cannot get rarity outside 1-3
-			ActorParamsScript = SpawnTypeScript.GetRandomActor(True, iRarityOverride) ;ActorClassPresetType
+			ActorParamsScript = SpawnTypeScript.GetRandomActor(iRarityOverride) ;ActorClassPresetType
 		else 
-			ActorParamsScript = SpawnTypeScript.GetRandomActor(false, 0)
+			ActorParamsScript = SpawnTypeScript.GetRandomActor(0)
 		endif
 		ActorMainScript = ActorParamsScript.ActorScript
 	endwhile
 		
 	;Now we can get the actual spawn parameters
-	Int iDifficulty = RegionScript.iCurrentDifficulty ;Set the difficulty level 
-	ClassDetailsStruct ActorParams = ActorParamsScript.ClassDetails[iDifficulty] ;Difficulty level is used for presets on Actor Class
+	Int iPreset = SpawnTypeScript.iCurrentPreset ;Set preset to use
+	ClassDetailsStruct ActorParams = ActorParamsScript.ClassDetails[iPreset]
+	
+	Int iDifficulty = RegionScript.iCurrentDifficulty ;Set difficulty for spawning. 
 
-	;The variable names here should be so confusing by your now head is caved in
+	;The variable names here should be so confusing by your now head is caved in.
 	
 	;Get the actual ActorBase arrays
 	ActorBase[] kRegularUnits = (ActorParamsScript.GetRandomGroupLoadout(false)) as ActorBase[] ;Cast to copy locally
 	ActorBase[] kBossUnits
 	Bool bBossAllowed = ActorParams.bAllowBoss 
-	if bBossAllowed ;Not gonna set this unless it's allowed. Later used as parameter
+	if bBossAllowed ;Set if allowed. Later used as parameter.
 		kBossUnits = (ActorParamsScript.GetRandomGroupLoadout(true)) as ActorBase[] ;Cast to copy locally
 	endif
 	
@@ -390,7 +407,7 @@ Function PrepareSingleGroupSpawn()
 	EncounterZone[] kEzList; If iEzApplyMode = 2, this will point to a Region list of EZs. One will be applied to each Actor at random.
 	
 	Int iEzMode = RegionScript.iEzApplyMode ;Store locally for reuse
-	if iEzMode == 0 ;This exist so we can skip it, seems it is more likely players won't use it.
+	if iEzMode == 0 ;This exists so we can skip it, seems it is more likely players won't use it.
 		;Do nothing, use NONE EZ (passed parameters will be None)
 	elseif iEZMode == 1
 		kEz = RegionScript.GetRandomEz()
@@ -403,19 +420,28 @@ Function PrepareSingleGroupSpawn()
 	Bool bApplySwarmBonus ;Whether or not Swarm bonuses are applied
 	;Now lets roll the dice on it
 	if (ActorMainScript.bSupportsSwarm) && (RegionScript.RollForSwarm())
+		
 		bApplySwarmBonus = true
+		
+		;Roll for Stampede if supported
+		if (ActorMainScript.bSupportsStampede) && (RegionScript.RollForStampede())
+			bApplyStampedePackage = true
+		endif
+		
 	endif
 	
 	ObjectReference[] kPackageLocs = new ObjectReference[0] ;Create it, because even if we skip it, it still has to be passed to loop
 	
-	;Roll dice on Random AMbush feature
-	if (!ActorMainScript.bIsFriendlyNeutralToPlayer) && (RegionScript.RollForAmbush()) ;Supported for all Actor types
+	;Roll dice on Random Ambush feature
+	if (!bApplyStampedePackage) && (!ActorMainScript.bIsFriendlyNeutralToPlayer) && (RegionScript.RollForAmbush()) ;Supported for all Actor types
 		bApplyAmbushPackage = true
 	endif
 	
-	;Check if we are ambushing, if not, check if we traveling and need locations
-	if (!bApplyAmbushPackage) && (bTravelling)
-		kPackageLocs = RegionScript.GetRandomTravelLocs(iNumPackageLocs) ;Should I cast to copy locally seem the function will clear it? 
+	;Check if we are ambushing or stampeding
+	if (!bApplyAmbushPackage) && (bTravelling) ;More likely we are not
+		kPackageLocs = RegionScript.GetRandomTravelLocs(iNumPackageLocs)
+	else ;But if we are we need 1 location
+		kPackageLocs = RegionScript.GetRandomTravelLocs(1)
 	endif
 	
 	;Finally, begin loops.
@@ -450,7 +476,7 @@ Function PrepareSingleGroupSpawn()
 	
 	Int iBossCount = (kGroupList.Length) - iRegularActorCount ;Also required for loot system
 	
-	;Now check the loot system and do the loot pass if applicable. We do this post spawn as to avoid unnecessary perfromace impact on spawnloops.
+	;Now check the loot system and do the loot pass if applicable. We do this post spawn as to avoid unnecessary performace impact in spawnloops.
 	
 	if SpawnTypeScript.bLootSystemEnabled ;Spawntype loot system first. Regional Spawntypes may have different loot to the next.
 		SpawnTypeScript.DoLootPass(kGroupList, iBossCount)
@@ -506,7 +532,7 @@ SOTC:ActorQuestScript aActorMainScript, ObjectReference[] akPackageLocs, Bool ab
 	if !bApplyAmbushPackage ;More likely to be false
 		ApplyPackageData(kSpawned, akPackageLocs) ;Apply the package from Alias
 	else
-		ApplyPackageAmbushData(kSpawned) ;Apply the package from Alias
+		ApplyPackageAmbushData(kSpawned, akPackageLocs) ;Apply the package from Alias
 	endif
 	
 	;Begin chance loop for the rest of the Group
@@ -519,8 +545,10 @@ SOTC:ActorQuestScript aActorMainScript, ObjectReference[] akPackageLocs, Bool ab
 			
 			if !bApplyAmbushPackage ;More likely to be false
 				ApplyPackageData(kSpawned, akPackageLocs) ;Apply the package from Alias
-			else
-				ApplyPackageAmbushData(kSpawned) ;Apply the package from Alias
+			elseif bApplyStampedePackage
+				ApplyPackageStampedeData(kSpawned, akPackageLocs)
+			elseif bApplyAmbushPackage
+				ApplyPackageAmbushData(kSpawned, akPackageLocs) ;Apply the package from Alias
 			endif		
 			
 		endif
@@ -565,7 +593,7 @@ SOTC:ActorQuestScript aActorMainScript, ObjectReference[] akPackageLocs, Bool ab
 	if !bApplyAmbushPackage ;More likely to be false
 		ApplyPackageData(kSpawned, akPackageLocs) ;Apply the package from Alias
 	else
-		ApplyPackageAmbushData(kSpawned) ;Apply the package from Alias
+		ApplyPackageAmbushData(kSpawned, akPackageLocs) ;Apply the package from Alias
 	endif
 	
 	;Begin chance loop for the rest of the Group
@@ -579,10 +607,12 @@ SOTC:ActorQuestScript aActorMainScript, ObjectReference[] akPackageLocs, Bool ab
 			kGroupList.Add(kSpawned) ;Add to Group tracker
 			
 			if !bApplyAmbushPackage ;More likely to be false
-				ApplyPackageData(kSpawned, akPackageLocs) ;Apply the package from Alias
-			else
-				ApplyPackageAmbushData(kSpawned) ;Apply the package from Alias
-			endif
+				ApplyPackageData(kSpawned, akPackageLocs)
+			elseif bApplyStampedePackage
+				ApplyPackageStampedeData(kSpawned, akPackageLocs)
+			elseif bApplyAmbushPackage
+				ApplyPackageAmbushData(kSpawned, akPackageLocs)
+			endif	
 			
 		endif
 		
@@ -603,7 +633,7 @@ Function PrepareMultiGroupSpawn()
 	
 	;Get random list of actors
 	Int iGroupsToSpawn = MasterScript.RollGroupsToSpawnCount(((kChildMarkers.Length) - 1)) ;Number of members on kChildMarker array is the limit
-	SOTC:ActorClassPresetScript[] ActorParamsScriptList = SpawnTypeScript.GetRandomActors(false, 0, iGroupsToSpawn)
+	SOTC:ActorClassPresetScript[] ActorParamsScriptList = SpawnTypeScript.GetRandomActors(0, iGroupsToSpawn)
 	
 	ObjectReference[] kPackageLocs = RegionScript.GetRandomTravelLocs(iNumPackageLocs) ;Will be 1 for MultiPoint, still expects array on helper as it is capable of more.
 	;Should I cast to copy locally seem the function will clear it? 
@@ -611,12 +641,14 @@ Function PrepareMultiGroupSpawn()
 	Int iCounter
 	ObjectReference kSpawnPoint
 	ObjectReference kHelper
+	Int iPreset = SpawnTypeScript.iCurrentPreset ;Set preset to use as Helper cannot access ST script. 
 	
 	while iCounter < iGroupsToSpawn
 	
 		kSpawnPoint = GetChildMarker()
 		kHelper = kSpawnPoint.PlaceAtMe(kMultiPointHelper) ;Place worker
-		(kHelper as SOTC:SpHelperScript).SetHelperSpawnParams(RegionScript, ActorParamsScriptList[iCounter], kPackage, kPackageLocs) ;Will auto fire after this function in it's own thread via timer
+		;Will auto fire after this function in it's own thread via timer
+		(kHelper as SOTC:SpHelperScript).SetHelperSpawnParams(RegionScript, ActorParamsScriptList[iCounter], kPackage, kPackageLocs, iPreset) 
 		kActiveHelpers.Add(kHelper) ;Track worker
 		
 		iCounter += 1
@@ -626,7 +658,7 @@ Function PrepareMultiGroupSpawn()
 EndFunction
 
 
-;If SP is a MultiPoint, this function gets a random child marker each time its called, without ever getting the same marker twice because we move it temporarily after
+;If SP is a MultiPoint, this function gets a random child marker each time its called, without ever getting the same marker twice because we move it temporarily after.
 ;Interior spawns can and are designed to potentially spawn at previously selected markers.
 ObjectReference Function GetChildMarker()
 
@@ -682,9 +714,9 @@ Function PrepareInteriorSpawn()
 	
 	;Get a random Actor, pulling the ClassPresetScript directly.
 	if iRarityOverride > 0 && iRarityOverride < 4 ;Security measure, cannot get rarity outside 1-3
-		ActorParamsScript = SpawnTypeScript.GetRandomActor(True, iRarityOverride) ;ActorClassPresetType
+		ActorParamsScript = SpawnTypeScript.GetRandomActor(iRarityOverride) ;ActorClassPresetType
 	else 
-		ActorParamsScript = SpawnTypeScript.GetRandomActor(false, 0)
+		ActorParamsScript = SpawnTypeScript.GetRandomActor(0)
 	endif
 	
 	;Create direct links to ActorQuestScript and ClassDetailsStruct
@@ -695,16 +727,18 @@ Function PrepareInteriorSpawn()
 	;Now we'll check if we are in a confined space and Actor is oversized. Not all interior spaces are confined so same check applies.
 	while (bIsConfinedSpace) && (ActorMainScript.bIsOversizedActor)
 		if iRarityOverride > 0 && iRarityOverride < 4 ;Security measure, cannot get rarity outside 1-3
-			ActorParamsScript = SpawnTypeScript.GetRandomActor(True, iRarityOverride) ;ActorClassPresetType
+			ActorParamsScript = SpawnTypeScript.GetRandomActor(iRarityOverride) ;returns ActorClassPresetScript
 		else 
-			ActorParamsScript = SpawnTypeScript.GetRandomActor(false, 0)
+			ActorParamsScript = SpawnTypeScript.GetRandomActor(0)
 		endif
 		ActorMainScript = ActorParamsScript.ActorScript
 	endwhile
 	
 	;Now we can get the actual spawn parameters
-	Int iDifficulty = RegionScript.iCurrentDifficulty ;Set the difficulty level 
-	ClassDetailsStruct ActorParams = ActorParamsScript.ClassDetails[iDifficulty] ;Difficulty level used for presets on Actor Class
+	Int iPreset = SpawnTypeScript.iCurrentPreset ;Set Preset to use
+	ClassDetailsStruct ActorParams = ActorParamsScript.ClassDetails[iPreset]
+	
+	Int iDifficulty = RegionScript.iCurrentDifficulty ;Set difficulty for spawning. 
 
 	;The variable names here should be so confusing by your now head is caved in
 	;Organise the actual ActorBase arrays
@@ -731,7 +765,7 @@ Function PrepareInteriorSpawn()
 		kEzList = RegionScript.GetRegionCurrentEzList() ;Look directly at the Regions Ez list, based on current mode.
 	endif
 	
-	;Check for bonus events/setup Package locations if necessary
+	;Check for bonus events. Stampede and Ambush not in supported in Interior mode.
 	
 	Bool bApplySwarmBonus ;Whether or not Swarm bonuses are applied
 	;Now lets roll the dice on it
@@ -771,7 +805,7 @@ Function PrepareInteriorSpawn()
 	
 	Int iBossCount = (kGroupList.Length) - iRegularActorCount ;Also required for loot system
 	
-	;Now check the loot system and do the loot pass if applicable. We do this post spawn as to avoid unnecessary perfromace impact on spawnloops.
+	;Now check the loot system and do the loot pass if applicable. We do this post spawn as to avoid unnecessary performace impact in spawnloops.
 	
 	if SpawnTypeScript.bLootSystemEnabled ;Spawntype loot system first. Regional Spawntypes may have different loot to the next.
 		SpawnTypeScript.DoLootPass(kGroupList, iBossCount)
@@ -831,7 +865,7 @@ Bool abApplySwarmBonus, SOTC:ActorQuestScript aActorMainScript, Bool abIsBossSpa
 			kSpawnLoc = kChildMarkers[Utility.RandomInt(0,iSpawnLocListSize)] ;Place at a random marker in the cell/child cell (if exists)
 			kSpawned = kSpawnLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
 			kGroupList.Add(kSpawned) ;Add to Group tracker
-			ApplyPackageInteriorData(kSpawned, kSpawnLoc) ;Apply the package from Alias
+			ApplyPackageInteriorData(kSpawned, kSpawnLoc)
 			
 		endif
 		
@@ -885,7 +919,7 @@ Bool abApplySwarmBonus, SOTC:ActorQuestScript aActorMainScript, Bool abIsBossSpa
 			kSpawnLoc = kChildMarkers[Utility.RandomInt(0,iSpawnLocListSize)] ;Place at a random marker in the cell/child cell (if exists)
 			kSpawned = kSpawnLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;kEz can be None
 			kGroupList.Add(kSpawned) ;Add to Group tracker
-			ApplyPackageInteriorData(kSpawned, kSpawnLoc) ;Apply the package from Alias
+			ApplyPackageInteriorData(kSpawned, kSpawnLoc)
 			
 		endif
 		
@@ -938,14 +972,26 @@ Function ApplyPackageData(Actor akActor, ObjectReference[] akPackageLocs)
 EndFunction
 
 
+;Stampede pacakge, travel to a single location and sandbox at running speed.
+Function ApplyPackageStampedeData(Actor akActor, ObjectReference[] akPackageLocs) 
+
+	akActor.SetLinkedRef(akPackageLocs[0], kPackageKeywords[0])
+	kPackageAmbush.ApplyToRef(akActor) ;Finally apply the data alias with package
+	akActor.EvaluatePackage() ;And evaluate so no delay
+	
+EndFunction
+
+
 ;Ambush version of the above, only travel to Player to attack
-Function ApplyPackageAmbushData(Actor akActor) ;This will send all Actors in the Grouplist after the player immediately
+Function ApplyPackageAmbushData(Actor akActor, ObjectReference[] akPackageLocs) 
+;This will send all Actors in the Grouplist after the player immediately, then travel to one location after if they survive.
 
 	;NOTE: A change may be made here, to have this loop the whole group at the end and send them
 	;all after the player in quicker succession. This may be better in terms of how the group
 	;appears to mob the player, i.e spread out vs  virtually all at once
 
 	akActor.SetLinkedRef(Game.GetPlayer(), kPackageKeywords[0])
+	akActor.SetLinkedRef(akPackageLocs[0], kPackageKeywords[1]) ;Location to travel if combat ends with player and Actor survives.
 	kPackageAmbush.ApplyToRef(akActor) ;Finally apply the data alias with package
 	akActor.EvaluatePackage() ;And evaluate so no delay
 	
@@ -968,11 +1014,5 @@ Function ApplyPackageInteriorData(Actor akActor, ObjectReference akSpawnLoc)
 	
 EndFunction
 
-
-;-------------------------------------------------------------------------------------------------------------------------------------------------------
-;INTERCEPT - MASTER/REGION SPECIAL SPAWN EVENTS & FUNCTIONS - Currently unplanned, left for reference
-;-------------------------------------------------------------------------------------------------------------------------------------------------------
-
-;Currently no events/functions defined here. 
 
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------

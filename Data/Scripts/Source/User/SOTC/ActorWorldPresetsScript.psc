@@ -13,7 +13,7 @@ Scriptname SOTC:ActorWorldPresetsScript extends ReferenceAlias
 ; "a" - (Function/Event Blocks only) Variable was received as function argument OR the variable
 ;was created from a passed-in Struct/Var[] member
 ; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
-; "f,b,i" - The usual Primitives: Float, Bool, Int.
+; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
 
 ;------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
@@ -25,10 +25,10 @@ Group PrimaryProperties
 	{ Fill with MasterQuest }
 
 	SOTC:ActorQuestScript Property ActorScript Auto Const
-	{ Link to the owning ActorQuest, fill with this }
+	{ Fill with the owning ActorQuest }
 
 	Int Property iWorldID Auto Const
-	{ Initialise with ID of the World intended }
+	{ Init with ID of the intended World this preset script will cover. }
 	; LEGEND - WORLDS
 	; [0] - COMMONWEALTH
 	; [1] - FAR HARBOR
@@ -39,32 +39,37 @@ EndGroup
 
 
 Group RegionPresets
-{Int arrays defining Preset for this Actor in each Region. 3 Lists available, one
-for each Preset. Limit of 3 Presets is hardcoded}
+{ Int arrays defining the Preset for this Actor in each Region. 3 Lists available, one
+for each Preset. Limit of 3 Presets is hardcoded because of this. }
 
 	Int[] Property iRegionPresetsP1 Auto
-	{ Initialise with Int between 0-3, with as many members as Regions for this World }
+	{ Initialise with Int between 0-3, with as many members as Regions for this World. }
 
 	Int[] Property iRegionPresetsP2 Auto
-	{ Initialise with Int between 0-3, with as many members as Regions for this World }
+	{ Initialise with Int between 0-3, with as many members as Regions for this World. }
 
 	Int[] Property iRegionPresetsP3 Auto
-	{ Initialise with Int between 0-3, with as many members as Regions for this World }
+	{ Initialise with Int between 0-3, with as many members as Regions for this World. }
 
 EndGroup
+
+Bool bInit ;Security check to make sure Init events don't fire again while running
 
 ;DEV NOTE: Checks must be implemented properly if an Actor has no World/Region Preset defined. First
 ;check will compare the size of the array to the iWorldID, this will ensure the array has enough
 ;members that it actually includes the World, then the second check will be for "none" which will
-;ensure a preset is defined or not for the requested iRegionID.
+;ensure a preset is defined for the requested iRegionID.
 
 ;------------------------------------------------------------------------------------------------
 ;INITIALISATION EVENTS
 ;------------------------------------------------------------------------------------------------
 
 Event OnAliasInit()
-
-	ActorScript.WorldPresets.Insert(Self, iWorldID)
+	
+	if !bInit
+		ActorScript.WorldPresets.Insert(Self, iWorldID)
+		bInit = true
+	endif
 	
 EndEvent
 
@@ -88,7 +93,7 @@ EndFunction
 ;Return single Int value for specific Region
 Int Function GetActorRegionPreset(int aiRegionID, int aiPresetToGet)
 	
-		if aiPresetToGet == 1
+	if aiPresetToGet == 1
 		return iRegionPresetsP1[aiRegionID] ;SOTC Preset
 	elseif aiPresetToGet == 2
 		return iRegionPresetsP2[aiRegionID] ;WOTC Preset

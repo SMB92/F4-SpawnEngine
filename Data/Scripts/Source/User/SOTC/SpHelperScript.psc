@@ -13,7 +13,7 @@ Scriptname SOTC:SpHelperScript extends ObjectReference
 ; "a" - (Function/Event Blocks only) Variable was received as function argument OR the variable
 ;was created from a passed-in Struct/Var[] member
 ; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
-; "f,b,i" - The usual Primitives: Float, Bool, Int.
+; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
 
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
@@ -32,6 +32,7 @@ SOTC:RegionQuestScript RegionScript
 SOTC:ActorClassPresetScript ActorParamsScript
 ReferenceAlias kPackage
 ObjectReference[] kPackageLocs
+Int iPreset
 
 ;Local variables
 Actor[] kGroupList
@@ -42,12 +43,13 @@ Int iHelperFireTimerID = 3 Const
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Function SetHelperSpawnParams(SOTC:RegionQuestScript aRegionScript, SOTC:ActorClassPresetScript aActorParamsScript, \
-ReferenceAlias akPackage, ObjectReference[] akPackageLocs)
+ReferenceAlias akPackage, ObjectReference[] akPackageLocs, Int aiPreset)
 
 	RegionScript = aRegionScript
 	ActorParamsScript = aActorParamsScript
 	kPackage = akPackage
 	kPackageLocs = akPackageLocs as ObjectReference[] ;Cast to ensure copy locally.
+	iPreset = aiPreset
 	
 	StartTimer(0.5, iHelperFireTimerID) ;Ready to start own thread
 
@@ -75,8 +77,9 @@ Function HelperPrepareSingleGroupSpawn()
 	;We'll get this now as it will have to be passed to the loop as well as various other work which makes this essential
 	
 	;Now we can get the actual spawn parameters
-	Int iDifficulty = RegionScript.iCurrentDifficulty ;Set the difficulty level 
-	ClassDetailsStruct ActorParams = ActorParamsScript.ClassDetails[iDifficulty] ;Difficulty level is used for presets on Actor Class
+	ClassDetailsStruct ActorParams = ActorParamsScript.ClassDetails[iPreset]
+	
+	Int iDifficulty = RegionScript.iCurrentDifficulty ;Set difficulty for spawning. 
 	
 	;Get the actual ActorBase arrays
 	ActorBase[] kRegularUnits = (ActorParamsScript.GetRandomGroupLoadout(false)) as ActorBase[] ;Cast to copy locally
@@ -106,6 +109,8 @@ Function HelperPrepareSingleGroupSpawn()
 	if (ActorMainScript.bSupportsSwarm) && (RegionScript.RollForSwarm())
 		bApplySwarmBonus = true
 	endif
+	
+	;NOTE: Helpers do not currently support Stampede or Ambush features for regular spawns.
 	
 	Int iRegularActorCount ;Required for loot system
 	
@@ -277,18 +282,19 @@ EndFunction
 Function HelperFactoryReset()
 
 	HelperCleanupActorRefs()
-	;NOTE: The following could be done right after spawning if desired.
+	
 	RegionScript = None
 	ActorParamsScript = None
 	kPackage = None
 	kPackageLocs.Clear()
+	
 	ThreadController.IncrementActiveSpCount(-1)
 
 EndFunction
 
 
 ;Cleans up all Actors in GroupList
-Function HelperCleanupActorRefs() ;Decided to pass the package in here. 
+Function HelperCleanupActorRefs() 
 
 	int iCounter = 0
 	int iSize = kGroupList.Length
