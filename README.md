@@ -10,7 +10,7 @@ Please be patient while work continues on both a working test file and official 
 
 # UPDATES
 
-##### [05/05/2018] SpawnEngine updated to version 0.06.01.180504
+##### [04/05/2018] SpawnEngine updated to version 0.06.01.180504
 
 
 ###### HOUSEKEEPING:
