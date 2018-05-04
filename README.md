@@ -1,17 +1,21 @@
 # F4-SpawnEngine
 *Fallout 4 Mod "SpawnEngine" aka "Spawns of the Commonwealth" by SMB92*
 
-# NEWS
+## NEWS
 
-## First Public source released!
-[25/04/2018] Dubbed version 0.0.05.180425, all current source scripts have been pushed to this hub. Documentation is currently limited to what I've commented into the scripts, and no ESP file has been comitted (although compiled scripts are currently present, just to show that the source is in working order). A Notepad++ Language file is provided on the main page, which highlights all current script types, variables thereof and all Function definitions. It also includes some missing vanilla syntax. 
+### SpawnEngine updated to version 0.06.01.180504
+
+[04/05/2018] New features and gneral housekeeping/optimization. See update logs below for detailed info. 
+
+### First Public source released!
+
+[25/04/2018] Dubbed version 0.05.00.180425, all current source scripts have been pushed to this hub. Documentation is currently limited to what I've commented into the scripts, and no ESP file has been comitted (although compiled scripts are currently present, just to show that the source is in working order). A Notepad++ Language file is provided on the main page, which highlights all current script types, variables thereof and all Function definitions. It also includes some missing vanilla syntax. 
 
 Please be patient while work continues on both a working test file and official documentation.
 
-# UPDATES
+## UPDATES
 
 ##### [04/05/2018] SpawnEngine updated to version 0.06.01.180504
-
 
 ###### HOUSEKEEPING:
 -Corrected wrong version number in Github readme. Was 0.00.05, supposed to be 0.05.00.
@@ -26,7 +30,6 @@ Please be patient while work continues on both a working test file and official 
 -Removed obsolete GetRandomActor(s) functions from RegionQuestScript.
 -Added missing bInit security flag to WorldAliasScript
 -Added missing bInit security flag to RR_ControllerQuestScript
-
 
 ###### SCRIPT OPTIMIZATION & REVISION:
 -Uncommented a function in GroupLoadouts script, while likely remaining unused it could still prove useful later
@@ -43,7 +46,6 @@ whenever a SpawnPoint fires nearby, such as "You hear distant movement"
 -Increased Master Event colldown timer to 5 minutes from 3.
 -Fixed SevenDaysQuestScript startup. For some reason I must have gotten confused and coded this all wrong. Added functionality to Master to deal with
 pending/starting Event Quests after Pipboy is exited. 
-
 
 ###### MAJOR FEATURE UPDATES:
 -Extended Spawntypes to now include Class-Based Spawntypes. While I tried to avoid making this necessary to lessen the number of properties overall,
