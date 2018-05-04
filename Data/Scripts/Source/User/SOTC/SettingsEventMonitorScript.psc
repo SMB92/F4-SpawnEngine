@@ -9,21 +9,20 @@ Scriptname SOTC:SettingsEventMonitorScript extends ReferenceAlias
 ; "a" - (Function/Event Blocks only) Variable was received as function argument OR the variable
 ;was created from a passed-in Struct/Var[] member
 ; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
-; "f,b,i" - The usual Primitives: Float, Bool, Int.
-
-;DEV NOTE: REALLY considering putting a Max number of active SPs counter and Active NPC counter.
+; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
 
 ;------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
 ;------------------------------------------------------------------------------------------------
 
 SOTC:ThreadControllerScript Property ThreadController Auto Const
-{ Link to thread delegator, stored on RefAlias on this Quest }
+{ Fill with ThreadController Alias  }
 
 SOTC:MasterQuestScript Property MasterScript Auto Const
 { Fill with MasterQuest }
 
 Bool bInit ;Security flag to prevent unwanted events firing again.
+
 
 ;------------------------------------------------------------------------------------------------
 ;FUNCTIONS
@@ -43,7 +42,7 @@ Function BeginMonitor(Int aiTarget)
 
 	while ThreadController.iEventFlagCount < aiTarget
 	
-		Utility.Wait(2.0) ;2 seconds should suffice
+		Utility.Wait(1.0) ;1 second should suffice, if not overkill
 		
 	endwhile
 	

@@ -9,12 +9,12 @@ Scriptname SOTC:RandomEvents:SevenDaysQuestScript extends Quest
 ; "a" - (Function/Event Blocks only) Variable was received as function argument OR the variable
 ;was created from a passed-in Struct/Var[] member
 ; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
-; "f,b,i" - The usual Primitives: Float, Bool, Int.
+; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
 
 ;DEV NOTE: This event is included in the core of the F4-SpawnEngine
 
 ;LEGEND - EVENTS FRAMEWORK
-;In order for Random Events to be added on by third parties at ease, this system uses Quests to
+;In order for Random Events to be added on by third parties with ease, this system uses Quests to
 ;instantiate their controller script for the "Event" and the MasterScript simply calls a setstage
 ;on the Quest in order to activate it (standard stage ID is 10). This eliminates the need to be
 ;reliant on using a template script or single object of any sort. Controller scripts may include
@@ -28,12 +28,13 @@ Scriptname SOTC:RandomEvents:SevenDaysQuestScript extends Quest
 ;is set on the code for that Event.
 ; 3. Static Events - This type of Event has a chance to occur at any time, based on some conditions
 ;that can be setup for said Event specifically. This type of Event is subject to Event locks however.
-; 4. Unique Events - This type of Event only fires once, and must be coded accordingly.
+; 4. Unique Events - This type of Event only fires once, and must be coded accordingly. These events
+;should make use of the timed events system so no extra functions need be developed. 
 
-;So to explain how it works behind the scenes. Events Quests must be started from a Menu (so their 
+;So to explain how it works behind the scenes, Events Quests must be started from a Menu (so their 
 ;Quest must NOT be start game enabled). Upon doing so the Event will be coded to either add itself
 ;to the MasterScript's arrays of Event Quests based on it's type, or in the case of Timed Events,
-;begin their timers and add themselves to the pending Events array when the timer runs out. When
+;begin their timers/event monitors and add themselves when the timer/event monitor triggers. When
 ;a SpawnPoint fires (currently RE system ONLY supports the Main SpawnPoint type, SpGroupPoint), the
 ;MasterScript will check for Events in the same order as listed above. Whenever an Event fires the
 ;MasterScript will store the SpawnPoint and it will become the Point of the Event. The SP script
@@ -66,6 +67,7 @@ Group PrimaryProperties
 	
 	;Holotape Property kSettingMenuTape Auto Const
 	;{ Fill with settings tape if this is an external/third party addon }
+	;DEV NOTE: This should really be included on an auxillery controlelr provided by the addon.
 	
 EndGroup
 
@@ -75,6 +77,7 @@ Group Settings
 	;Bool Property bEventEnabled Auto
 	;{ Init false. Set in Menu. }
 	;Timed events do not require this.
+	;Should use function on Master to find/remove from arrays, then Stop quest. 
 	
 	Int Property iSpawnsBeforeReset Auto
 	{ Int 0. Set in Menu. Times the current enemy will spawn until reset. }
@@ -105,33 +108,24 @@ Bool bPending ;Quick flag that this event is waiting in MasterScript queue
 ;INIT FUNCTIONS & EVENTS
 ;------------------------------------------------------------------------------------------------
 
-;NOTE: Event Quests are started from their Menus.
+;DEV NOTE: Use MasterQuestScript function to start Event Quests in order to avoid lockups in Menu Mode. 
 
 Event OnQuestInit() 
-
-	;Because this event is started from Menu, need to start outside of Menu Mode
-	RegisterForMenuOpenCloseEvent("PipboyMenu")
-
-EndEvent
-
-;Start the Event timer outside of Menu Mode
-Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
 	
-	if (asMenuName == "PipboyMenu") && (!abOpening) ; On Pip-Boy closing
+	;Quest should be started after Pipboy exited or the Menu could hang.
 	
+	if !bInit
 		StartTimerGameTime(iEventTimerClock, iEventTimerID)
 		RefreshEvent()
-		
+		bInit = true
 	endif
-
-	UnregisterForAllMenuOpenCloseEvents()
-
+	
 EndEvent
 
 
 Event OnTimerGameTime(Int aiTimerID)
 
-	if aiTimerID == iEventTimerID
+	if aiTimerID == iEventTimerID ;Pend the event.
 	
 		MasterScript.kRE_TimedEvents.Add(Self as Quest, 1)
 		bPending = true
@@ -148,7 +142,7 @@ Event OnStageSet(Int auiStageID, int auiItemID)
 
 	if auiStageID == 10
 	
-		if !bPending ;If somehow we are still Pending on Master, we'll start timer again and wait again.
+		if !bPending ;If somehow we are still pending on Master, we'll start timer again and wait.
 			BeginEvent()
 		else
 			StartTimerGameTime(iEventTimerClock, iEventTimerID)
@@ -180,6 +174,8 @@ Function RefreshEvent()
 	endwhile
 	
 	iEventCounter = 0 ;Reset the Event Counter
+	
+	;DEV NOTE: Starting timers moved out of this block.
 	
 EndFunction
 

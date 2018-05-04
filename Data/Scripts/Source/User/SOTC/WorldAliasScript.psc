@@ -12,7 +12,7 @@ Scriptname SOTC:WorldAliasScript extends ReferenceAlias
 ; "a" - (Function/Event Blocks only) Variable was received as function argument OR the variable
 ;was created from a passed-in Struct/Var[] member
 ; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
-; "f,b,i" - The usual Primitives: Float, Bool, Int.
+; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
 
 ;------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
@@ -22,26 +22,31 @@ SOTC:MasterQuestScript Property MasterScript Auto Const
 { Fill with MasterQuest }
 
 Int Property iWorldID Auto Const
-{ Initialise with ID number of the World. Will be inserted
-on MasterQuestScript array at this Index }
+{ Initialise with ID number of the World. Will be inserted on MasterScript array at this Index }
+
 ;LEGEND - WORLD IDs
 ; [0] - COMMONWEALTH
 ; [1] - FAR HARBOR
 ; [2] - NUKA WORLD
 
 String Property sWorldName Auto Const
-{ Fill with name of Worldspace. May be used to display }
+{ Fill with name of Worldspace. May be used to display. }
 
 Quest[] Property Regions Auto
-{ Fill with each Region Quest made for this World }
+{ Init one member of None. Fills dynamically. }
+
+Bool bInit ;Security check to make sure Init events don't fire again while running
 
 ;------------------------------------------------------------------------------------------------
 ;INITIALISATION EVENTS
 ;------------------------------------------------------------------------------------------------
 
 Event OnAliasInit()
-
+	
+	if !bInit
 		MasterScript.Worlds.Insert(Self, iWorldID) ;Pass as this script, not Quest
+		bInit = true
+	endif
 		
 EndEvent
 
@@ -49,7 +54,7 @@ EndEvent
 ;RETURN FUNCTIONS
 ;------------------------------------------------------------------------------------------------
 
-;Exists for use with scripts not having any direct link or knowledge of this one
+;Exists for if need be. 
 Quest Function GetRegionInstance(int aiRegionID)
 
 	return Regions[aiRegionID]

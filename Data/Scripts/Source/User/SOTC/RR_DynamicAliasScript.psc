@@ -4,6 +4,14 @@ Scriptname SOTC:RR_DynamicAliasScript extends ReferenceAlias
 ;Designed by request of Keith [KKTheBeast]
 ;Special Thanks to Dylan [Cancerous1] for example code
 
+;LEGEND - PREFIX CONVENTION
+; Variables and Properties are treated the same. Script types do not have prefixes, unless they
+;are explicitly received as function arguments and are multi-instance scripts.
+; "a" - (Function/Event Blocks only) Variable was received as function argument OR the variable
+;was created from a passed-in Struct/Var[] member
+; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
+; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
+
 ;------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
 ;------------------------------------------------------------------------------------------------

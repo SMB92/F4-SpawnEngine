@@ -9,7 +9,7 @@ Scriptname SOTC:Struct_RegionPresetDetails extends ScriptObject
 ; "a" - (Function/Event Blocks only) Variable was received as function argument OR the variable
 ;was created from a passed-in Struct/Var[] member
 ; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
-; "f,b,i" - The usual Primitives: Float, Bool, Int.
+; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
 
 ;------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
@@ -18,6 +18,7 @@ Scriptname SOTC:Struct_RegionPresetDetails extends ScriptObject
 Struct RegionPresetDetailsStruct
 
 Int iFeatureSwarmChance
+Int iFeatureStampedeChance
 Int iFeatureAmbushChance
 
 EndStruct

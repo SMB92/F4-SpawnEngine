@@ -14,7 +14,7 @@ Scriptname SOTC:RegionTrackerScript extends ReferenceAlias
 ; "a" - (Function/Event Blocks only) Variable was received as function argument OR the variable
 ;was created from a passed-in Struct/Var[] member
 ; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
-; "f,b,i" - The usual Primitives: Float, Bool, Int.
+; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
 
 ;------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
@@ -23,19 +23,19 @@ Scriptname SOTC:RegionTrackerScript extends ReferenceAlias
 Group PrimaryProperties
 
 	SOTC:RegionQuestScript Property RegionScript Auto Const
-	{ Fill with attached Quest. Direct Link to RegionScript }
+	{ Fill with the RegionQuest this script is attached to }
 
 	Int Property iRegionResetTimerClock Auto
-	{ Initialise 0. Clock for Area Reset. Set by Menu }
+	{ Initialise 0. Clock for Area Reset. Set by Menu. }
 
 EndGroup
 
 
-Int iRegionResetTimerID = 4 Const ;Does not need to be a Property
+Int iRegionResetTimerID = 4 Const
 
 
 Group PointKeywords
-{Auto-fill}
+{ Auto-fill }
 
 	Keyword Property SOTC_SpGroupKeyword Auto Const
 	Keyword Property SOTC_SpMiniKeyword Auto Const
@@ -49,13 +49,12 @@ ObjectReference[] kSpentPoints2
 ObjectReference[] kSpentPoints3
 ObjectReference[] kSpentPoints4
 
-Bool bInit
+Bool bInit ;Security check to make sure Init events don't fire again while running
 
 ;------------------------------------------------------------------------------------------------
 ;INITIALISATION & SETTINGS EVENTS
 ;------------------------------------------------------------------------------------------------
 
-;Set ourself up on the RegionScript
 Event OnAliasInit()
 	
 	if !bInit
@@ -116,7 +115,8 @@ Function AddSpentPoint(ObjectReference akSpentPoint)
 		kSpentPoints4.Add(akSpentPoint)
 		
 	else
-		Debug.MessageBox("Cleanup Manager is overloaded for Region " +RegionScript.iRegionID+", cannot add Point to arrays!")
+		Debug.MessageBox("Cleanup Manager is overloaded for Region " +RegionScript.iRegionID+ ", cannot add Point to arrays!")
+		;With 512 points possible to be tracked per Region, this message should never get shown. 
 	endif
 
 EndFunction
@@ -143,7 +143,7 @@ Function ResetSpentPoints()
 
 EndFunction
 
-;Array looping function for above main function. Saves code
+;Array looping function for above main function.
 Function ResetSpentPointsArrayLoop(ObjectReference[] akSpentPoints)
 	
 	int iSize = akSpentPoints.Length
@@ -168,5 +168,6 @@ Function ResetSpentPointsArrayLoop(ObjectReference[] akSpentPoints)
 	endwhile
 	
 EndFunction
+
 
 ;------------------------------------------------------------------------------------------------
