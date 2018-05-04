@@ -5,7 +5,7 @@
 
 ### SpawnEngine updated to version 0.06.01.180504
 
-[04/05/2018] New features and gneral housekeeping/optimization. See update logs below for detailed info. 
+[04/05/2018] New features and general housekeeping/optimization. See update logs below for detailed info. 
 
 ### First Public source released!
 
