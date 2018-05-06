@@ -17,7 +17,6 @@ Scriptname SOTC:Struct_ClassDetails extends ScriptObject
 
 Struct ClassDetailsStruct
 
-bool bAllowBoss
 Int iMaxAllowed
 Int iMaxAllowedBoss
 Int iChance
@@ -32,3 +31,4 @@ EndStruct
 ;iRerollMaxCount and iRerollChance were moved to the Master script. One setting for whole mod now.
 ;iAllowedClass moved to an Int array stored on Actor Preset.
 ;Encounter Zone settings moved to the Regional level (RegionalQuestScript).
+;Removed bBossAllowed in version 0.06.02, now casting iChanceBoss to Bool. 

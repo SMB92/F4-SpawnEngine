@@ -21,13 +21,13 @@ Scriptname SOTC:ActorWorldPresetsScript extends ReferenceAlias
 
 Group PrimaryProperties
 
-	SOTC:MasterQuestScript Property MasterScript Auto Const
+	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
 	{ Fill with MasterQuest }
 
-	SOTC:ActorQuestScript Property ActorScript Auto Const
+	SOTC:ActorQuestScript Property ActorScript Auto Const Mandatory
 	{ Fill with the owning ActorQuest }
 
-	Int Property iWorldID Auto Const
+	Int Property iWorldID Auto Const Mandatory
 	{ Init with ID of the intended World this preset script will cover. }
 	; LEGEND - WORLDS
 	; [0] - COMMONWEALTH
@@ -42,13 +42,13 @@ Group RegionPresets
 { Int arrays defining the Preset for this Actor in each Region. 3 Lists available, one
 for each Preset. Limit of 3 Presets is hardcoded because of this. }
 
-	Int[] Property iRegionPresetsP1 Auto
+	Int[] Property iRegionPresetsP1 Auto Mandatory
 	{ Initialise with Int between 0-3, with as many members as Regions for this World. }
 
-	Int[] Property iRegionPresetsP2 Auto
+	Int[] Property iRegionPresetsP2 Auto Mandatory
 	{ Initialise with Int between 0-3, with as many members as Regions for this World. }
 
-	Int[] Property iRegionPresetsP3 Auto
+	Int[] Property iRegionPresetsP3 Auto Mandatory
 	{ Initialise with Int between 0-3, with as many members as Regions for this World. }
 
 EndGroup

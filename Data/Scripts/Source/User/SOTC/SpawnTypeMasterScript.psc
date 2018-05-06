@@ -17,10 +17,10 @@ Scriptname SOTC:SpawnTypeMasterScript extends ReferenceAlias
 
 Group PrimaryProperties
 
-	SOTC:MasterQuestScript Property MasterScript Auto Const
+	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
 	{ Fill with MasterQuest }
 
-	Int Property iSpawnTypeID Auto
+	Int Property iSpawnTypeID Auto Mandatory
 	{ Fill with intended SpawnType ID No. }
 	
 	;LEGEND - SPAWNTYPES
@@ -53,15 +53,32 @@ Group PrimaryProperties
 	; [14] - SWARM/INFESTATION (CLASS-BASED) - Stores all Actors that support Swarm/Infestation
 	; [15] - STAMPEDE (CLASS-BASED) - Stores all Actors that support extended Swarm feature Stampede.
 
-	String Property sSpawnTypeString Auto
+	String Property sSpawnTypeString Auto Mandatory
 	{ Fill with defining string for this Spawntype }
 
-	SOTC:ActorQuestScript[] Property ActorLibrary Auto
+	SOTC:ActorQuestScript[] Property ActorLibrary Auto Mandatory
 	{ Initialiase with one member of None, fills dynamically }
 
 EndGroup
 
 Bool bInit ;Security check to make sure Init events don't fire again while running
+
+;LEGEND - CLASSES VS SPAWNTYPES
+;As described in the commentary for Spawntypes, a Spawntype is essentially a category of spawns,
+;and the respective scripts for them hold a list of Actor types allowed. Classes on the other hand
+;are Presets for actors, based on how we are spawning them. The term "Classes" is obviously mis-
+;leading, but I couldn't come up with a better word. These Classes store information on max count
+;per group, how much chance each Actor in the group has to spawn (this is how we get dynamic group
+;numbers) and what "GroupLoadouts" (a specified list of NPC types) that will be used when spawning.
+;Some Spawntypes are what I call "Class-Based" as they fill their lists based on some information
+;stored on the ActorQuest for each Actor type, such as whether they are allowed to appear in systems
+;(like the Random Swarms/Infestations, Stampedes, Ambushes (static or rush the player) etc ), or
+;whether they have a certain Class defined (such as the Sniper Class). As SpawnEngine also uses a
+;"Rarity" based system for Regions (defines if an Actor is Common, Uncommon or Rare in a Region),
+;there are three Classes (index 1-3 on ClassDetails struct property) dedicated to each Rarity level.
+;Again, this is simply a preset of information. Actors do not have to have Classes defined for the
+;Classes they don't need, as long as all defined Classes have the correct ID number assigned as per
+;the list of Classes, this will just work. 
 
 
 ;------------------------------------------------------------------------------------------------

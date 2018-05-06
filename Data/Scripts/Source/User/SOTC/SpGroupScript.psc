@@ -396,7 +396,7 @@ Function PrepareSingleGroupSpawn()
 	;Get the actual ActorBase arrays
 	ActorBase[] kRegularUnits = (ActorParamsScript.GetRandomGroupLoadout(false)) as ActorBase[] ;Cast to copy locally
 	ActorBase[] kBossUnits
-	Bool bBossAllowed = ActorParams.bAllowBoss 
+	Bool bBossAllowed = (ActorParams.iChanceBoss) as Bool
 	if bBossAllowed ;Set if allowed. Later used as parameter.
 		kBossUnits = (ActorParamsScript.GetRandomGroupLoadout(true)) as ActorBase[] ;Cast to copy locally
 	endif
@@ -745,7 +745,7 @@ Function PrepareInteriorSpawn()
 	
 	ActorBase[] kRegularUnits = (ActorParamsScript.GetRandomGroupLoadout(false)) as ActorBase[] ;Cast to copy locally
 	ActorBase[] kBossUnits
-	Bool bBossAllowed = ActorParams.bAllowBoss 
+	Bool bBossAllowed = (ActorParams.iChanceBoss) as Bool
 	if bBossAllowed ;Not gonna set this unless it's allowed. Later used as parameter
 		kBossUnits = (ActorParamsScript.GetRandomGroupLoadout(true)) as ActorBase[] ;Cast to copy locally
 	endif

@@ -27,19 +27,19 @@ owning RegionQuest }
 
 Group PrimaryProperties
 
-	SOTC:MasterQuestScript Property MasterScript Auto Const
+	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
 	{ Fill with MasterQuest }
 	
-	SOTC:ThreadControllerScript Property ThreadController Auto Const
+	SOTC:ThreadControllerScript Property ThreadController Auto Const Mandatory
 	{ Fill with ThreadController Alias }
 
-	SOTC:SpawnTypeMasterScript Property LibraryScript Auto Const
+	SOTC:SpawnTypeMasterScript Property LibraryScript Auto Const Mandatory
 	{ Fill with corresponding Master for this Spawntype. }
 
-	SOTC:RegionQuestScript Property RegionScript Auto Const
+	SOTC:RegionQuestScript Property RegionScript Auto Const Mandatory
 	{ Fill with owning Region Quest }
 
-	Int Property iSpawnType Auto Const
+	Int Property iSpawnType Auto Const Mandatory
 	{ Initialise with intended Spawntype ID. Inserts at this index on RegionalQuestScript }
 	
 	;LEGEND - SPAWNTYPES
@@ -74,41 +74,41 @@ Group PrimaryProperties
 	
 	;NOTE: See "CLASSES VS SPAWNTYPES" commentary of the SpawnTypeMasterScript for more in-depth info
 
-	Int Property iWorldID Auto Const
+	Int Property iWorldID Auto Const Mandatory
 	{ Fill with correct World ID }
 	; LEGEND - WORLDS
 	; [0] - COMMONWEALTH
 	; [1] - FAR HARBOR
 	; [2] - NUKA WORLD
 
-	Int Property iRegionID Auto Const
+	Int Property iRegionID Auto Const Mandatory
 	{ Fill with correct RegionID }
 	
 	Int Property iCurrentPreset Auto
 	{ Initialise 0. Set by Menu/Preset. Determines each Actors Rarity in this Spawntype/Region }
 	
-	Bool Property bSpawnTypeEnabled Auto
+	Bool Property bSpawnTypeEnabled Auto Mandatory
 	{ Init True. All are enabled by default. }
 	
 	Bool Property bCustomSettingsActive Auto
 	{ Init False. Set by Menu when custom settings have been applied. For this script,
 	this is only to tell that Preset has been changed manually. }
 	
-	Int Property iBaseClassID Auto Const
+	Int Property iBaseClassID Auto Const Mandatory
 	{ If this is a Class-Based SpawnType, fill with ID of the Class. Else fill 0. }
 	
 	;LEGEND - CLASSES
-	; [0] - NONE, DO NOT USE
+	; [0] - DEBUG AS OF VERSION 0.06.02.180506
 	; [1] - COMMON RARITY
 	; [2] - UNCOMMON RARITY
 	; [3] - RARE RARITY
 	; [4] - AMBUSH - RUSH (Wait for and rush the player)
 	; [5] - AMBUSH - STATIC (for "hidden" ambushes such as Mirelurks and Molerats)
 	; [6] - SNIPER
-	; [7] - SWARM/INFESTATION
-	; [8] - STAMPEDE 
+	; [X] - SWARM/INFESTATION (no need to actually define a Class!)
+	; [X] - STAMPEDE (no need to actually define a Class!)
 	
-	String Property sSpawnTypeString Auto
+	String Property sSpawnTypeString Auto Const Mandatory
 	{ Fill with defining string for this Spawntype }
 
 EndGroup
@@ -117,13 +117,13 @@ EndGroup
 Group ActorLists
 { Dynamic Actor Lists }
 
-	ActorQuestScript[] Property CommonActorList Auto 
+	ActorQuestScript[] Property CommonActorList Auto Mandatory
 	{ Initialise one member of None. Fills dynamically upon initialisation }
 
-	ActorQuestScript[] Property UncommonActorList Auto 
+	ActorQuestScript[] Property UncommonActorList Auto Mandatory
 	{ Initialise one member of None. Fills dynamically upon initialisation }
 
-	ActorQuestScript[] Property RareActorList Auto
+	ActorQuestScript[] Property RareActorList Auto Mandatory
 	{ Initialise one member of None. Fills dynamically upon initialisation }
 
 EndGroup
@@ -131,14 +131,14 @@ EndGroup
 
 Group LootSystemProperties
 
-	Bool Property bLootSystemEnabled Auto 
+	Bool Property bLootSystemEnabled Auto Mandatory
 	{ Init False. Set in Menu. When on, spawned Actors of this type may possibly 
 	receive a loot item from one of the Formlists below }
 	
-	Formlist Property kRegularLootList Auto Const
+	Formlist Property kRegularLootList Auto Const Mandatory
 	{ Fill with Formlist made for this Actor Type's regular loot }
 	
-	Formlist Property kBossLootList Auto Const
+	Formlist Property kBossLootList Auto Const Mandatory
 	{ Fill with Formlist made for this Actor Type's boss loot }
 	
 	Int Property iRegularLootChance Auto
@@ -392,7 +392,7 @@ Function DoLootPass(Actor[] akGroupList, Int aiBossCount)
 	Int iLootListSize = (kRegularLootList.GetSize()) -1 ;Actual index count
 	Form kLootItem
 	
-	;Regular Actors inlcuing Bosses if present
+	;Regular Actors including Bosses if present
 	
 	while iCounter < iGroupSize
 		

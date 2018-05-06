@@ -22,19 +22,19 @@ script we are able to define many variations of group loadouts. }
 ;PROPERTIES & IMPORTS
 ;------------------------------------------------------------------------------------------------
 
-SOTC:ActorQuestScript Property ActorScript Auto Const
+SOTC:ActorQuestScript Property ActorScript Auto Const Mandatory
 { Fill with intended ActorQuest }
 
-ActorBase[] Property kGroupUnits Auto Const
+ActorBase[] Property kGroupUnits Auto Const Mandatory
 { Fill with ActorBase intended for this Actor Type and Class }
 
-ActorBase[] Property kBossGroupUnits Auto Const
+ActorBase[] Property kBossGroupUnits Auto Const Mandatory
 { Fill with ActorBase intended for this Actor Type and Class }
 
-Bool Property bHasPowerArmorUnits Auto Const
+Bool Property bHasPowerArmorUnits Auto Const Mandatory
 { If either ActorBase array above has PA Units, sets this true } 
 
-Bool[] Property iClassesToApply Auto Const ;SEE NOTES BELOW
+Bool[] Property iClassesToApply Auto Const Mandatory ;SEE NOTES BELOW Mandatory
 { Initialise members True on index matching ID No. of Classes this group can be added to.
 Set false for Classes not desired. Only add to Classes that exist for this Actor. }
 ;NOTE: THIRD PARTY MODS can modify this property directly if they want, but it is left Const so

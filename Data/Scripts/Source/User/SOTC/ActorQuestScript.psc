@@ -19,28 +19,28 @@ links to any sub classes which are instanced via Aliases on the Quest }
 Group PrimaryProperties
 { Primary Properties Group }
 
-	SOTC:MasterQuestScript Property MasterScript Auto Const
+	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
 	{ Fill with MasterQuest }
 
-	SOTC:SpawnTypeMasterScript Property MasterActorList Auto Const
+	SOTC:SpawnTypeMasterScript Property MasterActorList Auto Const Mandatory
 	{ Fill with Master SpawnType 0 Script (same as MasterScript.SpawnTypeMasters[0]). This holds all Actors. }
 
-	String Property sActorType Auto Const
+	String Property sActorType Auto Const Mandatory
 	{ Fill with generic name for this Actor (i.e Raider), used for sorting/displaying. }
 
-	Int Property iActorID Auto Const
+	Int Property iActorID Auto Const Mandatory
 	{ Permanent ID number of this Actor. Index of this Actor on the MasterActorList array. }
 
-	Bool[] Property bAllowedSpawnTypes Auto Const
+	Bool[] Property bAllowedSpawnTypes Auto Const Mandatory
 	{ Set true or false on each member for each SpawnType to include this Actor in. }
 
-	SOTC:ActorClassPresetScript[] Property ClassPresets Auto
+	SOTC:ActorClassPresetScript[] Property ClassPresets Auto Mandatory
 	{ Initialise one member of None. Fills dynamically. Used for Class preset storage. }
 
-	SOTC:ActorWorldPresetsScript[] Property WorldPresets Auto
+	SOTC:ActorWorldPresetsScript[] Property WorldPresets Auto Mandatory
 	{ Initialise one member of None. Fills dynamically. Used for Region preset storage. }
 
-	SOTC:ActorGroupLoadoutScript[] Property GroupLoadouts Auto
+	SOTC:ActorGroupLoadoutScript[] Property GroupLoadouts Auto Mandatory
 	{ Init one member of None. Fills dynamically. All GroupLoadouts scripts will add themselves here }
 	;This particular property exists so that Alias fill order for Class Presets and Group Loadouts does
 	;NOT have to be in any specific order.
@@ -51,19 +51,19 @@ EndGroup
 Group SettingsProperties
 { Properties used in spawning etc }
 
-	Bool Property bActorEnabled Auto
+	Bool Property bActorEnabled Auto Mandatory
 	{ Init true. Change in Menu. Will not appear in random spawns if set false }
 
-	Bool Property bIsFriendlyNeutralToPlayer Auto
+	Bool Property bIsFriendlyNeutralToPlayer Auto Mandatory
 	{ Init with correct starting value for this Actor. Used to prevent random hostile events }
 	
-	Bool Property bIsOversizedActor Auto Const
+	Bool Property bIsOversizedActor Auto Mandatory
 	{ Set true if this Actor is unsafe to spawn in confined areas. }
 
-	Bool Property bSupportsSwarm Auto Const
+	Bool Property bSupportsSwarm Auto Mandatory
 	{ Set true if this Actor can cause an Infestation/Swarm. }
 	
-	Bool Property bSupportsStampede Auto Const
+	Bool Property bSupportsStampede Auto Mandatory
 	{ Set true if this Actor can cause a Stampede. }
 
 	;NOTE: Could have used a struct here for Swarm properties
@@ -87,14 +87,14 @@ EndGroup
 
 Group LootSystemProperties
 
-	Bool Property bLootSystemEnabled Auto 
+	Bool Property bLootSystemEnabled Auto Mandatory
 	{ Init false. Set in Menu. When on, spawned Actors of this type may possibly 
 	receive a loot item from one of the Formlists below }
 	
-	Formlist Property kRegularLootList Auto Const
+	Formlist Property kRegularLootList Auto Const Mandatory
 	{ Fill with Formlist made for this Actor Type's regular loot }
 	
-	Formlist Property kBossLootList Auto Const
+	Formlist Property kBossLootList Auto Const Mandatory
 	{ Fill with Formlist made for this Actor Type's boss loot }
 	
 	Int Property iRegularLootChance Auto
