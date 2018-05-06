@@ -3,6 +3,10 @@
 
 ## NEWS
 
+### SpawnEngine updated to version 0.06.02.180506
+
+[06/05/2018] Minor updates including debug features. 
+
 ### SpawnEngine updated to version 0.06.01.180504
 
 [04/05/2018] New features and general housekeeping/optimization. See update logs below for detailed info. 
@@ -15,6 +19,18 @@ Please be patient while work continues on both a working test file and official 
 
 ## UPDATES
 
+##### [06/05/2018] SpawnEngine updated to version 0.06.02.180506
+
+###### HOUSEKEEPING:
+-Started Adding Mandatory flags to some properties. Might seem pointless but I find it useful.
+-A couple spelling/grammar fixes in commentary. 
+-Added Classes vs Spawntypes commentary that was missing from previous release. 
+
+###### SCRIPT OPTIMIZATION & REVISION:
+-Previously, ClassDetails[0] on ActorClassPresetsScript was unused along with the ClassPresets[0] on the ActorQuestScript (and commentary mentioned not to fill/ignore). These have now been converted to debug features, and should be defined for all Actors. Updated script descriptions/commentary accordingly.
+-Removed redundant bAllowBoss flag from Struct_ClassDetailsStruct, instead we will now look at the iChanceBoss value (and cast to bool). Updated SpGroupScript and SpHelperScript accordingly.
+
+--------
 ##### [04/05/2018] SpawnEngine updated to version 0.06.01.180504
 
 ###### HOUSEKEEPING:
