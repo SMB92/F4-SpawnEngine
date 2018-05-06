@@ -18,22 +18,25 @@ Scriptname SOTC:AuxilleryQuestScript extends Quest
 ;PROPERTIES & IMPORTS
 ;------------------------------------------------------------------------------------------------
 
-Quest Property SOTC_MasterQuest Auto Const
-{ Auto-fills }
+Quest Property SOTC_MasterQuest Auto Const Mandatory
+{ Auto-fill }
 
-Holotape Property SOTC_AuxMenuTape Auto Const
+Holotape Property SOTC_AuxMenuTape Auto Const Mandatory
 { Auto-Fills with AuxMenuTape }
 
-Quest[] Property ActorQuests Auto
+Quest[] Property ActorQuests Auto Mandatory
 { Fill with all default Actor Quests. Index order is not essential. }
 
-Quest[] Property RegionQuests Auto
+Quest[] Property RegionQuests Auto Mandatory
 { Fill with all default Region Quests. Index order is not essential. }
 
-GlobalVariable Property SOTC_MasterGlobal Auto Const
-{ Auto-fill. IO status of mod }
+Quest[] Property EventQuests Auto Mandatory
+{Fill with any Event Quests that need to start with the mod. }
 
-GlobalVariable Property SOTC_Global_MenuSettingsMode Auto Const
+GlobalVariable Property SOTC_MasterGlobal Auto Const Mandatory
+{ Auto-fill. IO status of mod. }
+
+GlobalVariable Property SOTC_Global_MenuSettingsMode Auto Const Mandatory
 { Auto-fill }
 
 ;Int the default mod, there won't be more than 128 of either of the above, so therefore using arrays
@@ -70,7 +73,7 @@ EndEvent
 Function PrepareToInitSpawnEngine()
 
 	bSpawnEngineStarting = true ;Security measure to be sure we want to start
-	SOTC_Global_MenuSettingsMode.SetValue(10.0) ;Lock menu. 
+	SOTC_Global_MenuSettingsMode.SetValue(5.0) ;Lock both menus (inc Master) ready for first setup
 	RegisterForMenuOpenCloseEvent("PipboyMenu") ;Quests cannot start in menu mode, so we register
 	;for the menu exit event before starting quests. Same applies to starting Timers.	
 
@@ -84,7 +87,7 @@ Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
 	
 		Game.GetPlayer().RemoveItem(SOTC_AuxMenuTape, 1, true) ;Silently remove
 		InitSpawnEngine()
-		;UnregisterForAllMenuOpenCloseEvents() ;Calling Stop in above function call instead.
+		UnregisterForAllMenuOpenCloseEvents()
 		
 	endif
 	
@@ -102,29 +105,49 @@ Function InitSpawnEngine()
 	while iCounter < iSize
 	
 		ActorQuests[iCounter].Start()
-		Utility.Wait(0.2) ;Allowing a small amount of time to Init
+		Utility.Wait(0.1) ;Allowing a small amount of time to Init
 		iCounter += 1
 
 	endwhile
 
+	
 	iCounter = 0 ;Reset ready for next loop
 	iSize = RegionQuests.Length
 	
 	while iCounter < iSize
 	
 		RegionQuests[iCounter].Start()
-		Utility.Wait(0.2) ;Allowing a small amount of time to Init
+		Utility.Wait(0.1) ;Allowing a small amount of time to Init
 		iCounter += 1
 
 	endwhile
+	
+	
+	if EventQuests[0] != None ;Must be something on here.
+		
+		iCounter = 0 ;Reset ready for next loop
+		iSize = EventQuests.Length
+		
+		while iCounter < iSize
+		
+			EventQuests[iCounter].Start()
+			Utility.Wait(0.1) ;Allowing a small amount of time to Init
+			iCounter += 1
+
+		endwhile
+		
+	endif
 	
 	;DEV NOTE: This script will need to be updated to include Random Event framework Quests
 	
 	Debug.MessageBox("SpawnEngine is now initialised. You will need to set a Preset in order to complete setup. Until you do this, no spawns will occur. Instructions are included in the Holotape Menu that has been added to your inventory.")
 	
-	SOTC_Global_MenuSettingsMode.SetValue(1.0) ;Put menu into first start state
-	
-	(Self as Quest).Stop() ;Shutdown this auxillery quest. 
+EndFunction
+
+
+Function ShutdownSpawnEngine()
+
+	;Currently incomplete, placeholder
 	
 EndFunction
 

@@ -18,17 +18,20 @@ Scriptname SOTC:MasterQuestScript extends Quest Conditional
 Group PrimaryProperties
 {Primary Properties Group}
 
-	Quest Property SOTC_MasterQuest Auto Const
+	Quest Property SOTC_MasterQuest Auto Const Mandatory
 	{ Auto-fills. Link to own Quest }
+	
+	SOTC:AuxilleryQuestScript Property AuxilleryQuestScript Auto Const Mandatory
+	{ Fill with Auxillery Controller Quest. Invoked on Shutdown. }
 
-	SOTC:ThreadControllerScript Property ThreadController Auto Const
+	SOTC:ThreadControllerScript Property ThreadController Auto Const Mandatory
 	{ Link to thread delegator, stored on RefAlias on this Quest }
 
 	;SOTC:ActorQuestScript[] Property MasterActorList Auto
 	;{Initialise one member with None, fills dynamically}
 	;Moved to SpawnTypes[0]
 
-	SOTC:SpawnTypeMasterScript[] Property SpawnTypeMasters Auto
+	SOTC:SpawnTypeMasterScript[] Property SpawnTypeMasters Auto Mandatory
 	{ Initialise one member with None, fills dynamically. Member 0 contains Master Actor List }
 	
 	;LEGEND - SPAWNTYPES
@@ -63,13 +66,13 @@ Group PrimaryProperties
 	
 	;NOTE: See "CLASSES VS SPAWNTYPES" commentary of the SpawnTypeMasterScript for more in-depth info
 	
-	SOTC:WorldAliasScript[] Property Worlds Auto Const
+	SOTC:WorldAliasScript[] Property Worlds Auto Const Mandatory
 	{ Initialise one member with None. Fills dynamically. }
 
-	Holotape Property SOTC_MainMenuTape Auto Const
+	Holotape Property SOTC_MainMenuTape Auto Const Mandatory
 	{ Auto-Fills with MainMenuTape }
 
-	Holotape Property SOTC_AuxMenuTape Auto Const
+	Holotape Property SOTC_AuxMenuTape Auto Const Mandatory
 	{ Auto-Fills with AuxMenuTape }
 
 	Actor Property Player Auto Const
@@ -120,7 +123,8 @@ Group ModSettings
 	; 3 - Very Hard ("Veteran" in SOTC)
 	; 4 - NONE - Scale to player.
 
-	Bool Property bVanillaMode Auto ;Yay or nay
+	Bool Property bVanillaMode Auto ;Yay or nay 
+	{ Init false. Vanilla mode disables certain SpawnPoints }
 
 	Int Property iEzApplyMode Auto
 	{ Initialise with 0. Set in Menu }
@@ -145,6 +149,7 @@ Group MenuStuff
 	;Use this to determine if menu is in Master mode, Region mode or has pending settings event
 	; 0 - MASTER MODE
 	; 1 - REGION MODE
+	; 5 - FIRST TIME STARTUP MODE
 	; 10 - MASTER PRESET/RESET PENDING
 	; 11 - MASTER ALL SPAWNTYPES PRESET PENDING
 	; 12 - FORCE RESET ALL SPs.
@@ -152,13 +157,13 @@ Group MenuStuff
 	; Direct Region + Spawntype Preset are handled from Menu.
 	;Pending Events are all designated above a value of 10. Menu will detects this and lock Menu if above 10.
 
-	SOTC:RegionQuestScript Property MenuCurrentRegionScript Auto
+	SOTC:RegionQuestScript Property MenuCurrentRegionScript Auto Mandatory
 	{ Initialise none. Set by menu when needed }
 
-	SOTC:SpawnTypeRegionalScript Property MenuCurrentRegSpawnTypeScript Auto
+	SOTC:SpawnTypeRegionalScript Property MenuCurrentRegSpawnTypeScript Auto Mandatory
 	{ Initialise none. Set by menu when needed }
 
-	SOTC:ActorQuestScript Property MenuCurrentActorScript Auto
+	SOTC:ActorQuestScript Property MenuCurrentActorScript Auto Mandatory
 	{ Initialise none. Set by menu when needed }
 
 EndGroup
@@ -175,33 +180,33 @@ Int iValue02 ;A temp variable that can be used for CustomEvents if needed.
 Group SettingsGlobals
 { Auto-fill }
 
-	GlobalVariable Property SOTC_MasterGlobal Auto Const
+	GlobalVariable Property SOTC_MasterGlobal Auto Const Mandatory
 	{ Auto-fill. IO status of mod }
-	GlobalVariable Property SOTC_Global_MenuSettingsMode Auto Const ;Highly reused
+	GlobalVariable Property SOTC_Global_MenuSettingsMode Auto Const Mandatory ;Highly reused
 	{ Auto-fill }
 	
 	;Generic Variables for promiscuous use in Menu
 	;----------------------------------------------
 	
-	GlobalVariable Property SOTC_Global01 Auto Const
+	GlobalVariable Property SOTC_Global01 Auto Const Mandatory
 	{ Auto-fill }
-	GlobalVariable Property SOTC_Global02 Auto Const
+	GlobalVariable Property SOTC_Global02 Auto Const Mandatory
 	{ Auto-fill }
-	GlobalVariable Property SOTC_Global03 Auto Const
+	GlobalVariable Property SOTC_Global03 Auto Const Mandatory
 	{ Auto-fill }
-	GlobalVariable Property SOTC_Global04 Auto Const
+	GlobalVariable Property SOTC_Global04 Auto Const Mandatory
 	{ Auto-fill }
-	GlobalVariable Property SOTC_Global05 Auto Const
+	GlobalVariable Property SOTC_Global05 Auto Const Mandatory
 	{ Auto-fill }
-	GlobalVariable Property SOTC_Global06 Auto Const
+	GlobalVariable Property SOTC_Global06 Auto Const Mandatory
 	{ Auto-fill }
-	GlobalVariable Property SOTC_Global07 Auto Const
+	GlobalVariable Property SOTC_Global07 Auto Const Mandatory
 	{ Auto-fill }
-	GlobalVariable Property SOTC_Global08 Auto Const
+	GlobalVariable Property SOTC_Global08 Auto Const Mandatory
 	{ Auto-fill }
-	GlobalVariable Property SOTC_Global09 Auto Const
+	GlobalVariable Property SOTC_Global09 Auto Const Mandatory
 	{ Auto-fill }
-	GlobalVariable Property SOTC_Global10 Auto Const
+	GlobalVariable Property SOTC_Global10 Auto Const Mandatory
 	{ Auto-fill }
 
 
@@ -288,13 +293,13 @@ Group FeatureSettings
 	Int Property iEventCooldownTimerClock Auto
 	{ Init 300 (5 minutes default). Change from Menu. }
 	
-	Quest[] Property kRE_BypassEvents Auto ;Type 1
+	Quest[] Property kRE_BypassEvents Auto Mandatory ;Type 1
 	{ Init one member of None. Dynamically fills. Events here can bypass timed locks. }
 	
-	Quest[] Property kRE_TimedEvents Auto ;Type 2
+	Quest[] Property kRE_TimedEvents Auto Mandatory ;Type 2
 	{ Init one member of None. Active timed events will fill themselves here when ready. }
 	
-	Quest[] Property kRE_StaticEvents Auto ;Type 3
+	Quest[] Property kRE_StaticEvents Auto Mandatory ;Type 3
 	{ Init one member of None. Dynamically fills. }
 	
 	Int Property iRE_BypassEventChance Auto
@@ -366,12 +371,10 @@ Bool bRegisteredForPipboyClose ;Flag the script if this event is pending.
 ;CUSTOM EVENT DEFINITIONS
 ;-------------------------
 
-CustomEvent PresetUpdate ;Update sent to Regions for full change or Spawntypes only.
+CustomEvent PresetUpdate ;Update sent to Regions and/or Spawntypes for Preset change.
 CustomEvent MasterSingleSettingUpdate ;Event to send single settings updates to scripts.
 CustomEvent ForceResetAllSps ;Reset all Regions SPs. Does not (re)start timer, safe from Menu, but
 ;we will force the user to exit menu anyway as it may take some time to complete.
-CustomEvent SingleSpawntypePresetUpdate ;Received by all Regional ST scripts, but only STs with
-;matching ID will proceed with it.
 
 
 ;------------------------------------------------------------------------------------------------
@@ -386,34 +389,21 @@ Event OnQuestInit() ;Will fail if ANYTHING goes wrong at Quest start, i.e failed
 		bInit = true
 		kEventQuestsPendingStart = new Quest[0] ;Initialise this array at startup. 
 		Player.Additem(SOTC_MainMenuTape, 1, false) ;We want to know it's been added.
-		SOTC_MasterGlobal.SetValue(1.0)
 		
 	endif
 	
 EndEvent
 
 
-;Should only be used when setting up Actor lists for the first time or resetting
-Function InitResetMasterActorLists(Bool abReset)
-
-	if !abReset ;Init
+;Triggered if setting preset for the first time
+Function PerformFirstTimeSetup(Int aiPreset)
 	
-		FillMasterActorLists()
+	iCurrentPreset = aiPreset
+	iMenuSettingsMode = 5 ;Send this Event
+	SOTC_Global_MenuSettingsMode.SetValue(10.0) ;Lock Menu
+	RegisterForMenuOpenCloseEvent("PipboyMenu") ;Register to send event
 	
-	else ;assume Reset
-	
-		Int iCounter = 1 ;Start at 1, 0 is MasterList
-		Int iSize = SpawnTypeMasters.Length
-		
-		while iCounter < iSize ;Clear all the lists
-		
-			SpawnTypeMasters[iCounter].ActorLibrary.Clear()
-			
-		endwhile
-		
-		FillMasterActorLists() ;Refill them
-		
-	endif
+	;Add more work if needed
 	
 EndFunction
 
@@ -421,9 +411,9 @@ EndFunction
 Function FillMasterActorLists()
 
 	Int iCounter
-	SOTC:ActorQuestScript[] MasterList = SpawnTypeMasters[0].ActorLibrary
-	Int iSize = MasterList.Length
-	SOTC:ActorQuestScript CurrentActor = MasterList[0] ;Kick it off with first member
+	SOTC:ActorQuestScript[] MasterActorList = SpawnTypeMasters[0].ActorLibrary
+	Int iSize = MasterActorList.Length
+	SOTC:ActorQuestScript CurrentActor = MasterActorList[0] ;Kick it off with first member
 	
 	;NOTE: Remember that SpawnType 0 is the Main Random List, here we organise everything else.
 	
@@ -433,9 +423,31 @@ Function FillMasterActorLists()
 		;Decided 2 loops was better. Can use loop function as standalone later.
 		
 		iCounter += 1
-		CurrentActor = MasterList[iCounter] ;Set the next Actor
+		CurrentActor = MasterActorList[iCounter] ;Set the next Actor
 		
 	endwhile
+	
+EndFunction
+
+
+Function ClearMasterActorLists()
+
+	Int iCounter = 1 ;Start at 1, 0 is MasterList
+	Int iSize = SpawnTypeMasters.Length
+		
+	while iCounter < iSize ;Clear all the lists
+		
+		SpawnTypeMasters[iCounter].ActorLibrary.Clear()
+			
+	endwhile
+	
+EndFunction
+
+
+Function ResetMasterActorLists()
+
+	ClearMasterActorLists()
+	FillMasterActorLists
 	
 EndFunction
 
@@ -444,7 +456,7 @@ EndFunction
 Function AddActorToMasterSpawnTypes(SOTC:ActorQuestScript aActorToAdd)
 
 	Int iCounter
-	Bool[] bAddToType = aActorToAdd.bAllowedSpawnTypes ;Start with first actor
+	Bool[] bAddToType = aActorToAdd.bAllowedSpawnTypes
 	Int iSize = bAddToType.Length
 		
 	while iCounter < iSize
@@ -495,12 +507,14 @@ Function SendMasterMassEvent()
 	;DEV NOTE: Do not try to declare Var arrays as a Property, the CK's UI doesn't understand it.
 
 	Var[] PresetParams
+	string sPresetType
 
 	if iMenuSettingsMode == 10 ;FULL PRESET
 		
 		PresetParams = new Var[3]
+		sPresetType = "Full"
 		
-		PresetParams[0] = "Full" ;The type of Preset change
+		PresetParams[0] = sPresetType ;The type of Preset change
 		PresetParams[1] = bForceResetCustomRegionSettings
 		PresetParams[2] = bForceResetCustomSpawnTypeSettings
 		PresetParams[3] = iCurrentPreset
@@ -513,10 +527,11 @@ Function SendMasterMassEvent()
 	elseif iMenuSettingsMode == 11 ;ALL SPAWNTYPES/ACTORS ONLY
 		
 		PresetParams = new Var[2]
+		sPresetType = "Spawntypes"
 		
-		PresetParams[0] = "SpawnTypes" ;The type of Preset change
+		PresetParams[0] = sPresetType ;The type of Preset change
 		PresetParams[1] = bForceResetCustomSpawnTypeSettings
-		PresetParams[2] = iCurrentPreset
+		PresetParams[2] = iValue01
 		
 		ThreadController.PrepareToMonitorEvent("Regions") 
 		;String parameter to tell what script type will be receiving the event		
@@ -535,13 +550,15 @@ Function SendMasterMassEvent()
 		ThreadController.PrepareToMonitorEvent("Regions") 
 		;String parameter to tell what script type will be receiving the event
 		
-		PresetParams = new Var[2]
+		PresetParams = new Var[3]
+		sPresetType = "SingleSpawntype"
 		
-		PresetParams[0] = iValue01 ;The ID of the Spawntype.
-		PresetParams[1] = bForceResetCustomSpawnTypeSettings
-		PresetParams[2] = iValue02 ;The Preset to set
+		PresetParams[0] = sPresetType
+		PresetParams[1] = iValue01 ;The ID of the Spawntype.
+		PresetParams[2] = bForceResetCustomSpawnTypeSettings
+		PresetParams[3] = iValue02 ;The Preset to set
 		
-		SendCustomEvent("SingleSpawntypePresetUpdate", PresetParams)
+		SendCustomEvent("PresetUpdate", PresetParams)
 		
 	endif
 	
@@ -587,7 +604,17 @@ Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
 
 	if (asMenuName == "PipboyMenu") && (!abOpening) ; On Pip-Boy closing
 	
-		if iMenuSettingsMode > 10 ;All settings events deferred to 10+ at this stage.
+		if iMenuSettingsMode == 5 ;First Time Setup
+		
+			FillMasterActorLists() ;Initialise Master Spawntypes
+			StartPendingEventQuests() ;Init any pending events now, they might want a preset too.
+			iMenuSettingsMode = 10
+			SendMasterMassEvent() ;Set the preset on all Regions/Spawntypes/Actors.
+			SOTC_MasterGlobal.SetValue(1.0) ;Officially turned on.
+			
+			;Add more work if needed
+		
+		elseif iMenuSettingsMode > 10 ;All settings events deferred to 10+ at this stage.
 		
 			SendMasterMassEvent() ;This will "lock" the menu and require player to exit Menu Mode.
 		
@@ -637,6 +664,7 @@ EndFunction
 ;Use this to determine if menu is in Master mode, Region mode or has pending settings event
 ; 0 - MASTER MODE
 ; 1 - REGION MODE
+; 5 - FIRST TIME SETUP MODE
 ; 10 - MASTER PRESET/RESET PENDING
 ; 11 - MASTER ALL SPAWNTYPES PRESET PENDING
 ; 12 - FORCE RESET ALL SPs.
@@ -833,9 +861,15 @@ EndFunction
 
 
 ;Append a new custom event to be started and added. Event Quests will be started when Menu mode is exited.
-Function AppendEventQuest(Quest kEventQuest)
-
-	kEventQuestsPendingStart.Add(kEventQuest)
+Function AppendEventQuest(Quest akEventQuest)
+	
+	if kEventQuestsPendingStart[0] != 1 ;Because we keep the first member as none when this list is reset.
+		kEventQuestsPendingStart.Add(akEventQuest)
+	else
+		kEventQuestsPendingStart[0] = akEventQuest
+	endif
+	
+	
 	if !bRegisteredForPipboyClose
 		RegisterForMenuOpenCloseEvent("PipboyMenu")
 		bRegisteredForPipboyClose = true ;Prevent unnecessary re-registration. 
@@ -857,6 +891,7 @@ Function StartPendingEventQuests()
 	endwhile
 	
 	kEventQuestsPendingStart.Clear()
+	kEventQuestsPendingStart[0] = None ;Ensure one member to avoid erroneous size return etc
 
 EndFunction
 

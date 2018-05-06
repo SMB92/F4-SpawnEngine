@@ -185,29 +185,18 @@ Event OnAliasInit()
 
 	if !bInit
 		RegionScript.SpawnTypes.Insert(Self, iSpawnType)
-		RegisterForCustomEvent(MasterScript, "SingleSpawntypePresetUpdate")
 		bInit = true
 	endif
 	
 EndEvent
 
 
-;Received by all Spawntypes, but only proceeds if ID number matches. 
-Event SOTC:MasterQuestScript.SingleSpawntypePresetUpdate(SOTC:MasterQuestScript akSender, Var[] akArgs)
-
-	if akArgs[0] as Int == iSpawnType
-	
-			ReshuffleDynActorLists(akArgs[1] as Bool, akArgs[2] as Int) 
-			;(akArgs[1]) = Custom settings override flag
-			;(akArgs[2]) = Preset to Set
-
-	endif
-
-EndEvent
-
-
 ;Usually called by Region script during Preset changes
 Function ReshuffleDynActorLists(Bool abForceReset, int aiPreset)
+
+	;This function can be called directly from menu to set a custom preset choice. Set parameters
+	;(true, preset) and then flag bCustomSettingsActive as true. No need for checks as user is
+	;intending for this to happen. Menu can also force a reset by passing (true, 0) to this function.
 
 	if (bCustomSettingsActive) && (!abForceReset)
 		return ;DENIED, return immediately. 
@@ -217,6 +206,7 @@ Function ReshuffleDynActorLists(Bool abForceReset, int aiPreset)
 	if aiPreset > 0 ;If 0, just reshuffle as normal. While likely unused, exists if needed.
 		iCurrentPreset = aiPreset ;Set the Preset here
 	endif
+	
 	ClearDynActorLists()
 	FillDynActorLists()
 

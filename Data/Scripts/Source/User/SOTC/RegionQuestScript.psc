@@ -181,15 +181,11 @@ EndEvent
 
 Event SOTC:MasterQuestScript.PresetUpdate(SOTC:MasterQuestScript akSender, Var[] akArgs)
 
-	;Var[] PresetParams = new Var[0]
-	;PresetParams = akArgs as Var[] ;Cast to copy locally, save threads - MAY NOT BE NECESSARY
-	;Commented out until clarified
-
+	Bool bEnabled ;Disable the Region if ON, and prepare to turn back ON later
+	
 	if (akArgs[0] as string) == "Full"
 	
 		if (!bCustomSettingsActive) || (akArgs[1] as Bool) ;If not Custom or Override = true
-
-			Bool bEnabled ;Disable the Region if ON, and prepare to turn back ON later
 		
 			if bRegionEnabled == true
 				bRegionEnabled = false ;Turn off this Region temporarily (denies Spawnpoints)
@@ -206,8 +202,6 @@ Event SOTC:MasterQuestScript.PresetUpdate(SOTC:MasterQuestScript akSender, Var[]
 		endif
 	
 	elseif (akArgs[0] as string) == "SpawnTypes"
-	
-		Bool bEnabled ;Disable the Region if ON, and prepare to turn back ON later
 		
 		if bRegionEnabled == true
 			bRegionEnabled = false ;Turn off this Region temporarily (denies Spawnpoints)
@@ -221,7 +215,18 @@ Event SOTC:MasterQuestScript.PresetUpdate(SOTC:MasterQuestScript akSender, Var[]
 		iCurrentPreset = iActualPreset ;Restore the Region's preset.
 			
 		bRegionEnabled = bEnabled ;Leave off or turn back on
-	
+		
+	elseif (akArgs[0] as string) == "SingleSpawntype"
+
+		;Not worth temp disabling for this one. 
+		
+		bEnabled = SpawnTypes[(akArgs[1] as Int)].bSpawntypeEnabled ;Remember this
+		SpawnTypes[(akArgs[1] as Int)].bSpawntypeEnabled = false ;Temp disable if not already
+		SpawnTypes[(akArgs[1] as Int)].ReshuffleDynActorLists(akArgs[2] as Bool, akArgs[3] as Int)
+		;(akArgs[2]) = Custom settings override flag
+		;(akArgs[3]) = Preset to Set
+		SpawnTypes[(akArgs[1] as Int)].bSpawntypeEnabled = bEnabled ;Set back to what it was.
+
 	endif
 	
 	ThreadController.iEventFlagCount += 1 ;Flag as complete
