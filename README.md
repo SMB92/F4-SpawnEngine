@@ -3,6 +3,10 @@
 
 ## NEWS
 
+### SpawnEngine updated to version 0.07.01.180507
+
+[07/05/2018] Major update to initialisation procedures.
+
 ### SpawnEngine updated to version 0.06.02.180506
 
 [06/05/2018] Minor updates including debug features. 
@@ -19,6 +23,18 @@ Please be patient while work continues on both a working test file and official 
 
 ## UPDATES
 
+##### [07/05/2018] SpawnEngine updated to version 0.07.01.180507
+
+###### HOUSEKEEPING:
+-Updated NPP lang file to current version.
+-Added comments to SpawnTypeRegionalScript ReshuffleDynActorLists() function on how to use from Menu. 
+
+###### SCRIPT OPTIMIZATION & REVISION:
+-Fairly large changes to initialisation procedures when the mod first starts. I must have been drunk when I wrote this. Changes significant enough to warrant minor version change. Streamlined this to be much more straightforward, added new functions, removed redundant/erroneous crap and fixed/compiled Preset terminal menu fragments. Shutdown events still not fully implemented. 
+-Updated Random Events framework functions to better handle the kEventsPendingStart array (clearing it without leaving one member of None presents some problems in Papyrus) and also support starting events when the mod starts, properly.
+-Removed SingleSpawnTypePresetUpdate event out of SpawnTypeRegionalScript and onto RegionQuestScript, changing it to be like the other preset update events. 
+
+-------
 ##### [06/05/2018] SpawnEngine updated to version 0.06.02.180506
 
 ###### HOUSEKEEPING:
@@ -30,7 +46,7 @@ Please be patient while work continues on both a working test file and official 
 -Previously, ClassDetails[0] on ActorClassPresetsScript was unused along with the ClassPresets[0] on the ActorQuestScript (and commentary mentioned not to fill/ignore). These have now been converted to debug features, and should be defined for all Actors. Updated script descriptions/commentary accordingly.
 -Removed redundant bAllowBoss flag from Struct_ClassDetailsStruct, instead we will now look at the iChanceBoss value (and cast to bool). Updated SpGroupScript and SpHelperScript accordingly.
 
---------
+-------
 ##### [04/05/2018] SpawnEngine updated to version 0.06.01.180504
 
 ###### HOUSEKEEPING:
