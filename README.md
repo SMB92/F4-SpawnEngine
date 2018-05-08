@@ -3,6 +3,10 @@
 
 ## NEWS
 
+### SpawnEngine updated to version 0.08.02.180508
+
+[08/05/2018] Small additions and fixes
+
 ### SpawnEngine now in private Alpha testing, updated to version 0.08.01.180508
 
 [08/05/2018] With the new "Mini" Spawnpoint script added and a few small changes/fixes to SpawnPoint features (such as ability to force difficulty), this version will now make the rounds as a private alpha test (no ESM present here yet). This marks a major milestone for me, now I can put a lot more focus on filling out the ESM file ready for public testing. 
@@ -25,7 +29,19 @@
 
 Please be patient while work continues on both a working test file and official documentation.
 
-## UPDATES
+## UPDATE LOG
+
+##### [08/05/2018] SpawnEngine updated to version 0.08.02.180508
+
+###### HOUSEKEEPING:
+- Removed Mandatory flag on some optional SP properties.
+- Set default value of iMasterSpawnChance and iRegionSpawnChance to 100.
+- Set default values on iThreadsRequired on Spawnpoints of 1. Updated description.
+- Updated description of EZ settings properties on Master.
+
+###### MAJOR/MINOR FEATURE UPDATES & ADDITIONS:
+- [MINOR] Completed EncounterZone Menu terminal fragment (now full featured).
+- [MINOR] Added iRegionSpawnChance settings to RegionQuestScript so can now control overall spawnchances per Region as well. Need to add a function on Master to allow mass change of this (mostly for resetting on mass scale)
 
 ##### [07/05/2018] SpawnEngine updated to version 0.08.01.180508 - In private Alpha testing
 
