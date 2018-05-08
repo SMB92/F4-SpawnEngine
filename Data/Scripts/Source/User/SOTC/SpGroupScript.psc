@@ -89,15 +89,15 @@ Group PrimaryProperties
 	Int Property iForcedDifficulty Auto Const
 	{ Set 0-4 if above is true. As per Vanilla Difficulty settings.}
 	
-	Bool Property bIsMultiPoint Auto Const Mandatory
+	Bool Property bIsMultiPoint Auto Const
 	{ Set true if using child markers to randomise placement of groups. DO NOT USE IN CONFINED SPACES. }
 	;WARNING: DO NOT USE MULTIPOINTS IN CONFINED SPACES WITH SPAWNTYPES THAT HAVE OVERSIZED ACTORS - USE MULTIPLE SINGLE POINTS INSTEAD.
 
-	Bool Property bIsInteriorPoint Auto Const Mandatory
+	Bool Property bIsInteriorPoint Auto Const
 	{ Set true if placed in an interior cell, will behave differently with child markers distribution.
 	Can be used in exterior cells if desired, i.e open buildings. }
 	
-	Bool Property bIsConfinedSpace Auto Const Mandatory
+	Bool Property bIsConfinedSpace Auto Const
 	{ If the SP is placed in a confined area, set True so Oversized Actors will not spawn here.
 	And yes, this is required for interiors as not all interiors are confined. }
 
@@ -109,8 +109,8 @@ Group PrimaryProperties
 	{ If using child markers, fill with these from render window, or initialise with one member of None.
 	This is used for Interiors/MultiPoints, or to set up separate package locations from this SPs location. }
 	
-	Int Property iThreadsRequired Auto Mandatory
-	{ Fill with a value of 1 - 3, depending how busy this point is expected to be. Usually 1 but can be more if desired. }
+	Int Property iThreadsRequired = 1 Auto Mandatory
+	{ Default value of 1. Set more if feel the need to (i.e large single group max counts). }
 	;NOTE: Will be released immediately if Master intercepts for a Random Event. MultiPoint helpers will force add threads
 	;on instantation, which can intentionally exceed the max thread threshold.
 

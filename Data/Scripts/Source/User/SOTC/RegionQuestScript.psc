@@ -105,6 +105,9 @@ Group RegionSettings
 
 	Bool Property bRegionEnabled Auto Mandatory ;On/Off switch for this Region
 	{ Initialise true. Set in Menu. Disables the mod in this Region if set false. }
+	
+	Int Property iRegionSpawnChance = 100 Auto
+	{ Default 100, change in Menu. Chance SpawnPoints firing in this Region, has massive effect on balance. }
 
 	Int Property iCurrentPreset Auto
 	{ Initialise 0. Set by Menu/Preset. }
@@ -363,7 +366,7 @@ Bool Function RegionSpawnCheck(ObjectReference akCallingPoint, Int aiPresetRestr
 	;NOTE - Random events are currently not fully implemented on the Regional level. No code iSize
 	;included here for them yet. 
 	
-	if !bRegionEnabled
+	if !bRegionEnabled && ((Utility.RandomInt(1,100)) > iRegionSpawnChance)
 		return false ;Red light.
 	endif
 	

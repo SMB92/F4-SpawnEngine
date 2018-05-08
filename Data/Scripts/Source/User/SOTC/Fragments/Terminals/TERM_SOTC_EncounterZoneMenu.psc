@@ -5,6 +5,10 @@ Scriptname SOTC:Fragments:Terminals:TERM_SOTC_EncounterZoneMenu Extends Terminal
 Function Fragment_Terminal_01(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC:MasterQuestScript MasterScript = (MasterQuest as SOTC:MasterQuestScript)
+
+MasterScript.iEzApplyMode = 1
+
+MasterScript.SendMasterSingleSettingUpdateEvent("EzApplyMode", false, 0, 0.0) ;Parameters are optional
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -13,6 +17,10 @@ EndFunction
 Function Fragment_Terminal_02(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC:MasterQuestScript MasterScript = (MasterQuest as SOTC:MasterQuestScript)
+
+MasterScript.iEzApplyMode = 2
+
+MasterScript.SendMasterSingleSettingUpdateEvent("EzApplyMode", false, 0, 0.0) ;Parameters are optional
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -21,6 +29,10 @@ EndFunction
 Function Fragment_Terminal_03(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC:MasterQuestScript MasterScript = (MasterQuest as SOTC:MasterQuestScript)
+
+MasterScript.iEzApplyMode = 0
+
+MasterScript.SendMasterSingleSettingUpdateEvent("EzApplyMode", false, 0, 0.0) ;Parameters are optional
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -29,6 +41,10 @@ EndFunction
 Function Fragment_Terminal_04(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC:MasterQuestScript MasterScript = (MasterQuest as SOTC:MasterQuestScript)
+
+MasterScript.iEzBorderMode = 1
+
+MasterScript.SendMasterSingleSettingUpdateEvent("EzBorderMode", false, 0, 0.0) ;Parameters are optional
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -37,6 +53,10 @@ EndFunction
 Function Fragment_Terminal_05(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC:MasterQuestScript MasterScript = (MasterQuest as SOTC:MasterQuestScript)
+
+MasterScript.iEzBorderMode = 0
+
+MasterScript.SendMasterSingleSettingUpdateEvent("EzBorderMode", false, 0, 0.0) ;Parameters are optional
 ;END CODE
 EndFunction
 ;END FRAGMENT

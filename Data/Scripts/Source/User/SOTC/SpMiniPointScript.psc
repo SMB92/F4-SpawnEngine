@@ -92,15 +92,15 @@ Group PrimaryProperties
 	Int Property iPresetRestriction Auto Const
 	{ Fill this (1-3) if it is desired to restrict this point to a certain Master preset level. }
 
-	Bool Property bIsInteriorPoint Auto Const Mandatory
+	Bool Property bIsInteriorPoint Auto Const
 	{ Set true if placed in an interior cell, will behave differently with child markers distribution.
 	Can be used in exterior cells if desired, i.e open buildings. }
 	
 	ObjectReference[] Property kChildMarkers Auto ;AUTO so can be modified at runtime.
 	{ Used for Interiors only from this script, fill with the markers placed around the Interior in use. }
 	
-	Int Property iThreadsRequired Auto Mandatory
-	{ Fill with a value of 1 - 3, depending how busy this point is expected to be. Usually 1 but can be more if desired. }
+	Int Property iThreadsRequired = 1 Auto Mandatory
+	{ Default value of 1. Set more if feel the need to (i.e large single group max counts). }
 	;NOTE: Will be released immediately if Master intercepts for a Random Event. MultiPoint helpers will force add threads
 	;on instantation, which can intentionally exceed the max thread threshold.
 	

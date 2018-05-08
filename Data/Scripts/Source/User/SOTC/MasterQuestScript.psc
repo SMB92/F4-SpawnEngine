@@ -102,8 +102,8 @@ EndGroup
 Group ModSettings
 { Settings properties. Initialise 0/None/False, set by menu }
 
-	Int Property iMasterSpawnChance_Main Auto
-	{ Init 0, set by Menu. Chance of "Main" SpawnPoints firing, has massive effect on balance }
+	Int Property iMasterSpawnChance = 100 Auto
+	{ Default 100, change in Menu. Chance SpawnPoints firing, has massive effect on balance. }
 
 	Int Property iCurrentPreset Auto ; 3 Major presets + 1 User Custom (1-4)
 
@@ -127,10 +127,10 @@ Group ModSettings
 	{ Init false. Vanilla mode disables certain SpawnPoints }
 
 	Int Property iEzApplyMode Auto
-	{ Initialise with 0. Set in Menu }
+	{ Initialise with 0. Set in Menu. 0 = None, 1 = 1x Random Ez Per Group, 2 = Per Actor }
 
 	Int Property iEzBorderMode Auto
-	{ Initialise with 0. Set in Menu }
+	{ Initialise with 0. Set in Menu. 1 = Disable Borders. }
 	
 	Bool Property bAllowPowerArmorGroups Auto
 	{ Init false. Set in Menu. Enables/Disables groups with Power Armor units } 
@@ -773,7 +773,7 @@ Bool Function MasterSpawnCheck(ObjectReference akCallingPoint, Bool abAllowVanil
 	
 	;Vanilla Mode check
 	
-	if (!abAllowVanilla) && (bVanillaMode) && ((Utility.RandomInt(1,100)) < iMasterSpawnChance_Main)
+	if (!abAllowVanilla) && (bVanillaMode) && ((Utility.RandomInt(1,100)) < iMasterSpawnChance)
 		return true ;Denied due to vanilla mode
 	endif
 	
