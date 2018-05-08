@@ -60,6 +60,7 @@ Event OnQuestInit()
 
 	if !bInit
 		bInit == true ;Never want to receive this event again.
+		Debug.MessageBox("Thank you for installing SpawnEngine. Please complete setup from the Auxillery Holotape Menu that's been added to your inventory when yo uare ready.")
 		Game.GetPlayer().AddItem(SOTC_AuxMenuTape, 1, false) ;We want to know it's been added
 	endif
 	
@@ -137,6 +138,8 @@ Function InitSpawnEngine()
 		endwhile
 		
 	endif
+	
+	bSpawnEngineStarting = false
 	
 	;DEV NOTE: This script will need to be updated to include Random Event framework Quests
 	

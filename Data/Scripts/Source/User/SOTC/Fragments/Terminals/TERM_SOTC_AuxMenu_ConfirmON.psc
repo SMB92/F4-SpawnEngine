@@ -4,9 +4,7 @@ Scriptname SOTC:Fragments:Terminals:TERM_SOTC_AuxMenu_ConfirmON Extends Terminal
 ;BEGIN FRAGMENT Fragment_Terminal_01
 Function Fragment_Terminal_01(ObjectReference akTerminalRef)
 ;BEGIN CODE
-(AuxQuest as SOTC:AuxilleryQuestScript).InitSpawnEngine()
-
-SOTC_MasterGlobal.SetValue(1.0)
+(AuxQuest as SOTC:AuxilleryQuestScript).PrepareToInitSpawnEngine()
 ;END CODE
 EndFunction
 ;END FRAGMENT

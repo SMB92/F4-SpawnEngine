@@ -3,6 +3,10 @@
 
 ## NEWS
 
+### SpawnEngine updated to version 0.08.03.180509
+
+[08/05/2018] Rather critical patch to the Alpha, fixed AuxMenu terminal calling wrong function preventing proper mod startup.
+
 ### SpawnEngine updated to version 0.08.02.180508
 
 [08/05/2018] Small additions and fixes
@@ -31,6 +35,13 @@ Please be patient while work continues on both a working test file and official 
 
 ## UPDATE LOG
 
+##### [09/05/2018] SpawnEngine updated to version 0.08.03.180509
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Fixed AuxMenuTape fragement calling wrong function, borking startup of the mod.
+- Added missing Welcome message on first install.
+
+------
 ##### [08/05/2018] SpawnEngine updated to version 0.08.02.180508
 
 ###### HOUSEKEEPING:
@@ -43,6 +54,7 @@ Please be patient while work continues on both a working test file and official 
 - [MINOR] Completed EncounterZone Menu terminal fragment (now full featured).
 - [MINOR] Added iRegionSpawnChance settings to RegionQuestScript so can now control overall spawnchances per Region as well. Need to add a function on Master to allow mass change of this (mostly for resetting on mass scale)
 
+------
 ##### [07/05/2018] SpawnEngine updated to version 0.08.01.180508 - In private Alpha testing
 
 ###### HOUSEKEEPING:
@@ -63,7 +75,7 @@ Please be patient while work continues on both a working test file and official 
 - [MINOR] Added in SingleSettingUpdateEvent for EncounterZones features. This system is almost fully functional, pending some edits to the Terminal fragments for its Menu.
 - [MINOR] Added 2 new Globals to Master, for storing the current Region/World IDs while in Menu (this is the index numbers of those items on Master arrays and used to pull their respective script). Is now less confusing then was before.
 
-
+------
 ##### [07/05/2018] SpawnEngine updated to version 0.07.01.180507
 
 ###### HOUSEKEEPING:
