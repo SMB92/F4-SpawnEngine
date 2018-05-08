@@ -33,6 +33,7 @@ SOTC:ActorClassPresetScript ActorParamsScript
 ReferenceAlias kPackage
 ObjectReference[] kPackageLocs
 Int iPreset
+Int iDifficulty
 
 ;Local variables
 Actor[] kGroupList
@@ -43,13 +44,14 @@ Int iHelperFireTimerID = 3 Const
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Function SetHelperSpawnParams(SOTC:RegionQuestScript aRegionScript, SOTC:ActorClassPresetScript aActorParamsScript, \
-ReferenceAlias akPackage, ObjectReference[] akPackageLocs, Int aiPreset)
+ReferenceAlias akPackage, ObjectReference[] akPackageLocs, Int aiPreset, Int aiDifficulty)
 
 	RegionScript = aRegionScript
 	ActorParamsScript = aActorParamsScript
 	kPackage = akPackage
 	kPackageLocs = akPackageLocs as ObjectReference[] ;Cast to ensure copy locally.
-	iPreset = aiPreset
+	iPreset = aiPreset ;Preset is passed from Spawntype script as it can be configured to be different from Region.
+	iDifficulty = aiDifficulty
 	
 	StartTimer(0.5, iHelperFireTimerID) ;Ready to start own thread
 
@@ -63,6 +65,7 @@ Event OnTimer(int aiTimerID)
 		
 		ThreadController.ForceAddThreads(1) ;Due to random factor behind spawning groups count, this was included.
 		HelperPrepareSingleGroupSpawn()
+		ThreadController.ReleaseThreads(1) ;Spawning done, threads can be released.
 		
 	endif
 	
@@ -78,8 +81,6 @@ Function HelperPrepareSingleGroupSpawn()
 	
 	;Now we can get the actual spawn parameters
 	ClassDetailsStruct ActorParams = ActorParamsScript.ClassDetails[iPreset]
-	
-	Int iDifficulty = RegionScript.iCurrentDifficulty ;Set difficulty for spawning. 
 	
 	;Get the actual ActorBase arrays
 	ActorBase[] kRegularUnits = (ActorParamsScript.GetRandomGroupLoadout(false)) as ActorBase[] ;Cast to copy locally
@@ -287,6 +288,8 @@ Function HelperFactoryReset()
 	ActorParamsScript = None
 	kPackage = None
 	kPackageLocs.Clear()
+	iPreset = 0
+	iDifficulty = 0
 	
 	ThreadController.IncrementActiveSpCount(-1)
 

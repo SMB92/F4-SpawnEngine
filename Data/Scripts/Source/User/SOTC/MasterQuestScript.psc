@@ -157,13 +157,13 @@ Group MenuStuff
 	; Direct Region + Spawntype Preset are handled from Menu.
 	;Pending Events are all designated above a value of 10. Menu will detects this and lock Menu if above 10.
 
-	SOTC:RegionQuestScript Property MenuCurrentRegionScript Auto Mandatory
+	SOTC:RegionQuestScript Property MenuCurrentRegionScript Auto
 	{ Initialise none. Set by menu when needed }
 
-	SOTC:SpawnTypeRegionalScript Property MenuCurrentRegSpawnTypeScript Auto Mandatory
+	SOTC:SpawnTypeRegionalScript Property MenuCurrentRegSpawnTypeScript Auto
 	{ Initialise none. Set by menu when needed }
 
-	SOTC:ActorQuestScript Property MenuCurrentActorScript Auto Mandatory
+	SOTC:ActorQuestScript Property MenuCurrentActorScript Auto
 	{ Initialise none. Set by menu when needed }
 
 EndGroup
@@ -183,6 +183,10 @@ Group SettingsGlobals
 	GlobalVariable Property SOTC_MasterGlobal Auto Const Mandatory
 	{ Auto-fill. IO status of mod }
 	GlobalVariable Property SOTC_Global_MenuSettingsMode Auto Const Mandatory ;Highly reused
+	{ Auto-fill }
+	GlobalVariable Property SOTC_Global_CurrentMenuWorld Auto Const Mandatory
+	{ Auto-fill }
+	GlobalVariable Property SOTC_Global_CurrentMenuRegion Auto Const Mandatory ;Highly reused
 	{ Auto-fill }
 	
 	;Generic Variables for promiscuous use in Menu
@@ -447,7 +451,7 @@ EndFunction
 Function ResetMasterActorLists()
 
 	ClearMasterActorLists()
-	FillMasterActorLists
+	FillMasterActorLists()
 	
 EndFunction
 
@@ -574,7 +578,21 @@ Function SendMasterSingleSettingUpdateEvent(string asSetting, Bool abBool01, Int
 	
 	Var[] SettingParams
 	
-	if asSetting == "RegionSwarmChance"
+	if asSetting == "EzApplyMode"
+	
+		SettingParams = new Var[1]
+		SettingParams[0] = asSetting
+		SettingParams[1] = iEzApplyMode
+		SendCustomEvent("MasterSingleSettingUpdate", SettingParams)
+		
+	elseif asSetting == "EzBorderMode"
+	
+		SettingParams = new Var[1]
+		SettingParams[0] = asSetting
+		SettingParams[1] = iEzBorderMode
+		SendCustomEvent("MasterSingleSettingUpdate", SettingParams)
+	
+	elseif asSetting == "RegionSwarmChance"
 	
 		SettingParams = new Var[1]
 		SettingParams[0] = asSetting
@@ -688,6 +706,8 @@ Function ClearMenuVars()
 	SOTC_Global_MenuSettingsMode.SetValue(0.0)
 	bForceResetCustomRegionSettings = false
 	bForceResetCustomSpawnTypeSettings = false
+	SOTC_Global_CurrentMenuWorld.SetValue(0.0)
+	SOTC_Global_CurrentMenuRegion.SetValue(0.0)
 EndFunction
 
 
@@ -863,7 +883,7 @@ EndFunction
 ;Append a new custom event to be started and added. Event Quests will be started when Menu mode is exited.
 Function AppendEventQuest(Quest akEventQuest)
 	
-	if kEventQuestsPendingStart[0] != 1 ;Because we keep the first member as none when this list is reset.
+	if kEventQuestsPendingStart[0] != None ;Because we keep the first member as none when this list is reset.
 		kEventQuestsPendingStart.Add(akEventQuest)
 	else
 		kEventQuestsPendingStart[0] = akEventQuest

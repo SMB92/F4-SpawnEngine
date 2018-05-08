@@ -20,29 +20,29 @@ import SOTC:Struct_RegionPresetDetails
 Group PrimaryProperties
 { Primary Properties Group }
 
-	SOTC:MasterQuestScript Property MasterScript Auto Const
+	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
 	{ Fill with MasterQuest }
 	
-	SOTC:ThreadControllerScript Property ThreadController Auto Const
+	SOTC:ThreadControllerScript Property ThreadController Auto Const Mandatory
 	{ Fill with ThreadController Alias }
 
-	SOTC:RegionTrackerScript Property CleanupManager Auto
+	SOTC:RegionTrackerScript Property CleanupManager Auto Mandatory
 	{ Initialise with one member of None. Fills dynamically. }
 
-	SOTC:SpawnTypeRegionalScript[] Property SpawnTypes Auto
+	SOTC:SpawnTypeRegionalScript[] Property SpawnTypes Auto Mandatory
 	{ Initialise with one member of None. Fills dynamically. }
 
-	Int Property iWorldID Auto Const
+	Int Property iWorldID Auto Const Mandatory
 	{ Initialise with ID No. of this Region's World }
 	;LEGEND - WORLD IDs
 	; [0] - COMMONWEALTH
 	; [1] - FAR HARBOR
 	; [2] - NUKA WORLD
 
-	Int Property iRegionID Auto Const
+	Int Property iRegionID Auto Const Mandatory
 	{ Initialise with Region No. in World }
 	
-	RegionPresetDetailsStruct[] Property PresetDetails Auto
+	RegionPresetDetailsStruct[] Property PresetDetails Auto Mandatory
 	{ Init one member for each Preset on index 1-3, leave index 0 as None. 
 	Fill struct members/settings accordingly. }
 
@@ -52,7 +52,7 @@ EndGroup
 Group ObjectInventory
 { All In-world objects such as Spawnpoints and Travel Locs here }
 
-	ObjectReference[] Property kTravelLocs Auto
+	ObjectReference[] Property kTravelLocs Auto Mandatory
 	{ Fill with all "Travel Location" Xmarkers placed in world }
 
 	;ObjectReference[] Property kSpawnPoints Auto ;May not be necessary, or even can be moved to tracking script
@@ -72,16 +72,16 @@ EndGroup
 Group EncounterZoneProperties
 {EZ Properties and settings for this Region}
 
-	EncounterZone[] Property kRegionLevelsEasy Auto Const
+	EncounterZone[] Property kRegionLevelsEasy Auto Const Mandatory
 	{ Fill with custom EZs to suit this Region/Difficulty }
 
-	EncounterZone[] Property kRegionLevelsHard Auto Const
+	EncounterZone[] Property kRegionLevelsHard Auto Const Mandatory
 	{ Fill with custom EZs to suit this Region/Difficulty }
 
-	EncounterZone[] Property kRegionLevelsEasyNoBorders Auto Const
+	EncounterZone[] Property kRegionLevelsEasyNoBorders Auto Const Mandatory
 	{ Fill with custom EZs to suit this Region/Difficulty }
 
-	EncounterZone[] Property kRegionLevelsHardNoBorders Auto Const
+	EncounterZone[] Property kRegionLevelsHardNoBorders Auto Const Mandatory
 	{ Fill with custom EZs to suit this Region/Difficulty }
 
 	Int Property iEzApplyMode Auto
@@ -103,7 +103,7 @@ EndGroup
 Group RegionSettings
 { Various settings for this Region }
 
-	Bool Property bRegionEnabled Auto ;On/Off switch for this Region
+	Bool Property bRegionEnabled Auto Mandatory ;On/Off switch for this Region
 	{ Initialise true. Set in Menu. Disables the mod in this Region if set false. }
 
 	Int Property iCurrentPreset Auto
@@ -236,7 +236,15 @@ EndEvent
 
 Event SOTC:MasterQuestScript.MasterSingleSettingUpdate(SOTC:MasterQuestScript akSender, Var[] akArgs)
 
-	if (akArgs[0] as string) == "RegionSwarmChance"
+	if (akArgs[0] as string) == "EzApplyMode"
+	
+		iEzApplyMode = akArgs[1] as Int
+
+	elseif (akArgs[0] as string) == "EzBorderMode"
+	
+		iEzBorderMode = akArgs[1] as Int
+
+	elseif (akArgs[0] as string) == "RegionSwarmChance"
 	
 		iRandomSwarmChance = akArgs[1] as Int
 		
