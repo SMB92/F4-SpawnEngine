@@ -4,8 +4,7 @@ Scriptname SOTC:Fragments:Terminals:TERM_SOTC_RegionSelectionMenu Extends Termin
 ;BEGIN FRAGMENT Fragment_Terminal_01
 Function Fragment_Terminal_01(ObjectReference akTerminalRef)
 ;BEGIN CODE
-SOTC_Global_CurrentMenuRegion.SetValue(0.0)
-;Region index is offset by one due to arrays.
+SOTC_Global_CurrentMenuRegion.SetValue(20.0)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -14,7 +13,6 @@ EndFunction
 Function Fragment_Terminal_02(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(1.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -23,7 +21,6 @@ EndFunction
 Function Fragment_Terminal_03(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(2.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -32,7 +29,6 @@ EndFunction
 Function Fragment_Terminal_04(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(3.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -41,7 +37,6 @@ EndFunction
 Function Fragment_Terminal_05(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(4.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -50,7 +45,6 @@ EndFunction
 Function Fragment_Terminal_06(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(5.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -59,7 +53,6 @@ EndFunction
 Function Fragment_Terminal_07(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(6.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -68,7 +61,6 @@ EndFunction
 Function Fragment_Terminal_08(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(7.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -77,7 +69,6 @@ EndFunction
 Function Fragment_Terminal_09(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(8.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -86,7 +77,6 @@ EndFunction
 Function Fragment_Terminal_10(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(9.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -95,7 +85,6 @@ EndFunction
 Function Fragment_Terminal_11(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(10.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -104,7 +93,6 @@ EndFunction
 Function Fragment_Terminal_12(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(11.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -113,7 +101,6 @@ EndFunction
 Function Fragment_Terminal_13(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(12.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -122,7 +109,6 @@ EndFunction
 Function Fragment_Terminal_14(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(13.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -131,7 +117,6 @@ EndFunction
 Function Fragment_Terminal_15(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(14.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -140,7 +125,6 @@ EndFunction
 Function Fragment_Terminal_16(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(15.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -149,7 +133,6 @@ EndFunction
 Function Fragment_Terminal_17(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(16.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -158,7 +141,6 @@ EndFunction
 Function Fragment_Terminal_18(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(17.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -167,7 +149,6 @@ EndFunction
 Function Fragment_Terminal_19(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(18.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -176,7 +157,6 @@ EndFunction
 Function Fragment_Terminal_20(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC_Global_CurrentMenuRegion.SetValue(19.0)
-;Region index is offset by one due to arrays.
 ;END CODE
 EndFunction
 ;END FRAGMENT

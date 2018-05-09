@@ -3,9 +3,13 @@
 
 ## NEWS
 
+### SpawnEngine updated to version 0.08.04.180509
+
+[09/05/2018] Small fixes and tweaks
+
 ### SpawnEngine updated to version 0.08.03.180509
 
-[08/05/2018] Rather critical patch to the Alpha, fixed AuxMenu terminal calling wrong function preventing proper mod startup.
+[09/05/2018] Rather critical patch to the Alpha, fixed AuxMenu terminal calling wrong function preventing proper mod startup.
 
 ### SpawnEngine updated to version 0.08.02.180508
 
@@ -35,6 +39,21 @@ Please be patient while work continues on both a working test file and official 
 
 ## UPDATE LOG
 
+##### [09/05/2018] SpawnEngine updated to version 0.08.04.180509
+
+###### HOUSEKEEPING:
+- Fixed spelling mistake in new Debug note on AuxQuestScript.
+- Removed old AddTextReplacementData() call from MainMenu terminal fragment. This was left over from various tests and logging an error.
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Increased Init timer on ActorQuestScript to 5 seconds to allow Aliases scripts a bit more time to do their thing.
+- Converted arrays used for storing spent SpawnPoints from variables to arrays on RegionTrackerScript to avoid massive stack dumps from scripts being instanced before this was available. It is better the yare properties anyway, in the case we want direct access to these lists. 
+- Added missing ClearMenuVars() call to MasterQuestScript so Menu unlocks properly after first time setup.
+
+###### MISC NOTES:
+- All Optional Aliases in the ESM were converted to force fill so they always instantiate their scripts as expected on Quest start. At this point it is considered to move all Quest scripts to the first Alias on Quests, as it may be friendlier to uninstall the mod (Quest script instantiate on load, whereas Alias scripts on fill, and maybe be better destroyed on unfill). 
+
+------
 ##### [09/05/2018] SpawnEngine updated to version 0.08.03.180509
 
 ###### SCRIPT OPTIMIZATION/REVISION/FIXES:

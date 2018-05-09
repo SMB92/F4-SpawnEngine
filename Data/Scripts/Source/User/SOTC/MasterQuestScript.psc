@@ -629,6 +629,7 @@ Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
 			iMenuSettingsMode = 10
 			SendMasterMassEvent() ;Set the preset on all Regions/Spawntypes/Actors.
 			SOTC_MasterGlobal.SetValue(1.0) ;Officially turned on.
+			ClearMenuVars()
 			
 			;Add more work if needed
 		

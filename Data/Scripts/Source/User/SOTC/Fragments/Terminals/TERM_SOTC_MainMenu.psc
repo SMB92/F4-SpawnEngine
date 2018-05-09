@@ -10,8 +10,6 @@ MasterScript.SetMenuSettingsMode(0)
 
 MasterScript.SOTC_Global01.SetValue(MasterScript.iCurrentPreset as Float)
 
-((Self as Form) as ObjectReference).AddTextReplacementData("Global01", MasterScript.SOTC_Global01)
-
 
 ;Custom type properties have issues being declared on terminal script. Hence the casting.
 ;Rather than link to the Globals in the fragments, can just link to them in Master anyway.

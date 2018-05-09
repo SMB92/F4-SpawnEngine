@@ -44,10 +44,18 @@ Group PointKeywords
 	
 EndGroup
 
-ObjectReference[] kSpentPoints1
-ObjectReference[] kSpentPoints2
-ObjectReference[] kSpentPoints3
-ObjectReference[] kSpentPoints4
+Group Points
+
+	ObjectReference[] Property kSpentPoints1 Auto 
+	{ Init one member of None. Converted to Property due to Init errors on mod start. }
+	ObjectReference[] Property kSpentPoints2 Auto
+	{ Init one member of None. Converted to Property due to Init errors on mod start. }
+	ObjectReference[] Property kSpentPoints3 Auto
+	{ Init one member of None. Converted to Property due to Init errors on mod start. }
+	ObjectReference[] Property kSpentPoints4 Auto
+	{ Init one member of None. Converted to Property due to Init errors on mod start. }
+
+EndGroup
 
 Bool bInit ;Security check to make sure Init events don't fire again while running
 
@@ -59,11 +67,11 @@ Event OnAliasInit()
 	
 	if !bInit
 		
-		;Init the dynamic arrays
-		kSpentPoints1 = new ObjectReference[0]
-		kSpentPoints2 = new ObjectReference[0]
-		kSpentPoints3 = new ObjectReference[0]
-		kSpentPoints4 = new ObjectReference[0]
+		;Init the dynamic arrays - DEV NOTE: Converted to Proeprties in 0.08.04 due to initialisation errors.
+		;kSpentPoints1 = new ObjectReference[0]
+		;kSpentPoints2 = new ObjectReference[0]
+		;kSpentPoints3 = new ObjectReference[0]
+		;kSpentPoints4 = new ObjectReference[0]
 		
 		RegionScript.CleanupManager = Self
 		Utility.Wait(0.5) ;Wait 1/2 a second so RegionQuestScript should finish initialising

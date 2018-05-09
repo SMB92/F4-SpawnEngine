@@ -146,8 +146,8 @@ Event OnQuestInit()
 		bInit = true
 	endif
 	
-	StartTimer(2, iInitTimerID) ;Defer until we are sure Alias scripts have added to above arrays.
-	;2 seconds should suffice. Work continues in OnTimer block.
+	StartTimer(5, iInitTimerID) ;Defer until we are sure Alias scripts have added to above arrays.
+	;5 seconds should suffice avoiding fill problems observed at speed. Work continues in OnTimer block.
 	
 EndEvent
 
