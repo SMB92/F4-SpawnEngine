@@ -19,7 +19,7 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_02
 Function Fragment_Terminal_02(ObjectReference akTerminalRef)
 ;BEGIN CODE
-(MasterQuest as SOTC:MasterQuestScript).PerformFirstTimeSetup(3)
+(AuxQuest as SOTC:AuxilleryQuestScript).PrepareToInitSpawnEngine(3)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -27,3 +27,5 @@ EndFunction
 ;END FRAGMENT CODE - Do not edit anything between this and the begin comment
 
 Quest Property MasterQuest Auto Const
+
+Quest Property AuxQuest Auto Const

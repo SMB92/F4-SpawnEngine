@@ -9,7 +9,7 @@ SOTC:MasterQuestScript MasterScript = MasterQuest as SOTC:MasterQuestScript
 
 MasterScript.SetMenuSettingsMode(10) ;Pending Full Preset
 
-MasterScript.iCurrentPreset = 1
+MasterScript.iCurrentPreset = 3
 
 MasterScript.RegisterMasterForPipBoyCloseEvent(0, 0)
 ;END CODE
@@ -19,7 +19,7 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_02
 Function Fragment_Terminal_02(ObjectReference akTerminalRef)
 ;BEGIN CODE
-(MasterQuest as SOTC:MasterQuestScript).PerformFirstTimeSetup(1)
+(AuxQuest as SOTC:AuxilleryQuestScript).PrepareToInitSpawnEngine(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -27,3 +27,5 @@ EndFunction
 ;END FRAGMENT CODE - Do not edit anything between this and the begin comment
 
 Quest Property MasterQuest Auto Const
+
+Quest Property AuxQuest Auto Const

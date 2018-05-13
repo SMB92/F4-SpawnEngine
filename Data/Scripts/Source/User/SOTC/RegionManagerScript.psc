@@ -1,4 +1,4 @@
-Scriptname SOTC:RegionQuestScript extends Quest
+Scriptname SOTC:RegionManagerScript extends ObjectReference
 { Used for each Region in a World. Holds all specific properties for the Region }
 ;Written by SMB92
 ;Special thanks to J. Ostrus [BigandFlabby] for code contributions that made this mod possible.
@@ -21,33 +21,46 @@ Group PrimaryProperties
 { Primary Properties Group }
 
 	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
-	{ Fill with MasterQuest }
-	
-	SOTC:ThreadControllerScript Property ThreadController Auto Const Mandatory
-	{ Fill with ThreadController Alias }
-
-	SOTC:RegionTrackerScript Property CleanupManager Auto Mandatory
-	{ Initialise with one member of None. Fills dynamically. }
-
-	SOTC:SpawnTypeRegionalScript[] Property SpawnTypes Auto Mandatory
-	{ Initialise with one member of None. Fills dynamically. }
+	{ Fill with MasterQuest. }
 
 	Int Property iWorldID Auto Const Mandatory
-	{ Initialise with ID No. of this Region's World }
+	{ Initialise with ID No. of this Region's World. }
 	;LEGEND - WORLD IDs
 	; [0] - COMMONWEALTH
 	; [1] - FAR HARBOR
 	; [2] - NUKA WORLD
 
 	Int Property iRegionID Auto Const Mandatory
-	{ Initialise with Region No. in World }
+	{ Initialise with Region No. in World. }
 	
 	RegionPresetDetailsStruct[] Property PresetDetails Auto Mandatory
 	{ Init one member for each Preset on index 1-3, leave index 0 as None. 
-	Fill struct members/settings accordingly. }
+Fill struct members/settings accordingly. }
+
+	MiscObject Property kTrackerObject Auto Const
+	{ Fill with base MiscObject for the Tracker for this Region. Instanced at runtime. }
+	
+	MiscObject[] Property kSpawnTypeObjects Auto Const
+	{ Fill with base MiscObjects containing the ST Regional scripts for this Region. Instanced at runtime. }
+	;DEV NOTE: Only STR's with a BaseClassID need unique base objects, the rest of the members can be the same base object
+	;as they will be setup with all other data required data from here.
 
 EndGroup
 
+
+Group Dynamic
+
+	SOTC:ThreadControllerScript Property ThreadController Auto
+	{ Init None. Fills dynamically. }
+	
+	SOTC:RegionTrackerScript Property CleanupManager Auto Mandatory
+	{ Initialise with one member of None. Fills dynamically. }
+
+	SOTC:SpawnTypeRegionalScript[] Property SpawnTypes Auto Mandatory
+	{ Initialise with one member of None. Fills dynamically. }
+	
+EndGroup
+	
 
 Group ObjectInventory
 { All In-world objects such as Spawnpoints and Travel Locs here }
@@ -152,8 +165,10 @@ Float fTrackerWaitClock ;Wait timer based on Init order. Staggers the startup of
 
 ;Temp Variables
 ;---------------
-Bool bInit ;Security check to make sure Init events don't fire again while running
+
+Bool bInit ;Security check to make sure Init events/functions don't fire again while running
 ;NOTE - Random events are currently not fully implemented on the Regional level.
+
 Bool bEventThreadLockEngaged ;Used to skip/block spawn event checker
 ObjectReference kEventPoint ;When an event fires, this will set with the intercepted calling point
 
@@ -162,24 +177,47 @@ ObjectReference kEventPoint ;When an event fires, this will set with the interce
 ;INITIALISATION & SETTINGS EVENTS
 ;------------------------------------------------------------------------------------------------
 
-Event OnQuestInit()
+;DEV NOTE: Init events/functions now handled by Masters creating the instances.
+
+Function PerformFirstTimeSetup(SOTC:WorldManagerScript aWorldManager, SOTC:ThreadControllerScript aThreadController, \
+ObjectReference akMasterMarker, Int aiPresetToSet)
 	
 	if !bInit
 		
-		MasterScript.Worlds[iWorldID].Regions.Insert(Self, iRegionID) ;Add self to Master array
+		ThreadController = aThreadController
+		iCurrentPreset = aiPresetToSet
+		aWorldManager.Regions[iRegionID] = Self ;Only needs to access it once
 		
 		RegisterForCustomEvent(MasterScript, "PresetUpdate")
 		RegisterForCustomEvent(MasterScript, "ForceResetAllSps")
 		RegisterForCustomEvent(MasterScript, "MasterSingleSettingUpdate")
 		
-		fTrackerWaitClock = ThreadController.IncrementActiveRegionsCount(1) as float
+		ObjectReference kNewInstance
+		
+		;Create tracker first
+		fTrackerWaitClock = (ThreadController.IncrementActiveRegionsCount(1)) * 1.2 as float
 		;This function returns the current count of Regions, so we can use this for our stagger timer.
+		kNewInstance = akMasterMarker.PlaceAtMe(kTrackerObject, 1 , false, false, false)
+		(kNewInstance as SOTC:RegionTrackerScript).PerformFirstTimeSetup(Self, fTrackerWaitClock)
+		
+		;Create instances of spawntype objectreferences and set them up
+		Int iCounter
+		Int iSize = kSpawnTypeObjects.Length
+		
+		while iCounter < iSize
+		
+			kNewInstance = akMasterMarker.PlaceAtMe(kSpawnTypeObjects[iCounter], 1 , false, false, false)
+			(kNewInstance as SOTC:SpawnTypeRegionalScript).PerformFirstTimeSetup(Self, iRegionID, iWorldID, ThreadController, true, iCurrentPreset)
+			
+			iCounter += 1
+			
+		endwhile
 		
 		bInit = true
 		
 	endif
 	
-EndEvent
+EndFunction
 
 
 Event SOTC:MasterQuestScript.PresetUpdate(SOTC:MasterQuestScript akSender, Var[] akArgs)
@@ -198,6 +236,7 @@ Event SOTC:MasterQuestScript.PresetUpdate(SOTC:MasterQuestScript akSender, Var[]
 	
 			iCurrentPreset = akArgs[3] as Int
 			ReshuffleActorLists(akArgs[2] as Bool) ;(akArgs[2]) - bool to reset custom spawntype settings
+			;DEV NOTE: Calling this function will safely reinitialise the arrays, no work need be done here.
 			
 			bRegionEnabled = bEnabled ;Leave off or turn back on
 		else
@@ -366,11 +405,11 @@ Bool Function RegionSpawnCheck(ObjectReference akCallingPoint, Int aiPresetRestr
 	;NOTE - Random events are currently not fully implemented on the Regional level. No code iSize
 	;included here for them yet. 
 	
-	if !bRegionEnabled && ((Utility.RandomInt(1,100)) > iRegionSpawnChance)
-		return false ;Red light.
+	if !bRegionEnabled && ((Utility.RandomInt(1,100)) < iRegionSpawnChance)
+		return true ;Red light.
 	endif
 	
-	return true ;Green light.
+	return false ;Green light.
 
 EndFunction
 
@@ -381,7 +420,7 @@ ObjectReference[] Function GetRandomTravelLocs(int aiNumLocations)
 ;Note: It is possible that this function can return the same location (markers) 2 or all 3 times.
 ;In that event, we don't really care because they'll just sandbox that location, if they get there.
 
-	ObjectReference[] kLocListToSend = new ObjectReference[0]
+	ObjectReference[] kLocListToSend = new ObjectReference[1]
 	Int iSize = kTravelLocs.Length - 1
 	
 	Int iCounter = 0
@@ -394,6 +433,10 @@ ObjectReference[] Function GetRandomTravelLocs(int aiNumLocations)
 		iCounter += 1
 		
 	endwhile
+	
+	if kLocListToSend[0] == None ;Security measure
+		kLocListToSend.Remove(0)
+	endif
 	
 	return kLocListToSend
 	
@@ -442,7 +485,7 @@ EndFunction
 EncounterZone[] Function GetRandomEzList(int aiNumEzsRequired)
 
 	EncounterZone[] kEzListToUse
-	EncounterZone[] kEzListToReturn = new EncounterZone[0] ;The new list to build and return
+	EncounterZone[] kEzListToReturn = new EncounterZone[1] ;The new list to build and return
 	
 	if iEzBorderMode == 0 ;Default mode, uses normal list (enemies don't follow indoors)
 	;Assume this mode first, more likely the user will have this mode on
@@ -477,6 +520,10 @@ EncounterZone[] Function GetRandomEzList(int aiNumEzsRequired)
 		iCounter += 1
 		
 	endwhile
+	
+	if kEzListToReturn[0] == None ;Security measure
+		kEzListToReturn.Remove(0)
+	endif
 	
 	return kEzListToReturn
 

@@ -1,6 +1,5 @@
-Scriptname SOTC:ActorQuestScript extends Quest
-{ Used for every Actor Type, instantiated via Quest. Holds all properties and
-links to any sub classes which are instanced via Aliases on the Quest }
+Scriptname SOTC:ActorManagerScript extends ObjectReference
+{ Represents an Actor Type, managing all subclasses and data. }
 ;Written by SMB92
 ;Special thanks to J. Ostrus [BigandFlabby] for code contributions that made this mod possible.
 
@@ -16,14 +15,11 @@ links to any sub classes which are instanced via Aliases on the Quest }
 ;PROPERTIES & IMPORTS
 ;------------------------------------------------------------------------------------------------
 
-Group PrimaryProperties
+Group Primary
 { Primary Properties Group }
 
 	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
 	{ Fill with MasterQuest }
-
-	SOTC:SpawnTypeMasterScript Property MasterActorList Auto Const Mandatory
-	{ Fill with Master SpawnType 0 Script (same as MasterScript.SpawnTypeMasters[0]). This holds all Actors. }
 
 	String Property sActorType Auto Const Mandatory
 	{ Fill with generic name for this Actor (i.e Raider), used for sorting/displaying. }
@@ -33,22 +29,38 @@ Group PrimaryProperties
 
 	Bool[] Property bAllowedSpawnTypes Auto Const Mandatory
 	{ Set true or false on each member for each SpawnType to include this Actor in. }
-
-	SOTC:ActorClassPresetScript[] Property ClassPresets Auto Mandatory
-	{ Initialise one member of None. Fills dynamically. Used for Class preset storage. }
-
-	SOTC:ActorWorldPresetsScript[] Property WorldPresets Auto Mandatory
-	{ Initialise one member of None. Fills dynamically. Used for Region preset storage. }
-
-	SOTC:ActorGroupLoadoutScript[] Property GroupLoadouts Auto Mandatory
-	{ Init one member of None. Fills dynamically. All GroupLoadouts scripts will add themselves here }
-	;This particular property exists so that Alias fill order for Class Presets and Group Loadouts does
-	;NOT have to be in any specific order.
+	
+	;Array fill order for the below does not matter
+	
+	MiscObject[] Property kWorldPresetObjects Auto Const Mandatory
+	{ Fill with base MiscObjects containing WorldPreset scripts for this Actor. Instanced at runtime. }
+	
+	MiscObject[] Property kClassPresetObjects Auto Const Mandatory
+	{ Fill with base MiscObjects containing ClassPreset scripts for this Actor. Instanced at runtime. }
+	
+	MiscObject[] Property kGroupLoadoutObjects Auto Const Mandatory
+	{ Fill with base MiscObjects containing GroupLoadout scripts for this Actor. Instanced at runtime. }
 
 EndGroup
 
 
-Group SettingsProperties
+Group Dynamic
+
+	SOTC:ActorWorldPresetsScript[] Property WorldPresets Auto
+	{ Initialise one member of None. Fills dynamically. Used for Region preset storage. }
+
+	SOTC:ActorClassPresetScript[] Property ClassPresets Auto
+	{ Initialise one member of None. Fills dynamically. Used for Class preset storage. }
+
+	SOTC:ActorGroupLoadoutScript[] Property GroupLoadouts Auto
+	{ Init one member of None. Fills dynamically. All GroupLoadouts scripts will add themselves here }
+	;This particular property exists so that Alias fill order for Class Presets and Group Loadouts does
+	;NOT have to be in any specific order.
+	
+EndGroup
+
+
+Group Config
 { Properties used in spawning etc }
 
 	Bool Property bActorEnabled Auto Mandatory
@@ -85,7 +97,7 @@ Group SettingsProperties
 EndGroup
 
 
-Group LootSystemProperties
+Group LootConfig
 
 	Bool Property bLootSystemEnabled Auto Mandatory
 	{ Init false. Set in Menu. When on, spawned Actors of this type may possibly 
@@ -131,79 +143,127 @@ EndGroup
 ;temporary loot to the lists, in case we want to do so for some event such as a quest etc. 
 
 
-Bool bInit ;Security check to make sure Init events don't fire again while running
+Bool bInit ;Security check to make sure Init events/functions don't fire again while running
 
-Int iInitTimerID = 1 Const ;This timer appears whenever we need to delay some work after Init events
 
 ;------------------------------------------------------------------------------------------------
 ;INITIALISATION FUNCTIONS & EVENTS
 ;------------------------------------------------------------------------------------------------
 
-Event OnQuestInit()
-	
+;DEV NOTE: Init events/functions now handled by Masters creating the instances.
+
+;Creates all the instances to data container miscobjects
+Function PerformFirstTimeSetup(ObjectReference akMasterMarker)
+
 	if !bInit
-		MasterActorList.ActorLibrary.Insert(Self, iActorID) ;Insert on the Master list.
-		bInit = true
-	endif
-	
-	StartTimer(5, iInitTimerID) ;Defer until we are sure Alias scripts have added to above arrays.
-	;5 seconds should suffice avoiding fill problems observed at speed. Work continues in OnTimer block.
-	
-EndEvent
 
-
-
-Event OnTimer(int aiTimerID)
-
-	if aiTimerID == iInitTimerID
-	
-		InitResetGroupLoadouts(false) ;Initialise and sort GroupLoadouts
+		MasterScript.SpawnTypeMasters[0].ActorList[iActorID] = Self ;Set self on Master
 		
+		;Create instances of subclass objectreferences and set them up
+		
+		;Start WorldPreset subclasses
+		Int iCounter
+		Int iSize = kWorldPresetObjects.Length
+		ObjectReference kNewInstance
+		
+		while iCounter < iSize
+		
+			kNewInstance = akMasterMarker.PlaceAtMe(kWorldPresetObjects[iCounter], 1 , false, false, false)
+			(kNewInstance as SOTC:ActorWorldPresetsScript).PerformFirstTimeSetup(Self)
+			
+			iCounter += 1
+			
+		endwhile
+		
+		;Start ClassPreset subclasses
+		iCounter = 0
+		iSize = kClassPresetObjects.Length
+		
+		while iCounter < iSize
+		
+			kNewInstance = akMasterMarker.PlaceAtMe(kClassPresetObjects[iCounter], 1 , false, false, false)
+			(kNewInstance as SOTC:ActorClassPresetScript).PerformFirstTimeSetup(Self)
+			
+			iCounter += 1
+			
+		endwhile
+		
+		;Start GroupLoadout subclasses
+		iCounter = 0
+		iSize = kGroupLoadoutObjects.Length
+		
+		while iCounter < iSize
+		
+			kNewInstance = akMasterMarker.PlaceAtMe(kGroupLoadoutObjects[iCounter], 1 , false, false, false)
+			(kNewInstance as SOTC:ActorGroupLoadoutScript).PerformFirstTimeSetup(Self)
+			
+			iCounter += 1
+			
+		endwhile
+		
+		bInit = true
+	
 	endif
 	
-EndEvent
+EndFunction
 
 
-;Used to either fill or reset/refill ActorClassPresetScript's GroupLoadout array
-Function InitResetGroupLoadouts(Bool abReset)
+;Distributes Group loadouts and also cleans up arrays ready for functions.
+Function DistributeGroupLoadouts()
 	
 	Bool bAllowPaGroups = MasterScript.bAllowPowerArmorGroups
 	Int iCounter
 	Int iSize
 
-	if !abReset ;Add/Init
 	
-		iSize = GroupLoadouts.Length
-			
-		while iCounter < iSize
-			GroupLoadouts[iCounter].AddGroupToClassPresets(bAllowPaGroups)
-			;If PA groups are disallowed, external function call returns immediately and loop continues.
-			iCounter += 1
-		endwhile
-
-	else ;Actually reset the lists, not just empty them
-		
-		;Clear first
-		iSize = ClassPresets.Length
-		
-		while iCounter < iSize
-			ClassPresets[iCounter].GroupLoadouts.Clear() ;Clear before refilling.
-			iCounter += 1
-		endwhile
-		
-		;Refill/init
-		iCounter = 0
-		iSize = GroupLoadouts.Length
-			
-		while iCounter < iSize
-			GroupLoadouts[iCounter].AddGroupToClassPresets(bAllowPaGroups)
-			;If PA groups are disallowed, external function call returns immediately and loop continues.
-			iCounter += 1
-		endwhile
-		
+	if GroupLoadouts[0] == None ;Check if first member is None from Init (patch 0.09.01)
+		GroupLoadouts.Remove(0)
 	endif
 	
+	;Clear first
+	iSize = ClassPresets.Length
+	Debug.Notification("About to add Group to Class, length of Classes is " +ClassPresets.Length)
+	Debug.Notification("About to clear " +ClassPresets)
+	
+	while iCounter < iSize
+		
+		if ClassPresets[iCounter] != None
+			ClassPresets[iCounter].SafelyClearGroupLoadouts() ;Clear before refilling.
+			iCounter += 1
+		endif
+		
+	endwhile
+	
+	Debug.Notification("Clearing Done " +ClassPresets)
+	
+	;Refill/init
+	iCounter = 0
+	iSize = GroupLoadouts.Length
+		
+	while iCounter < iSize
+		GroupLoadouts[iCounter].AddGroupToClassPresets(bAllowPaGroups)
+		;If PA groups are disallowed, external function call returns immediately and loop continues.
+		iCounter += 1
+	endwhile
+	
+	Debug.Notification("Distribution Done " +ClassPresets)
+		
+	;Now check and remove all None members from the 1st index of ClassPresets
+	;There should be one GroupLoadout for each Preset!!
+	iCounter = 0
+	iSize = ClassPresets.Length
+		
+	while iCounter < iSize
+		
+		if (ClassPresets[iCounter] != None) && (ClassPresets[iCounter].GroupLoadouts[0] == None) && (ClassPresets[iCounter].GroupLoadouts.Length >= 2)
+		;Check if Actor has CP, first member is None and if any more members in the list, if so, remove first member. 
+			ClassPresets[iCounter].GroupLoadouts.Remove(0)
+		endif
+			
+	endwhile
+	
 EndFunction
+
 
 ;Add or remove Power Armor units from Class Presets
 Function AddRemovePowerArmorGroups(Bool abRemove)
@@ -235,6 +295,20 @@ Function AddRemovePowerArmorGroups(Bool abRemove)
 		endwhile
 		
 	endif
+	
+	;Now check and remove all None members from the 1st index of ClassPresets
+	;There should be one GroupLoadout for each Preset!!
+	iCounter = 0
+	iSize = ClassPresets.Length
+		
+	while iCounter < iSize
+		
+		if (ClassPresets[iCounter] != None) && (ClassPresets[iCounter].GroupLoadouts[0] == None) && (ClassPresets[iCounter].GroupLoadouts.Length >= 2)
+		;Check if Actor has CP, first member is None and if any more members in the list, if so, remove first member. 
+			ClassPresets[iCounter].GroupLoadouts.Remove(0)
+		endif
+			
+	endwhile
 	
 EndFunction
 

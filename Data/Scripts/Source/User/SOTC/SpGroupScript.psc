@@ -19,34 +19,37 @@ Scriptname SOTC:SpGroupScript extends ObjectReference
 
 import SOTC:Struct_ClassDetails ;Struct definition needs to be present
 
-Group RelevantScriptLinks
-{ Links to relevant Master and Global scripts }
+
+SOTC:ThreadControllerScript ThreadController
+;{ Init None, fills OnCellAttach. }
+
+SOTC:RegionManagerScript RegionManager
+;{ Init None, fills OnCellAttach. }
+	
+SOTC:RegionTrackerScript CleanupManager
+;{ Init None, fills OnCellAttach. }
+	
+SOTC:SpawnTypeRegionalScript SpawnTypeScript
+;{ Init None, fills OnCellAttach. }
+
+
+Group Primary
 
 	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
 	{ Fill with MasterQuest }
-
-	SOTC:ThreadControllerScript Property ThreadController Auto Const Mandatory
-	{ Fill with ThreadController Alias }
-
-	SOTC:RegionQuestScript Property RegionScript Auto Const Mandatory
-	{ Fill with this Region's Quest }
 	
-	SOTC:RegionTrackerScript Property CleanupManager Auto Const Mandatory
-	{ Fill with RefAlias attached to above RegionQuest }
+	Int Property iWorldID Auto Const Mandatory
+	{ Fill with the World ID where this SP is placed. }
+	; LEGEND - WORLDS
+	; [0] - COMMONWEALTH
+	; [1] - FAR HARBOR
+	; [2] - NUKA WORLD
+
+	Int Property iRegionID Auto Const Mandatory
+	{ Fill with the RegionID where this SP is placed. }
 	
-	SOTC:SpawnTypeRegionalScript Property SpawnTypeScript Auto Const Mandatory
-	{ Fill with desired Spawntype script for this Region }
-	;LEGEND - SPAWNTYPES (REGIONAL)
-	; [0] - MAIN RANDOM
-
-EndGroup
-
-
-Group PrimaryProperties
-{ Critical Properties defining this Spawnpoint }
-
-	Int Property iChanceToFire Auto Const Mandatory
-	{ Use this define an extra chance/dice roll for this SP or set 100 for always. }
+	Int Property iSpawnTypeID Auto Const Mandatory
+	{ Fill with ID of the Spawntype wished to spawn actors from. }
 
 	ReferenceAlias Property kPackage Auto Const Mandatory
 	{ Fill with the desired package, typically SOTC_TravelPackage02. }
@@ -64,7 +67,7 @@ Group PrimaryProperties
 	; HOLD POSITION (SNIPER)
 	; PATROL (USE CUSTOM LOC MARKERS OR IDLE MARKERS)
 	; AMBUSH - RUSH THE PLAYER (EITHER ON SPAWN OR WAIT)
-
+	
 	Keyword[] Property kPackageKeywords Auto Const Mandatory
 	{ Fill with as many package keywords as needed (even if just 1). Used for linking to package marker(s) i.e Travel Locations. }
 	
@@ -73,6 +76,14 @@ Group PrimaryProperties
 	
 	Bool Property bTravelling Auto Const Mandatory
 	{ If Package is travelling, set True (most common use). }
+	
+EndGroup
+
+
+Group Config
+
+	Int Property iChanceToFire Auto Const Mandatory
+	{ Use this define an extra chance/dice roll for this SP or set 100 for always. }
 
 	Bool Property bAllowVanilla Auto Const Mandatory
 	{ Set true only if wanting this point to be allowed in Vanilla Mode. }
@@ -131,7 +142,7 @@ EndGroup
 ; MULTI GROUP MODE - MUST HAVE SINGLE TRAVEL LOC PACKAGE SET
 ;Multigroup spawns are deliberately designed to create spawning "battles", therefore they are all given
 ;a single travel destination so they will run into each other. All other Package parameters will be
-;ignored, however the script will still get a random location marker from the RegionScript. Survivors
+;ignored, however the script will still get a random location marker from the RegionManager. Survivors
 ;will still go to their destination and Sandbox there. 
 ; MULTI POINT HELPER SCRIPT:
 ;Although the Multigroup spawn mode/functions on the main SP script are designed to only have one travel
@@ -146,7 +157,7 @@ EndGroup
 ;Region basis). This package is defined on every SpGroupPointScript, and will simply send the group running
 ;from their spawned location straight to the player where they will likely engage in combat. Survivors will
 ;then travel to a single location and sandbox until killed/cleaned. There is also a setting defined on each
-;ActorQuestScript for each Actor that can define/turn them friendly to player, preventing this feature from
+;ActorManagerScript for each Actor that can define/turn them friendly to player, preventing this feature from
 ;ever occurring on a known friendly Actor/faction group.
 ; STAMPEDE PACKAGE
 ;Added in version 0.06.01, this is an extension of the Swarm/Infestation feature. Cetain Actors that support
@@ -167,8 +178,8 @@ Int iSpCooldownTimerID = 2 Const
 Bool bSpawnpointActive ;Condition check. Once SP is activated this is set true.
 
 ActorClassPresetScript ActorParamsScript
-;NOTE: We never get the ActorQuestScript, we go straight for the ClassPresetScript in order to get parameters.
-;We can and will still access the ActorQUestScript from here.
+;NOTE: We never get the ActorManagerScript, we go straight for the ClassPresetScript in order to get parameters.
+;We can and will still access the ActorManagerScript from here.
 ;The GetRandomActor(s) function on the SpawnTypeRegionalScript returns this. 
 
 Actor[] kGrouplist ;Stores all Actors spawned on this instance
@@ -197,6 +208,7 @@ Event OnCellAttach()
 
 EndEvent
 
+
 Event OnTimer(int aiTimerID)
 
 	if aiTimerID == iStaggerStartupTimerID
@@ -207,6 +219,8 @@ Event OnTimer(int aiTimerID)
 		
 			;NOTE: Master and Regional checks are done before GetThread, so it is possible for an event to intercept before ThreadController can deny
 			;Events are usually exempt from ThreadController checks, although they do count towards any of the limits.
+			
+			SetSpScriptLinks()
 		
 			;Master Level checks/intercepts
 			if MasterScript.MasterSpawnCheck(Self as ObjectReference, bAllowVanilla) ;MASTER CHECK: If true, denied
@@ -216,17 +230,22 @@ Event OnTimer(int aiTimerID)
 				return
 			endif
 			
+			Debug.Notification("Passed Master Check")
+			
 			;Region Level checks/intercept. This will send in local spawn parameters if no intercept takes place.
-			;NOTE: as of version 0.06.01, no events are defined on RegionScript, will always return false. 
-			if RegionScript.RegionSpawnCheck(Self as ObjectReference, iPresetRestriction) ;REGION CHECK: If true, denied
+			;NOTE: as of version 0.06.01, no events are defined on RegionManager, will always return false. 
+			if RegionManager.RegionSpawnCheck(Self as ObjectReference, iPresetRestriction) ;REGION CHECK: If true, denied
 				;Region script assuming control, kill this thread and disable
 				Self.Disable()
 				CleanupManager.AddSpentPoint(Self as ObjectReference) ;All points can be added by Object rather than script type
 				return
 			endif
 			
+			Debug.Notification("Passed Region Check")
+			
 			if (SpawnTypeScript.bSpawnTypeEnabled) && (ThreadController.GetThread(iThreadsRequired)) && \
 			((Utility.RandomInt(1,100)) < iChanceToFire) ;LOCAL CHECK
+				Debug.Notification("Spawning")
 				PrepareLocalSpawn() ;Do Spawning
 			Endif
 			
@@ -245,7 +264,20 @@ Event OnTimer(int aiTimerID)
 EndEvent
 
 
+Function SetSpScriptLinks()
+	
+	;Since patch 0.10.01, all instances are created at runtime (first install). Necessary evil.
+	ThreadController = MasterScript.ThreadController
+	RegionManager = MasterScript.Worlds[iWorldID].Regions[iRegionID]
+	CleanupManager = RegionManager.CleanupManager
+	SpawnTypeScript = RegionManager.Spawntypes[iSpawnTypeID]
+	
+EndFunction
+
+
 Function PrepareLocalSpawn() ;Determine how to proceed
+
+	Debug.Notification("Preparing Local Spawn")
 
 	if bIsInteriorPoint ;Distributes the group across different parts of the Interior
 	;DEV NOTE - Master Random Events framework needs an update for interiors.
@@ -272,6 +304,8 @@ Function PrepareLocalSpawn() ;Determine how to proceed
 	CleanupManager.AddSpentPoint(Self as ObjectReference) ;All points are added by Object rather than script type
 	;Cleanup will be handled by the CleanupManager upon Region reset timer firing.
 	ThreadController.ReleaseThreads(iThreadsRequired) ;Spawning done, threads can be released.
+	
+	Debug.Notification("Done Local Spawn")
 	
 EndFunction
 
@@ -375,19 +409,19 @@ Function PrepareSingleGroupSpawn()
 		ActorParamsScript = SpawnTypeScript.GetRandomActor(0) 
 	endif
 	
-	;Create direct links to ActorQuestScript and ClassDetailsStruct
+	;Create direct links to ActorManagerScript and ClassDetailsStruct
 	
-	SOTC:ActorQuestScript ActorMainScript = ActorParamsScript.ActorScript
+	SOTC:ActorManagerScript ActorManager = ActorParamsScript.ActorManager
 	;We'll get this now as it will have to be passed to the loop as well as various other work which makes this essential
 	
 	;Now we'll check if we are in a confined space and Actor is oversized
-	while (bIsConfinedSpace) && (ActorMainScript.bIsOversizedActor)
+	while (bIsConfinedSpace) && (ActorManager.bIsOversizedActor)
 		if iRarityOverride > 0 && iRarityOverride < 4 ;Security measure, cannot get rarity outside 1-3
 			ActorParamsScript = SpawnTypeScript.GetRandomActor(iRarityOverride) ;ActorClassPresetType
 		else 
 			ActorParamsScript = SpawnTypeScript.GetRandomActor(0)
 		endif
-		ActorMainScript = ActorParamsScript.ActorScript
+		ActorManager = ActorParamsScript.ActorManager
 	endwhile
 		
 	;Now we can get the actual spawn parameters
@@ -399,13 +433,14 @@ Function PrepareSingleGroupSpawn()
 	if bForceDifficulty
 		iDifficulty = iForcedDifficulty
 	else
-		iDifficulty = RegionScript.iCurrentDifficulty
+		iDifficulty = RegionManager.iCurrentDifficulty
 	endif
 
 	;The variable names here should be so confusing by your now head is caved in.
 	
 	;Organise the actual ActorBase arrays
 	ActorBase[] kRegularUnits = (ActorParamsScript.GetRandomGroupLoadout(false)) as ActorBase[] ;Cast to copy locally
+	Debug.Notification("" +kRegularUnits)
 	ActorBase[] kBossUnits
 	Bool bBossAllowed = (ActorParams.iChanceBoss) as Bool
 	if bBossAllowed ;Set if allowed. Later used as parameter.
@@ -417,25 +452,25 @@ Function PrepareSingleGroupSpawn()
 	EncounterZone kEz ;iEZMode 1 - Single EZ to use for Group Levels
 	EncounterZone[] kEzList; If iEzApplyMode = 2, this will point to a Region list of EZs. One will be applied to each Actor at random.
 	
-	Int iEzMode = RegionScript.iEzApplyMode ;Store locally for reuse
+	Int iEzMode = RegionManager.iEzApplyMode ;Store locally for reuse
 	if iEzMode == 0 ;This exists so we can skip it, seems it is more likely players won't use it.
 		;Do nothing, use NONE EZ (passed parameters will be None)
 	elseif iEZMode == 1
-		kEz = RegionScript.GetRandomEz()
+		kEz = RegionManager.GetRandomEz()
 	elseif iEzMode == 2
-		kEzList = RegionScript.GetRegionCurrentEzList() ;Look directly at the Regions Ez list, based on current mode.
+		kEzList = RegionManager.GetRegionCurrentEzList() ;Look directly at the Regions Ez list, based on current mode.
 	endif
 	
 	;Check for bonus events/setup Package locations if necessary
 	
 	Bool bApplySwarmBonus ;Whether or not Swarm bonuses are applied
 	;Now lets roll the dice on it
-	if (ActorMainScript.bSupportsSwarm) && (RegionScript.RollForSwarm())
+	if (ActorManager.bSupportsSwarm) && (RegionManager.RollForSwarm())
 		
 		bApplySwarmBonus = true
 		
 		;Roll for Stampede if supported
-		if (ActorMainScript.bSupportsStampede) && (RegionScript.RollForStampede())
+		if (ActorManager.bSupportsStampede) && (RegionManager.RollForStampede())
 			bApplyStampedePackage = true
 		endif
 		
@@ -444,15 +479,15 @@ Function PrepareSingleGroupSpawn()
 	ObjectReference[] kPackageLocs = new ObjectReference[0] ;Create it, because even if we skip it, it still has to be passed to loop
 	
 	;Roll dice on Random Ambush feature
-	if (!bApplyStampedePackage) && (!ActorMainScript.bIsFriendlyNeutralToPlayer) && (RegionScript.RollForAmbush()) ;Supported for all Actor types
+	if (!bApplyStampedePackage) && (!ActorManager.bIsFriendlyNeutralToPlayer) && (RegionManager.RollForAmbush()) ;Supported for all Actor types
 		bApplyAmbushPackage = true
 	endif
 	
 	;Check if we are ambushing or stampeding
 	if (!bApplyAmbushPackage) && (bTravelling) ;More likely we are not
-		kPackageLocs = RegionScript.GetRandomTravelLocs(iNumPackageLocs)
+		kPackageLocs = RegionManager.GetRandomTravelLocs(iNumPackageLocs)
 	else ;But if we are we need 1 location
-		kPackageLocs = RegionScript.GetRandomTravelLocs(1)
+		kPackageLocs = RegionManager.GetRandomTravelLocs(1)
 	endif
 	
 	;Finally, begin loops.
@@ -462,25 +497,25 @@ Function PrepareSingleGroupSpawn()
 	if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
 			
 		SpawnActorLoop(ActorParams.iMaxAllowed, ActorParams.iChance, kRegularUnits, kEz, \
-		bApplySwarmBonus, ActorMainScript, kPackageLocs, false, iDifficulty)
+		bApplySwarmBonus, ActorManager, kPackageLocs, false, iDifficulty)
 		
 		iRegularActorCount = (kGroupList.Length) ;Required for loot system
 			
 		if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
 			SpawnActorLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, kBossUnits, \
-			kEz, bApplySwarmBonus, ActorMainScript, kPackageLocs, true, iDifficulty)
+			kEz, bApplySwarmBonus, ActorManager, kPackageLocs, true, iDifficulty)
 		endif
 
 	else ;Randomise the Ez
 
 		SpawnActorRandomEzLoop(ActorParams.iMaxAllowed, ActorParams.iChance, kRegularUnits, \
-		kEzList, bApplySwarmBonus, ActorMainScript, kPackageLocs, false, iDifficulty)
+		kEzList, bApplySwarmBonus, ActorManager, kPackageLocs, false, iDifficulty)
 		
 		iRegularActorCount = (kGroupList.Length) ;Required for loot system
 			
 		if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
 			SpawnActorRandomEzLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-			kBossUnits, kEzList, bApplySwarmBonus, ActorMainScript, kPackageLocs, true, iDifficulty)
+			kBossUnits, kEzList, bApplySwarmBonus, ActorManager, kPackageLocs, true, iDifficulty)
 		endif
 			
 	endif
@@ -493,8 +528,8 @@ Function PrepareSingleGroupSpawn()
 		SpawnTypeScript.DoLootPass(kGroupList, iBossCount)
 	endif
 	
-	if ActorMainScript.bLootSystemEnabled
-		ActorMainScript.DoLootPass(kGroupList, iBossCount)
+	if ActorManager.bLootSystemEnabled
+		ActorManager.DoLootPass(kGroupList, iBossCount)
 	endif
 	
 	;Lastly, we tell Increment the Active NPC and SP on the Thread Controller
@@ -514,16 +549,16 @@ EndFunction
 
 ;Regular, local, single group spawn loop
 Function SpawnActorLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, EncounterZone akEz, Bool abApplySwarmBonus, \
-SOTC:ActorQuestScript aActorMainScript, ObjectReference[] akPackageLocs, Bool abIsBossSpawn, Int aiDifficulty)
+SOTC:ActorManagerScript aActorManager, ObjectReference[] akPackageLocs, Bool abIsBossSpawn, Int aiDifficulty)
 
 	if abApplySwarmBonus ;Apply Swarm bonus settings if true, else skip
 	
 		if abIsBossSpawn ;Checking if Boss first, possibly faster to switch check order here?
-			aiMaxCount += aActorMainScript.iSwarmMaxCountBonus
-			aiChance += aActorMainScript.iSwarmChanceBonus
+			aiMaxCount += aActorManager.iSwarmMaxCountBonus
+			aiChance += aActorManager.iSwarmChanceBonus
 		else
-			aiMaxCount += aActorMainScript.iSwarmMaxCountBossBonus
-			aiChance += aActorMainScript.iSwarmChanceBossBonus
+			aiMaxCount += aActorManager.iSwarmMaxCountBossBonus
+			aiChance += aActorManager.iSwarmChanceBossBonus
 		endif
 		
 	endif
@@ -572,16 +607,16 @@ EndFunction
 
 ;Regular, local, single group spawn loop, Randomise EZs
 Function SpawnActorRandomEzLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, EncounterZone[] akEzList, Bool abApplySwarmBonus, \
-SOTC:ActorQuestScript aActorMainScript, ObjectReference[] akPackageLocs, Bool abIsBossSpawn, Int aiDifficulty)
+SOTC:ActorManagerScript aActorManager, ObjectReference[] akPackageLocs, Bool abIsBossSpawn, Int aiDifficulty)
 
 	if abApplySwarmBonus ;Apply Swarm bonus settings if true, else skip
 	
 		if abIsBossSpawn ;Checking if Boss first, possibly faster to switch check order here?
-			aiMaxCount += aActorMainScript.iSwarmMaxCountBonus
-			aiChance += aActorMainScript.iSwarmChanceBonus
+			aiMaxCount += aActorManager.iSwarmMaxCountBonus
+			aiChance += aActorManager.iSwarmChanceBonus
 		else
-			aiMaxCount += aActorMainScript.iSwarmMaxCountBossBonus
-			aiChance += aActorMainScript.iSwarmChanceBossBonus
+			aiMaxCount += aActorManager.iSwarmMaxCountBossBonus
+			aiChance += aActorManager.iSwarmChanceBossBonus
 		endif
 		
 	endif
@@ -649,10 +684,10 @@ Function PrepareMultiGroupSpawn()
 	if bForceDifficulty
 		iDifficulty = iForcedDifficulty
 	else
-		iDifficulty = RegionScript.iCurrentDifficulty ;Set difficulty for spawning. 
+		iDifficulty = RegionManager.iCurrentDifficulty ;Set difficulty for spawning. 
 	endif
 	
-	ObjectReference[] kPackageLocs = RegionScript.GetRandomTravelLocs(iNumPackageLocs) ;Will be 1 for MultiPoint, still expects array on helper as it is capable of more.
+	ObjectReference[] kPackageLocs = RegionManager.GetRandomTravelLocs(iNumPackageLocs) ;Will be 1 for MultiPoint, still expects array on helper as it is capable of more.
 	;Should I cast to copy locally seem the function will clear it? 
 	
 	Int iCounter
@@ -665,7 +700,8 @@ Function PrepareMultiGroupSpawn()
 		kSpawnPoint = GetChildMarker()
 		kHelper = kSpawnPoint.PlaceAtMe(kMultiPointHelper) ;Place worker
 		;Will auto fire after this function in it's own thread via timer
-		(kHelper as SOTC:SpHelperScript).SetHelperSpawnParams(RegionScript, ActorParamsScriptList[iCounter], kPackage, kPackageLocs, iPreset, iDifficulty) 
+		(kHelper as SOTC:SpHelperScript).SetHelperSpawnParams(ThreadController, RegionManager, ActorParamsScriptList[iCounter], kPackage, \
+		kPackageKeywords, kPackageLocs, iPreset, iDifficulty) 
 		kActiveHelpers.Add(kHelper) ;Track worker
 		
 		iCounter += 1
@@ -736,19 +772,19 @@ Function PrepareInteriorSpawn()
 		ActorParamsScript = SpawnTypeScript.GetRandomActor(0)
 	endif
 	
-	;Create direct links to ActorQuestScript and ClassDetailsStruct
+	;Create direct links to ActorManagerScript and ClassDetailsStruct
 	
-	SOTC:ActorQuestScript ActorMainScript = ActorParamsScript.ActorScript
+	SOTC:ActorManagerScript ActorManager = ActorParamsScript.ActorManager
 	;We'll get this now as it will have to be passed to the loop as well as various other work which makes this essential
 	
 	;Now we'll check if we are in a confined space and Actor is oversized. Not all interior spaces are confined so same check applies.
-	while (bIsConfinedSpace) && (ActorMainScript.bIsOversizedActor)
+	while (bIsConfinedSpace) && (ActorManager.bIsOversizedActor)
 		if iRarityOverride > 0 && iRarityOverride < 4 ;Security measure, cannot get rarity outside 1-3
 			ActorParamsScript = SpawnTypeScript.GetRandomActor(iRarityOverride) ;returns ActorClassPresetScript
 		else 
 			ActorParamsScript = SpawnTypeScript.GetRandomActor(0)
 		endif
-		ActorMainScript = ActorParamsScript.ActorScript
+		ActorManager = ActorParamsScript.ActorManager
 	endwhile
 	
 	;Now we can get the actual spawn parameters
@@ -760,7 +796,7 @@ Function PrepareInteriorSpawn()
 	if bForceDifficulty
 		iDifficulty = iForcedDifficulty
 	else
-		iDifficulty = RegionScript.iCurrentDifficulty
+		iDifficulty = RegionManager.iCurrentDifficulty
 	endif
 
 	;The variable names here should be so confusing by your now head is caved in
@@ -778,21 +814,21 @@ Function PrepareInteriorSpawn()
 	EncounterZone kEz ;iEZMode 1 - Single EZ to use for Group Levels
 	EncounterZone[] kEzList; If iEzApplyMode = 2, this will point to a Region list of EZs. One will be applied to each Actor at random.
 	
-	Int iEzMode = RegionScript.iEzApplyMode ;Store locally for reuse
+	Int iEzMode = RegionManager.iEzApplyMode ;Store locally for reuse
 	
 	if iEzMode == 0 ;This exist so we can skip it, seems it is more likely players won't use it.
 		;Do nothing, use NONE EZ (passed parameters will be None)
 	elseif iEZMode == 1
-		kEz = RegionScript.GetRandomEz()
+		kEz = RegionManager.GetRandomEz()
 	elseif iEzMode == 2
-		kEzList = RegionScript.GetRegionCurrentEzList() ;Look directly at the Regions Ez list, based on current mode.
+		kEzList = RegionManager.GetRegionCurrentEzList() ;Look directly at the Regions Ez list, based on current mode.
 	endif
 	
 	;Check for bonus events. Stampede and Ambush not in supported in Interior mode.
 	
 	Bool bApplySwarmBonus ;Whether or not Swarm bonuses are applied
 	;Now lets roll the dice on it
-	if (ActorMainScript.bSupportsSwarm) && (RegionScript.RollForSwarm())
+	if (ActorManager.bSupportsSwarm) && (RegionManager.RollForSwarm())
 		bApplySwarmBonus = true
 	endif
 	
@@ -803,25 +839,25 @@ Function PrepareInteriorSpawn()
 	if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
 			
 		SpawnActorInteriorLoop(ActorParams.iMaxAllowed, ActorParams.iChance, kRegularUnits, \
-		kEz, bApplySwarmBonus, ActorMainScript, false, iDifficulty)
+		kEz, bApplySwarmBonus, ActorManager, false, iDifficulty)
 		
 		iRegularActorCount = (kGroupList.Length) ;Required for loot system
 			
 		if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
 			SpawnActorInteriorLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-			kBossUnits, kEz, bApplySwarmBonus, ActorMainScript, true, iDifficulty)
+			kBossUnits, kEz, bApplySwarmBonus, ActorManager, true, iDifficulty)
 		endif
 
 	else ;Randomise the Ez
 
 		SpawnActorRandomEzInteriorLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-		kRegularUnits, kEzList, bApplySwarmBonus, ActorMainScript, false, iDifficulty)
+		kRegularUnits, kEzList, bApplySwarmBonus, ActorManager, false, iDifficulty)
 		
 		iRegularActorCount = (kGroupList.Length) ;Required for loot system
 			
 		if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
 			SpawnActorRandomEzInteriorLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-			kBossUnits, kEzList, bApplySwarmBonus, ActorMainScript, true, iDifficulty)
+			kBossUnits, kEzList, bApplySwarmBonus, ActorManager, true, iDifficulty)
 		endif
 			
 	endif
@@ -834,8 +870,8 @@ Function PrepareInteriorSpawn()
 		SpawnTypeScript.DoLootPass(kGroupList, iBossCount)
 	endif
 	
-	if ActorMainScript.bLootSystemEnabled
-		ActorMainScript.DoLootPass(kGroupList, iBossCount)
+	if ActorManager.bLootSystemEnabled
+		ActorManager.DoLootPass(kGroupList, iBossCount)
 	endif
 
 	;Lastly, we tell Increment the Active NPC and SP on the Thread Controller
@@ -853,16 +889,16 @@ EndFunction
 
 ;Interior spawn loop
 Function SpawnActorInteriorLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, EncounterZone akEz, \
-Bool abApplySwarmBonus, SOTC:ActorQuestScript aActorMainScript, Bool abIsBossSpawn, Int aiDifficulty)
+Bool abApplySwarmBonus, SOTC:ActorManagerScript aActorManager, Bool abIsBossSpawn, Int aiDifficulty)
 
 	if abApplySwarmBonus ;Apply Swarm bonus settings if true, else skip
 	
 		if abIsBossSpawn ;Checking if Boss first, possibly faster to switch check order here?
-			aiMaxCount += aActorMainScript.iSwarmMaxCountBonus
-			aiChance += aActorMainScript.iSwarmChanceBonus
+			aiMaxCount += aActorManager.iSwarmMaxCountBonus
+			aiChance += aActorManager.iSwarmChanceBonus
 		else
-			aiMaxCount += aActorMainScript.iSwarmMaxCountBossBonus
-			aiChance += aActorMainScript.iSwarmChanceBossBonus
+			aiMaxCount += aActorManager.iSwarmMaxCountBossBonus
+			aiChance += aActorManager.iSwarmChanceBossBonus
 		endif
 		
 	endif
@@ -901,16 +937,16 @@ EndFunction
 
 ;Interior spawn loop
 Function SpawnActorRandomEzInteriorLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, EncounterZone[] akEzList, \
-Bool abApplySwarmBonus, SOTC:ActorQuestScript aActorMainScript, Bool abIsBossSpawn, Int aiDifficulty)
+Bool abApplySwarmBonus, SOTC:ActorManagerScript aActorManager, Bool abIsBossSpawn, Int aiDifficulty)
 
 	if abApplySwarmBonus ;Apply Swarm bonus settings if true, else skip
 	
 		if abIsBossSpawn ;Checking if Boss first, possibly faster to switch check order here?
-			aiMaxCount += aActorMainScript.iSwarmMaxCountBonus
-			aiChance += aActorMainScript.iSwarmChanceBonus
+			aiMaxCount += aActorManager.iSwarmMaxCountBonus
+			aiChance += aActorManager.iSwarmChanceBonus
 		else
-			aiMaxCount += aActorMainScript.iSwarmMaxCountBossBonus
-			aiChance += aActorMainScript.iSwarmChanceBossBonus
+			aiMaxCount += aActorManager.iSwarmMaxCountBossBonus
+			aiChance += aActorManager.iSwarmChanceBossBonus
 		endif
 		
 	endif

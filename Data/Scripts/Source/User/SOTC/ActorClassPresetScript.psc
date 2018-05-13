@@ -1,4 +1,4 @@
-Scriptname SOTC:ActorClassPresetScript extends ReferenceAlias
+Scriptname SOTC:ActorClassPresetScript extends ObjectReference
 { Property holder for each SOTC Class supported by an Actor }
 ;Written by SMB92
 ;Special thanks to J. Ostrus [BigandFlabby] for code contributions that made this mod possible.
@@ -22,61 +22,78 @@ Scriptname SOTC:ActorClassPresetScript extends ReferenceAlias
 
 import SOTC:Struct_ClassDetails
 
-SOTC:ActorQuestScript Property ActorScript Auto Const Mandatory
-{ Link to the owning Actor Quest }
 
-Int Property iClassID Auto Const Mandatory
-{ Fill with intended Class ID (Will become index on ClassPresets array on ActorQuestScript).
-Member 0 is used for debug, set only one ClassDetails struct member on this one. }
+Group Primary
 
-;LEGEND - CLASSES
-; [0] - DEBUG AS OF VERSION 0.06.02.180506
-; [1] - COMMON RARITY
-; [2] - UNCOMMON RARITY
-; [3] - RARE RARITY
-; [4] - AMBUSH - RUSH (Wait for and rush the player)
-; [5] - AMBUSH - STATIC (for "hidden" ambushes such as Mirelurks and Molerats)
-; [6] - SNIPER
-; [X] - SWARM/INFESTATION (no need to actually define a Class!)
-; [X] - STAMPEDE (no need to actually define a Class!)
+	Int Property iClassID Auto Const Mandatory
+	{ Fill with intended Class ID (Will become index on ClassPresets array on ActorManagerScript).
+	Member 0 is used for debug, set only one ClassDetails struct member on this one. }
 
-;NOTE: See "CLASSES VS SPAWNTYPES" commentary of the SpawnTypeMasterScript for more in-depth info
+	;LEGEND - CLASSES
+	; [0] - DEBUG AS OF VERSION 0.06.02.180506
+	; [1] - COMMON RARITY
+	; [2] - UNCOMMON RARITY
+	; [3] - RARE RARITY
+	; [4] - AMBUSH - RUSH (Wait for and rush the player)
+	; [5] - AMBUSH - STATIC (for "hidden" ambushes such as Mirelurks and Molerats)
+	; [6] - SNIPER
+	; [X] - SWARM/INFESTATION (no need to actually define a Class!)
+	; [X] - STAMPEDE (no need to actually define a Class!)
+
+	;NOTE: See "CLASSES VS SPAWNTYPES" commentary of the SpawnTypeMasterScript for more in-depth info
+		
+	ClassDetailsStruct[] Property ClassDetails Auto Mandatory
+	{ Fill member 0 (debug) with 100% chance values and balanced MaxCounts. Init and fill members 1-3 with balanced values. }
+
+	;LEGEND - PRESETS
+	; [1] SOTC ("Spawns of the Commonwealth" default) - Easiest, suit vanilla/passive player.
+	; [2] WOTC ("War of the Commonwealth") - Higher chances of spawns and group numbers etc.
+	; [3] COTC (Carnage of the Commonwealth") - What it says on the tin.
+
+	;LEGEND - DIFFICULTY LEVELS
+	;Same as Vanilla. Only in Bethesda games does None = 4 (value 4 is "No" difficulty, scale to player)
+	;Only affects this mod. 
+	; 0 - Easy
+	; 1 - Medium
+	; 2 - Hard
+	; 3 - Very Hard ("Veteran" in SOTC)
+	; 4 - NONE - Scale to player.
 	
-ClassDetailsStruct[] Property ClassDetails Auto Mandatory
-{ Fill member 0 (debug) with 100% chance values and balanced MaxCounts. Init and fill members 1-3 with balanced values. }
+EndGroup
 
-;LEGEND - PRESETS
-; [1] SOTC ("Spawns of the Commonwealth" default) - Easiest, suit vanilla/passive player.
-; [2] WOTC ("War of the Commonwealth") - Higher chances of spawns and group numbers etc.
-; [3] COTC (Carnage of the Commonwealth") - What it says on the tin.
 
-;LEGEND - DIFFICULTY LEVELS
-;Same as Vanilla. Only in Bethesda games does None = 4 (value 4 is "No" difficulty, scale to player)
-;Only affects this mod. 
-; 0 - Easy
-; 1 - Medium
-; 2 - Hard
-; 3 - Very Hard ("Veteran" in SOTC)
-; 4 - NONE - Scale to player.
+Group Dynamic
 
-SOTC:ActorGroupLoadoutScript[] Property GroupLoadouts Auto Mandatory
-{ Initialise one member of None. Fills dynamically }
+	SOTC:ActorManagerScript Property ActorManager Auto
+	{ Init None, filled at runtime by the Manager. }
 
-Bool bInit ;Security check to make sure Init events don't fire again while running
+	SOTC:ActorGroupLoadoutScript[] Property GroupLoadouts Auto
+	{ Initialise one member of None. Fills dynamically. }
+
+EndGroup
+
+
+Bool bInit ;Security check to make sure Init events/functions don't fire again while running
 
 
 ;------------------------------------------------------------------------------------------------
 ;INITIALISATION FUNCTIONS & EVENTS
 ;------------------------------------------------------------------------------------------------
 
-Event OnAliasInit()
+;DEV NOTE: Init events/functions now handled by Masters creating the instances.
+
+;Manager passes self in to set instance when calling this
+Function PerformFirstTimeSetup(SOTC:ActorManagerScript aActorManager) 
 	
 	if !bInit
-		ActorScript.ClassPresets.Insert(Self, iClassID)
+		
+		ActorManager = aActorManager
+		ActorManager.ClassPresets[iClassID] = Self
 		bInit = true
+		
 	endif
 	
-EndEvent
+EndFunction
 
 
 ;Will remove any GroupLoadouts containing PA Units (bHasPowerArmorUnits bool check)
@@ -95,6 +112,15 @@ Function RemovePowerArmorGroups()
 	
 EndFunction
 
+
+Function SafelyClearGroupLoadouts()
+
+	GroupLoadouts.Clear()
+	GroupLoadouts = new SOTC:ActorGroupLoadoutScript[1]
+	
+EndFunction
+
+	
 
 ;------------------------------------------------------------------------------------------------
 ;RETURN FUNCTIONS

@@ -1,4 +1,4 @@
-Scriptname SOTC:SettingsEventMonitorScript extends ReferenceAlias
+Scriptname SOTC:SettingsEventMonitorScript extends ObjectReference
 { External monitor for the Thread Controller to flag a Master settings event as complete }
 ;Written by SMB92
 ;Special thanks to J. Ostrus [BigandFlabby] for code contributions that made this mod possible.
@@ -15,27 +15,43 @@ Scriptname SOTC:SettingsEventMonitorScript extends ReferenceAlias
 ;PROPERTIES & IMPORTS
 ;------------------------------------------------------------------------------------------------
 
-SOTC:ThreadControllerScript Property ThreadController Auto Const
-{ Fill with ThreadController Alias  }
+Group Primary
 
-SOTC:MasterQuestScript Property MasterScript Auto Const
-{ Fill with MasterQuest }
+	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
+	{ Fill with MasterQuest }
 
-Bool bInit ;Security flag to prevent unwanted events firing again.
+EndGroup
+
+
+Group Dynamic
+
+	SOTC:ThreadControllerScript Property ThreadController Auto
+	{ Init None, fills dynamically.  }
+	
+EndGroup
+
+
+Bool bInit ;Security check to make sure Init events/functions don't fire again while running
 
 
 ;------------------------------------------------------------------------------------------------
 ;FUNCTIONS
 ;------------------------------------------------------------------------------------------------
 
-Event OnAliasInit()
+;DEV NOTE: Init events/functions now handled by Masters creating the instances.
+
+Function PerformFirstTimeSetup(SOTC:ThreadControllerScript aThreadController)
 	
 	if !bInit
+		
+		ThreadController = aThreadController
 		ThreadController.EventMonitor = Self
 		bInit = true
+		
 	endif
 	
-EndEvent	
+EndFunction	
+
 
 ;Keep checking the current flag count vs the target every so often.
 Function BeginMonitor(Int aiTarget)

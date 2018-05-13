@@ -4,12 +4,12 @@ Scriptname SOTC:Fragments:Terminals:TERM_SOTC_ConfirmMenu_Preset_WOTC Extends Te
 ;BEGIN FRAGMENT Fragment_Terminal_01
 Function Fragment_Terminal_01(ObjectReference akTerminalRef)
 ;BEGIN CODE
-SOTC:MasterQuestScript MasterScript = (MasterQuest as SOTC:MasterQuestScript)
+SOTC:MasterQuestScript MasterScript = MasterQuest as SOTC:MasterQuestScript
 ;Cast first, cannot set custom type property on terminal fragment
 
 MasterScript.SetMenuSettingsMode(10) ;Pending Full Preset
 
-MasterScript.iCurrentPreset = 2
+MasterScript.iCurrentPreset = 3
 
 MasterScript.RegisterMasterForPipBoyCloseEvent(0, 0)
 ;END CODE
@@ -19,7 +19,7 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_02
 Function Fragment_Terminal_02(ObjectReference akTerminalRef)
 ;BEGIN CODE
-(MasterQuest as SOTC:MasterQuestScript).PerformFirstTimeSetup(2)
+(AuxQuest as SOTC:AuxilleryQuestScript).PrepareToInitSpawnEngine(2)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -27,3 +27,5 @@ EndFunction
 ;END FRAGMENT CODE - Do not edit anything between this and the begin comment
 
 Quest Property MasterQuest Auto Const
+
+Quest Property AuxQuest Auto Const

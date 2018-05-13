@@ -3,6 +3,10 @@
 
 ## NEWS
 
+### Update 0.10.01.180513 fixes major design flaw, overhauled instancing methods, major changes to initialisation procedures.
+
+[13/05/2018] Earlier last week I was preparing to drop an Alpha when I discovered that my design was hugely flawed by the fact that you cannot rely on ReferenceAliases to uniquely instance scripts. This was always a gamble I guess, however some false positives in some previous testing I did with this is what lead me down this road. I had spent so much time on focusing on scripts and functionality/features that I had not thought to check how this would work on this scale. In any case, I quickly moved to to a way more reliable method of using dynamically instanced ObjectReferences (prefilled MiscObjects that will be instanced at runtime). As a result this update includes massive amounts of changes, but do know that the overall functionality of the mecahnics and gameplay has not really changed. See update log for more info. And yes Version 0.09.01 was skipped, this version tried another method of working with ALiases that lead to the same result. This version will not be posted as that method has been abandoned completely. 
+
 ### SpawnEngine updated to version 0.08.04.180509
 
 [09/05/2018] Small fixes and tweaks
@@ -38,6 +42,43 @@
 Please be patient while work continues on both a working test file and official documentation.
 
 ## UPDATE LOG
+
+##### [13/05/2018] SpawnEngine updated to version 0.10.01.180513
+
+###### HOUSEKEEPING:
+- NPP language file updated to support new functions. Add missing vanilla function alias GetRef. Changed script type color to be paler.
+- Added missing namespace to types on SpawnTypeRegionScript. Did not affect functionong, just good practice.
+- Cleaned up some more property description and commentary. May still be some obsolete stuff left over after change over.
+- Created new "Dynamic" Property grouping on scripts with dynamically set Primary properties for better organisation.
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Added missing parameters to RR_ControllerScript for PlaceAtMe(), was using default true value for abDeleteWhenAble.
+- Fixed CheckForEvents() function not checking if any Events were actually listed.
+- Uncommented RegionTrackerScript SpMiniPoint detection/check for cleanup now that it is included.
+- Added check to SetMenuSettingsMode function on MasterScript so that Menu doesn't kill first time setup function.
+- Fixed broken setting of Menu Mode on first time startup. Added SetMenuModeCall to OnQuestOnit() on Master script.
+- Fixed incomplete ResetSpentPointsLoop() on RegionTrackerScript
+- Fixed wrong return and operator check from RegionSpawnCheck(), always denying SPs.
+- Decided to remove kPackageKeywords as a property on the SpHelperScript and instead force pass them in. Not really a huge optimization but I didn't think it was necessary to store a list of all keywords permanently. There are now no permanent properties on this script.
+- Removed SpawnTypeMasterScript Property from ActorManagerScript. Unnecessary
+- Fixed array security function in wrong place on MasterScript, moved from AddActorToMasterSpawnTypes() to FillMasterActorLists()
+- Removed ThreadController Property from Random Events. Currently unnecessary. Added MasterScript on helpers instead, can still access this from there.
+- Changed all instances where Insert() was used to add objects/scripts dynamically as that call is not performed in serial (Papyrus queues the job, and executes out-of-order) which resulted in objects not being at their expected index as other members were being pushed around. 
+- In all scripts where arrays needed to be initialised, cleared and reinitialised, I have added security measures to ensure arrays are (re)declared with one member of None, and that when they are populated that member will be destroyed. This should avoid None Array errors. New functions have been added where necessary in all applicable scripts, others altered to handle this. 
+- InitResetGroupLoadouts() function changed to DistributeGroupLoadouts() - now safe as per the above.
+- Added new SafelyRegisterEvent() function for Random Events framework to handle it's arrays also.
+
+###### MAJOR/MINOR FEATURE UPDATES & ADDITIONS:
+- [MAJOR] Major changes have occurred in this version, as the previous system was discovered not to work as I thought it would. No matter which method I tried, ReferenceAlias scripts could not be communicated with/manipulated as first thought, at least on the sheer scale the mod has become. It seems the first instance of a type could be, but the rest could not. This was somewhat to be expected and was a bit of a gamble to begin with. As a result I have changed over to the failsafe method of using reliable ObjectReferences in the form of (prefilled, scripted) MiscObjects which will be dynamically instanced on first install. There have been a number of changes to scripts to accomodate this, mostly with Init procedures, but the overall system has not changed drastically. Some optimizations were found in the process of refactoring, and some things got slightly slower, but overall no major damage as mentioned. Some notes as follows:
+- As a result of new system, some properties and script names have changed. WorldAlias, ActorQuest and RegionQuest have become WorldManager, ActorManager and RegionManager, properties and variables thereof have changed to reflect this. Property ActorLibrary has now become ActorList (not sure why I chose that word to begin with).
+- Manager/Master scripts will now create their required subclass instances on first time install, and have all had MiscObject properties added and a PerformFirstTimeSetup() function added to handle this in the right way. This function differs from script to script, some have different parameters to others, this is to speed things up during this process. <ost former alias scripts used as data containers have had their Init events replaced with the PeformFirstTimeSetup() function. There are basically no OnInit events of any sort in most scripts now. 
+- SpawnPoint code was refactored for this system change, as they now have to fetch the script instances they need dynamically. New properties for IDs were added, which will be used to fetch the correct instances in a new function, SetSpScriptLinks() when needed. Random Events helper code udpated to dynamically grab the instances they need also.
+
+###### MISC NOTES:
+- Spawn function on RandomEvent helpers remain incomplete.
+- Some holes are expected with new array security features. Will be plugged as necessary.
+- Some commentary may still refer to older system. Will remove as discovered.
+- A new method has been drawn up to safely update the mod while it is active in game. Drafts for this system have not been included in this update, but are being worked on.
 
 ##### [09/05/2018] SpawnEngine updated to version 0.08.04.180509
 

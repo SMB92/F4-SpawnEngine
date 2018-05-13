@@ -1,17 +1,7 @@
-Scriptname SOTC:SpawnTypeRegionalScript extends ReferenceAlias
-{ Holds dynamic Actor lists for a "Spawntype", aka category of spawns. Attach to an alias on the 
-owning RegionQuest }
+Scriptname SOTC:SpawnTypeRegionalScript extends ObjectReference
+{ Tempalte script for Regions, holds dynamic Actor lists for a "Spawntype" in that Region. }
 ;Written by SMB92
 ;Special thanks to J. Ostrus [BigandFlabby] for code contributions that made this mod possible.
-
-
-;NOTE - This script has now been made to hold 3 lists, one for each Rarity,
-;instead of having an array of 3 SpawnTypeActorListScripts for a multi-dim array.
-;This alleviates a large number of aliases needed for instancing said scripts, at
-;the cost of not being able to add new "rarity levels" easily. Tradeoff is much
-;better anyway, although a small performance hit is taken when shuffling Actor
-;lists here as they now need to be run through a function and presets compared,
-;instead of being directly sent to the right list.
 
 ;LEGEND - PREFIX CONVENTION
 ; Variables and Properties are treated the same. Script types do not have prefixes, unless they
@@ -25,22 +15,13 @@ owning RegionQuest }
 ;PROPERTIES & IMPORTS
 ;------------------------------------------------------------------------------------------------
 
-Group PrimaryProperties
+Group Primary
 
 	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
 	{ Fill with MasterQuest }
-	
-	SOTC:ThreadControllerScript Property ThreadController Auto Const Mandatory
-	{ Fill with ThreadController Alias }
 
-	SOTC:SpawnTypeMasterScript Property LibraryScript Auto Const Mandatory
-	{ Fill with corresponding Master for this Spawntype. }
-
-	SOTC:RegionQuestScript Property RegionScript Auto Const Mandatory
-	{ Fill with owning Region Quest }
-
-	Int Property iSpawnType Auto Const Mandatory
-	{ Initialise with intended Spawntype ID. Inserts at this index on RegionalQuestScript }
+	Int Property iSpawnTypeID Auto Const Mandatory
+	{ Initialise with intended Spawntype ID this instance will be used for. }
 	
 	;LEGEND - SPAWNTYPES
 	;Spawntypes are essentially "categories" of spawns and species. These are used to provide
@@ -73,26 +54,6 @@ Group PrimaryProperties
 	; [15] - STAMPEDE (CLASS-BASED) - Stores all Actors that support extended Swarm feature Stampede.
 	
 	;NOTE: See "CLASSES VS SPAWNTYPES" commentary of the SpawnTypeMasterScript for more in-depth info
-
-	Int Property iWorldID Auto Const Mandatory
-	{ Fill with correct World ID }
-	; LEGEND - WORLDS
-	; [0] - COMMONWEALTH
-	; [1] - FAR HARBOR
-	; [2] - NUKA WORLD
-
-	Int Property iRegionID Auto Const Mandatory
-	{ Fill with correct RegionID }
-	
-	Int Property iCurrentPreset Auto
-	{ Initialise 0. Set by Menu/Preset. Determines each Actors Rarity in this Spawntype/Region }
-	
-	Bool Property bSpawnTypeEnabled Auto Mandatory
-	{ Init True. All are enabled by default. }
-	
-	Bool Property bCustomSettingsActive Auto
-	{ Init False. Set by Menu when custom settings have been applied. For this script,
-	this is only to tell that Preset has been changed manually. }
 	
 	Int Property iBaseClassID Auto Const Mandatory
 	{ If this is a Class-Based SpawnType, fill with ID of the Class. Else fill 0. }
@@ -109,36 +70,65 @@ Group PrimaryProperties
 	; [X] - STAMPEDE (no need to actually define a Class!)
 	
 	String Property sSpawnTypeString Auto Const Mandatory
-	{ Fill with defining string for this Spawntype }
+	{ Fill with defining string for this Spawntype. }
+	
+
 
 EndGroup
 
 
-Group ActorLists
-{ Dynamic Actor Lists }
+Group Dynamic
 
-	ActorQuestScript[] Property CommonActorList Auto Mandatory
-	{ Initialise one member of None. Fills dynamically upon initialisation }
+	SOTC:ThreadControllerScript Property ThreadController Auto
+	{ Init None, fills at runtime. }
 
-	ActorQuestScript[] Property UncommonActorList Auto Mandatory
-	{ Initialise one member of None. Fills dynamically upon initialisation }
+	SOTC:SpawnTypeMasterScript Property ActorListScript Auto
+	{ Init None, fills at runtime. }
 
-	ActorQuestScript[] Property RareActorList Auto Mandatory
-	{ Initialise one member of None. Fills dynamically upon initialisation }
+	SOTC:RegionManagerScript Property RegionManager Auto
+	{ Init None, fills at runtime. }
+	
+	Int Property iRegionID Auto
+	{ Fill with the RegionID this ST instance will be used for. }
+	
+	Int Property iWorldID Auto
+	{ Fill with World ID }
+	; LEGEND - WORLDS
+	; [0] - COMMONWEALTH
+	; [1] - FAR HARBOR
+	; [2] - NUKA WORLD
+	
+	Bool Property bSpawnTypeEnabled Auto
+	{ Init False. Filled at Startup by Manager, and when changed in Menu. }
+	
+	Int Property iCurrentPreset Auto
+	{ Initialise 0. Set by Menu/Preset. Determines each Actors Rarity in this Spawntype/Region }
+	
+	Bool Property bCustomSettingsActive Auto
+	{ Init False. Set by Menu when custom settings have been applied. }
+
+	SOTC:ActorManagerScript[] Property CommonActorList Auto
+	{ Initialise one member of None. Fills dynamically. }
+
+	SOTC:ActorManagerScript[] Property UncommonActorList Auto
+	{ Initialise one member of None. Fills dynamically. }
+
+	SOTC:ActorManagerScript[] Property RareActorList Auto
+	{ Initialise one member of None. Fills dynamically. }
 
 EndGroup
 
 
 Group LootSystemProperties
 
-	Bool Property bLootSystemEnabled Auto Mandatory
+	Bool Property bLootSystemEnabled Auto
 	{ Init False. Set in Menu. When on, spawned Actors of this type may possibly 
 	receive a loot item from one of the Formlists below }
 	
-	Formlist Property kRegularLootList Auto Const Mandatory
+	Formlist Property kRegularLootList Auto
 	{ Fill with Formlist made for this Actor Type's regular loot }
 	
-	Formlist Property kBossLootList Auto Const Mandatory
+	Formlist Property kBossLootList Auto
 	{ Fill with Formlist made for this Actor Type's boss loot }
 	
 	Int Property iRegularLootChance Auto
@@ -151,7 +141,7 @@ EndGroup
 
 ;LEGEND - LOOT SYSTEM
 ;There are 2 ways to provide random spawns with a random loot item (or more if using an "Use All" 
-;flagged Leveled List) - through the SpawnTypeRegionalScript or the ActorQuestScript. Both systems
+;flagged Leveled List) - through the SpawnTypeRegionalScript or the ActorManagerScript. Both systems
 ;are identical in function and setup, but can operate independantly. The system works by storing
 ;formlists on each of the scripts, 1 for regular Actors and 1 for Boss Actors. Spawnpoints will
 ;check both scripts after spawntime (after all actors are placed in game and packages applied,
@@ -163,7 +153,7 @@ EndGroup
 ;Loot on the Spawntype script should be applicable to all Actors in that Spawntype, this is intended
 ;to be a generalised loot table. The reason why this system is included on the Region Spawntype 
 ;script, and not the Master Spawntype, is so we can specify different loot per Region if we wish.
-;Loot on the ActorQuestScript is obviously so we can supply highly specific loot for each Actor type. 
+;Loot on the ActorManagerScript is obviously so we can supply highly specific loot for each Actor type. 
 ;As mentioned above, either can be enabled/disabled, they are independant from each other. Chance of
 ;loot values can be defined for both Regular and Boss Actors independantly on each script as well. 
 
@@ -174,21 +164,40 @@ EndGroup
 ;add and remove loot items from the list via script. It is also useful in the same sense for adding
 ;temporary loot to the lists, in case we want to do so for some event such as a quest etc. 
 
-Bool bInit ;Security check to make sure Init events don't fire again while running
+
+Bool bInit ;Security check to make sure Init events/functions don't fire again while running
 
 
 ;------------------------------------------------------------------------------------------------
 ;INITIALISATION & SETTINGS EVENTS
 ;------------------------------------------------------------------------------------------------
 
-Event OnAliasInit()
+;DEV NOTE: Init events/functions now handled by Masters creating the instances.
+
+;Manager passes self in to set instance when calling this
+Function PerformFirstTimeSetup(SOTC: RegionManagerScript aRegionManager, Int aiRegionID, Int aiWorldID, \
+SOTC:ThreadControllerScript aThreadController, Bool abEnable, Int aiPresetToSet)
 
 	if !bInit
-		RegionScript.SpawnTypes.Insert(Self, iSpawnType)
+		
+		ThreadController = aThreadController
+		
+		RegionManager = aRegionManager
+		iRegionID = aiRegionID
+		iWorldID = aiWorldID
+		
+		iCurrentPreset = aiPresetToSet
+		
+		ActorListScript = MasterScript.SpawnTypeMasters[iSpawnTypeID]
+		RegionManager.SpawnTypes[iSpawnTypeID] = Self
+		
+		FillDynActorLists()
+		
 		bInit = true
+		
 	endif
 	
-EndEvent
+EndFunction
 
 
 ;Usually called by Region script during Preset changes
@@ -207,7 +216,7 @@ Function ReshuffleDynActorLists(Bool abForceReset, int aiPreset)
 		iCurrentPreset = aiPreset ;Set the Preset here
 	endif
 	
-	ClearDynActorLists()
+	SafelyClearDynActorLists()
 	FillDynActorLists()
 
 EndFunction
@@ -216,7 +225,7 @@ EndFunction
 ;Fill Actor lists on this script, placing into correct lists as per Preset. 
 Function FillDynActorLists()
 
-	ActorQuestScript[] ActorList = LibraryScript.ActorLibrary ;Link to master array
+	SOTC:ActorManagerScript[] ActorList = ActorListScript.ActorList ;Link to master array for this ST
 	;We won't store this in a permanent variable, we only need to know about it here
 
 	int iSize = ActorList.Length 
@@ -240,15 +249,33 @@ Function FillDynActorLists()
 		iCounter += 1
 	
 	endwhile
-
+	
+	;Detect and remove first member of None on filled lists, if it exists.
+	
+	if (CommonActorList.Length > 1) && (CommonActorList[0] == None)
+		CommonActorList.Remove(0)
+	endif
+	
+	if (UncommonActorList.Length > 1) && (UncommonActorList[0] == None)
+		UncommonActorList.Remove(0)
+	endif
+	
+	if (RareActorList.Length > 1) && (RareActorList[0] == None)
+		RareActorList.Remove(0)
+	endif
+	
 EndFunction
 
+
 ;Clear all Actor lists on this script
-Function ClearDynActorLists()
+Function SafelyClearDynActorLists()
 
 	CommonActorList.Clear()
+	CommonActorList = new SOTC:ActorManagerScript[1]
 	UncommonActorList.Clear()
+	UncommonActorList = new SOTC:ActorManagerScript[1]
 	RareActorList.Clear()
+	RareActorList = new SOTC:ActorManagerScript[1]
 	
 EndFunction
 
@@ -259,7 +286,7 @@ EndFunction
 
 ;Return single instance of ActorClassPresetScript (single Actor).
 ;NOTE - This returns class presets directly, as this saves storing/determining "rarity" elsewhere.
-;We can still access the ActorQuestScript in the calling script from here.
+;We can still access the ActorManagerScript in the calling script from here.
 SOTC:ActorClassPresetScript Function GetRandomActor(int aiForcedRarity)
 ;WARNING - Using "forced" params can only be used to get "Rarity" based Classes from here as it has
 ;no way to know if an Actor supports other classes without having to perform slow checks and rerolls.
@@ -309,12 +336,12 @@ EndFunction
 
 ;Return array of ActorClassPresetScript (multiple Actors).
 ;NOTE - This returns class presets directly, as this saves storing/determining "rarity" elsewhere.
-;We can still access the ActorQuestScript in the calling script from here.
+;We can still access the ActorManagerScript in the calling script from here.
 SOTC:ActorClassPresetScript[] Function GetRandomActors(int aiForcedRarity, int aiNumActorsRequired)
 ;WARNING - Using "forced" params can only be used to get "Rarity" based Classes from here as it has
 ;no way to know if an Actor supports other classes without having to perform slow checks and rerolls.
 	
-	ActorClassPresetScript[] ActorListToReturn = new ActorClassPresetScript[0] ;Temp array used to send back
+	ActorClassPresetScript[] ActorListToReturn = new ActorClassPresetScript[1] ;Temp array used to send back
 	int iRarity ;which list to use
 	int iSize ;size of list to use
 	int iCounter = 0 ;Count up to required amount
@@ -359,7 +386,7 @@ SOTC:ActorClassPresetScript[] Function GetRandomActors(int aiForcedRarity, int a
 		
 	endwhile
 	
-	;endif
+	ActorListToReturn.Remove(0) ;Remove first member of None.
 	
 	return ActorListToReturn ;GTFO
 	

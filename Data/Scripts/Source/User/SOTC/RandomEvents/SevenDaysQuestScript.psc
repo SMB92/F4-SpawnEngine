@@ -57,10 +57,7 @@ Group PrimaryProperties
 {Primary Properties Group}
 
 	SOTC:MasterQuestScript Property MasterScript Auto Const
-	{Fill with MasterQuest}
-
-	SOTC:ThreadControllerScript Property ThreadController Auto Const
-	{ Link to thread delegator, stored on RefAlias on this Quest }
+	{ Fill with MasterQuest }
 	
 	Activator Property kEventHelper Auto Const
 	{ Fill with associated Object containing spawn code for this Event }
@@ -93,7 +90,7 @@ Group Settings
 	
 EndGroup
 
-SOTC:ActorQuestScript CurrentEnemy ;The current Actor type.
+SOTC:ActorManagerScript CurrentEnemy ;The current Actor type.
 
 Int iEventTimerID = 7 Const ;Timer for flagging event as ready
 
@@ -108,7 +105,8 @@ Bool bPending ;Quick flag that this event is waiting in MasterScript queue
 ;INIT FUNCTIONS & EVENTS
 ;------------------------------------------------------------------------------------------------
 
-;DEV NOTE: Use MasterQuestScript function to start Event Quests in order to avoid lockups in Menu Mode. 
+;DEV NOTE: Use MasterQuestScript function AppendEventQuest() to start Event Quests in order to 
+;avoid lockups in Menu Mode. Call from Menu passing this Quest as the parameter.
 
 Event OnQuestInit() 
 	

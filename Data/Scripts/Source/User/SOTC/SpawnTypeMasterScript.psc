@@ -1,5 +1,5 @@
-Scriptname SOTC:SpawnTypeMasterScript extends ReferenceAlias
-{ This script holds the Master Actor lists for a SpawnType. Attach to an Alias on MasterQuest }
+Scriptname SOTC:SpawnTypeMasterScript extends ObjectReference
+{ This script holds the Master Actor lists for a SpawnType.  }
 ;Written by SMB92.
 ;Special thanks to J. Ostrus [BigandFlabby] for code contributions that made this mod possible.
 
@@ -56,12 +56,16 @@ Group PrimaryProperties
 	String Property sSpawnTypeString Auto Mandatory
 	{ Fill with defining string for this Spawntype }
 
-	SOTC:ActorQuestScript[] Property ActorLibrary Auto Mandatory
+EndGroup
+
+
+Group Dynamic
+
+	SOTC:ActorManagerScript[] Property ActorList Auto
 	{ Initialiase with one member of None, fills dynamically }
 
 EndGroup
 
-Bool bInit ;Security check to make sure Init events don't fire again while running
 
 ;LEGEND - CLASSES VS SPAWNTYPES
 ;As described in the commentary for Spawntypes, a Spawntype is essentially a category of spawns,
@@ -81,29 +85,44 @@ Bool bInit ;Security check to make sure Init events don't fire again while runni
 ;the list of Classes, this will just work. 
 
 
+Bool bInit ;Security check to make sure Init events/functions don't fire again while running
+
+
 ;------------------------------------------------------------------------------------------------
 ;INITIALISATION EVENTS
 ;------------------------------------------------------------------------------------------------
 
-Event OnAliasInit()
+;DEV NOTE: Init events/functions now handled by Masters creating the instances.
+
+Function PerformFirstTimeSetup()
 	
 	if !bInit
-		MasterScript.SpawnTypeMasters.Insert(self, iSpawnTypeID)
+	
+		MasterScript.SpawnTypeMasters[iSpawnTypeID] = Self
 		bInit = true 
+		
 	endif
 	
-EndEvent
+EndFunction
+
+
+Function SafelyClearActorList()
+
+	ActorList.Clear()
+	ActorList = new SOTC:ActorManagerScript[1]
+	
+EndFunction
 
 ;------------------------------------------------------------------------------------------------
 ;RETURN FUNCTIONS
 ;------------------------------------------------------------------------------------------------
 
 ;In the event we want to grab an Actor from this Master, we use this. 
-SOTC:ActorQuestScript Function GetRandomActor()
+SOTC:ActorManagerScript Function GetRandomActor()
 
-	Int iSize = (ActorLibrary.Length) - 1 ;Get actual index count
+	Int iSize = (ActorList.Length) - 1 ;Get actual index count
 	
-	return ActorLibrary[(Utility.RandomInt(0,iSize))] ;return one random ActorQuestScript
+	return ActorList[(Utility.RandomInt(0,iSize))] ;return one random ActorManagerScript
 	
 EndFunction
 

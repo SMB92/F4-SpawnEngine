@@ -21,14 +21,13 @@ Scriptname SOTC:SpHelperScript extends ObjectReference
 
 import SOTC:Struct_ClassDetails ;Struct definition needs to be present
 
-SOTC:ThreadControllerScript Property ThreadController Auto Const
-{ Fill with ThreadController script }
+SOTC:ThreadControllerScript ThreadController
 
-Keyword[] Property kPackageKeywords Auto Const
-{ Fill with all Package Keywords. This is set here permanently for convenience }
+Keyword[] kPackageKeywords
+;{ Fill with all Package Keywords. This is set here permanently for convenience }
 
 ;Passed in by Parent point
-SOTC:RegionQuestScript RegionScript
+SOTC:RegionManagerScript RegionManager
 SOTC:ActorClassPresetScript ActorParamsScript
 ReferenceAlias kPackage
 ObjectReference[] kPackageLocs
@@ -43,12 +42,14 @@ Int iHelperFireTimerID = 3 Const
 ;SINGLE GROUP SPAWN FUNCTIONS - HELPER SCRIPT
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Function SetHelperSpawnParams(SOTC:RegionQuestScript aRegionScript, SOTC:ActorClassPresetScript aActorParamsScript, \
-ReferenceAlias akPackage, ObjectReference[] akPackageLocs, Int aiPreset, Int aiDifficulty)
-
-	RegionScript = aRegionScript
+Function SetHelperSpawnParams(SOTC:ThreadControllerScript aThreadController, SOTC:RegionManagerScript aRegionManager, SOTC:ActorClassPresetScript aActorParamsScript, \
+ReferenceAlias akPackage, Keyword[] akPackageKeywords, ObjectReference[] akPackageLocs, Int aiPreset, Int aiDifficulty)
+	
+	ThreadController = aThreadController
+	RegionManager = aRegionManager
 	ActorParamsScript = aActorParamsScript
 	kPackage = akPackage
+	kPackageKeywords = akPackageKeywords
 	kPackageLocs = akPackageLocs as ObjectReference[] ;Cast to ensure copy locally.
 	iPreset = aiPreset ;Preset is passed from Spawntype script as it can be configured to be different from Region.
 	iDifficulty = aiDifficulty
@@ -76,7 +77,7 @@ EndEvent
 Function HelperPrepareSingleGroupSpawn()
 ;NOTE - Actor is passed in above and set in local variable, cannot get randomly from here.
 
-	SOTC:ActorQuestScript ActorMainScript = ActorParamsScript.ActorScript
+	SOTC:ActorManagerScript ActorManager = ActorParamsScript.ActorManager
 	;We'll get this now as it will have to be passed to the loop as well as various other work which makes this essential
 	
 	;Now we can get the actual spawn parameters
@@ -94,20 +95,20 @@ Function HelperPrepareSingleGroupSpawn()
 	EncounterZone kEz ;iEZMode 1 - Single EZ to use for Group Levels
 	EncounterZone[] kEzList; If iEzApplyMode = 2, this will point to a Region list of EZs. One will be applied to each Actor at random.
 	
-	Int iEzMode = RegionScript.iEzApplyMode ;Store locally for reuse
+	Int iEzMode = RegionManager.iEzApplyMode ;Store locally for reuse
 	
 	if iEzMode == 0 ;This exist so we can skip it, seems it is more likely players won't use it.
 		;Do nothing, use NONE EZ (passed parameters will be None)
 	elseif iEZMode == 1
-		kEz = RegionScript.GetRandomEz()
+		kEz = RegionManager.GetRandomEz()
 	elseif iEzMode == 2
-		kEzList = RegionScript.GetRegionCurrentEzList() ;Look directly at the Regions Ez list, based on current mode
+		kEzList = RegionManager.GetRegionCurrentEzList() ;Look directly at the Regions Ez list, based on current mode
 	endif
 	
 	
 	Bool bApplySwarmBonus ;Whether or not Swarm bonuses are applied
 	;Now lets roll the dice on it
-	if (ActorMainScript.bSupportsSwarm) && (RegionScript.RollForSwarm())
+	if (ActorManager.bSupportsSwarm) && (RegionManager.RollForSwarm())
 		bApplySwarmBonus = true
 	endif
 	
@@ -118,26 +119,26 @@ Function HelperPrepareSingleGroupSpawn()
 	if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
 			
 		HelperSpawnActorLoop(ActorParams.iMaxAllowed, ActorParams.iChance, kRegularUnits, \
-		kEz, bApplySwarmBonus, ActorMainScript, false, iDifficulty)
+		kEz, bApplySwarmBonus, ActorManager, false, iDifficulty)
 		
 		iRegularActorCount = kGroupList.Length ;Required for loot system
 			
 		if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
 			HelperSpawnActorLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-			kBossUnits, kEz, bApplySwarmBonus, ActorMainScript, true, iDifficulty)
+			kBossUnits, kEz, bApplySwarmBonus, ActorManager, true, iDifficulty)
 		endif
 
 
 	else ;Randomise the Ez
 
 		HelperSpawnActorRandomEzLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-		kRegularUnits, kEzList, bApplySwarmBonus, ActorMainScript, false, iDifficulty)
+		kRegularUnits, kEzList, bApplySwarmBonus, ActorManager, false, iDifficulty)
 		
 		iRegularActorCount = kGroupList.Length ;Required for loot system
 		
 		if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
 			HelperSpawnActorRandomEzLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-			kBossUnits, kEzList, bApplySwarmBonus, ActorMainScript, true, iDifficulty)
+			kBossUnits, kEzList, bApplySwarmBonus, ActorManager, true, iDifficulty)
 		endif
 			
 	endif
@@ -147,8 +148,8 @@ Function HelperPrepareSingleGroupSpawn()
 	;Now check the loot system and do the loot pass if applicable. We do this post spawn as to avoid unnecessary perfromace impact on spawnloops
 	;NOTE - Helper script can only get loot for Actors, NOT from the SpawnType (it has no access to that script)
 	
-	if ActorMainScript.bLootSystemEnabled
-		ActorMainScript.DoLootPass(kGroupList, iBossCount)
+	if ActorManager.bLootSystemEnabled
+		ActorManager.DoLootPass(kGroupList, iBossCount)
 	endif
 
 	
@@ -168,16 +169,16 @@ EndFunction
 
 ;Regular, local, single group spawn loop
 Function HelperSpawnActorLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, EncounterZone akEz, \
-Bool abApplySwarmBonus, SOTC:ActorQuestScript aActorMainScript, Bool abIsBossSpawn, Int aiDifficulty)
+Bool abApplySwarmBonus, SOTC:ActorManagerScript aActorManager, Bool abIsBossSpawn, Int aiDifficulty)
 
 	if abApplySwarmBonus ;Apply Swarm bonus settings if true, else skip
 	
 		if abIsBossSpawn ;Checking if Boss first, possibly faster to switch check order here?
-			aiMaxCount += aActorMainScript.iSwarmMaxCountBonus
-			aiChance += aActorMainScript.iSwarmChanceBonus
+			aiMaxCount += aActorManager.iSwarmMaxCountBonus
+			aiChance += aActorManager.iSwarmChanceBonus
 		else
-			aiMaxCount += aActorMainScript.iSwarmMaxCountBossBonus
-			aiChance += aActorMainScript.iSwarmChanceBossBonus
+			aiMaxCount += aActorManager.iSwarmMaxCountBossBonus
+			aiChance += aActorManager.iSwarmChanceBossBonus
 		endif
 		
 	endif
@@ -212,16 +213,16 @@ EndFunction
 
 ;Regular, local, single group spawn loop, Randomise EZs
 Function HelperSpawnActorRandomEzLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, EncounterZone[] akEzList, \
-Bool abApplySwarmBonus, SOTC:ActorQuestScript aActorMainScript, Bool abIsBossSpawn, Int aiDifficulty)
+Bool abApplySwarmBonus, SOTC:ActorManagerScript aActorManager, Bool abIsBossSpawn, Int aiDifficulty)
 
 	if abApplySwarmBonus ;Apply Swarm bonus settings if true, else skip
 	
 		if abIsBossSpawn ;Checking if Boss first, possibly faster to switch check order here?
-			aiMaxCount += aActorMainScript.iSwarmMaxCountBonus
-			aiChance += aActorMainScript.iSwarmChanceBonus
+			aiMaxCount += aActorManager.iSwarmMaxCountBonus
+			aiChance += aActorManager.iSwarmChanceBonus
 		else
-			aiMaxCount += aActorMainScript.iSwarmMaxCountBossBonus
-			aiChance += aActorMainScript.iSwarmChanceBossBonus
+			aiMaxCount += aActorManager.iSwarmMaxCountBossBonus
+			aiChance += aActorManager.iSwarmChanceBossBonus
 		endif
 		
 	endif
@@ -284,7 +285,7 @@ Function HelperFactoryReset()
 
 	HelperCleanupActorRefs()
 	
-	RegionScript = None
+	RegionManager = None
 	ActorParamsScript = None
 	kPackage = None
 	kPackageLocs.Clear()

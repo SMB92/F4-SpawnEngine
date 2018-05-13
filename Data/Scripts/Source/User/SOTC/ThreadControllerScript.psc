@@ -1,4 +1,4 @@
-Scriptname SOTC:ThreadControllerScript extends ReferenceAlias
+Scriptname SOTC:ThreadControllerScript extends ObjectReference
 { Universal script for managing/counting threads }
 ;Written by SMB92
 ;Special thanks to J. Ostrus [BigandFlabby] for code contributions that made this mod possible.
@@ -17,26 +17,35 @@ Scriptname SOTC:ThreadControllerScript extends ReferenceAlias
 ;PROPERTIES & IMPORTS
 ;------------------------------------------------------------------------------------------------
 
-SOTC:SettingsEventMonitorScript Property EventMonitor Auto
-{ Init 0, sets dynamically. Link to external Event monitor }
+Group Dynamic
+	
+	SOTC:SettingsEventMonitorScript Property EventMonitor Auto
+	{ Init None, fills at runtime. }
+	
+EndGroup
 
-Int Property iMaxAllowedThreads Auto
-{ Initialise 0. Set in Menu. Max no of Spawnpoints allowed to be working simultaneously. }
 
-Int Property iMaxNumActiveSps Auto
-{ Initialise 0. Set in Menu. Max no of Spawnpoints allowed to be active at any one time. }
+Group Settings
 
-Int Property iMaxNumActiveNPCs Auto
-{ Initialise 0. Set in Menu. Max no of spawned NPCs allowed to be active at any one time. }
+	Int Property iMaxAllowedThreads Auto
+	{ Initialise 0. Set in Menu. Max no of Spawnpoints allowed to be working simultaneously. }
 
-Bool Property bMasterSpCooldownTimerEnabled Auto
-{ Init false. Set in Menu. Toggle for the time limit between SPs being allowed to fire }
+	Int Property iMaxNumActiveSps Auto
+	{ Initialise 0. Set in Menu. Max no of Spawnpoints allowed to be active at any one time. }
 
-Int Property iMasterSpCooldownTimerClock Auto
-{ Init 0. Set in Menu. Limit before another SP can fire. Has major effect on balance }
+	Int Property iMaxNumActiveNPCs Auto
+	{ Initialise 0. Set in Menu. Max no of spawned NPCs allowed to be active at any one time. }
 
-Int Property iSpCooldownTimerClock Auto ;Moved to ThreadController
-{ Initialise 60 (one minute), can be set in Menu. Time to cooldown before failed point retry }
+	Bool Property bMasterSpCooldownTimerEnabled Auto
+	{ Init false. Set in Menu. Toggle for the time limit between SPs being allowed to fire }
+
+	Int Property iMasterSpCooldownTimerClock Auto
+	{ Init 0. Set in Menu. Limit before another SP can fire. Has major effect on balance }
+
+	Int Property iSpCooldownTimerClock Auto ;Moved to ThreadController
+	{ Initialise 60 (one minute), can be set in Menu. Time to cooldown before failed point retry }
+	
+EndGroup
 
 
 ;Suppose the following could become properties as well.
@@ -64,10 +73,15 @@ Bool bThreadKillerActive ;Emergency brake. Could reuse for bCooldownActive, but 
 
 Int iMasterSpCooldownTimerID = 5 Const ;Performance/balance helper. Time limit before another point can fire.
 
+Bool bInit ;Security check to make sure Init events/functions don't fire again while running
+
 
 ;------------------------------------------------------------------------------------------------
 ;RETURN FUNCTIONS
 ;------------------------------------------------------------------------------------------------
+
+;DEV NOTE: As this is intended to be a uniquely instanced script, no Init function is present.
+;Master will set this instance when it creates it, Event Monitor will set itself when ready.
 
 ;Check if enough Thread available to continue functioning
 Bool Function GetThread(int aiMinThreadsRequired)
@@ -169,6 +183,7 @@ Function PrepareToMonitorEvent(string asType)
 	if asType == "Regions"
 	
 		EventMonitor.BeginMonitor(iActiveRegionsCount) ;Parameter is target count.
+		Debug.Notification("TC Called Event Mon." +iActiveRegionsCount)
 		
 	endif
 	

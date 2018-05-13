@@ -15,7 +15,7 @@ Scriptname SOTC:MasterQuestScript extends Quest Conditional
 ;PROPERTIES & IMPORTS
 ;------------------------------------------------------------------------------------------------
 
-Group PrimaryProperties
+Group Primary
 {Primary Properties Group}
 
 	Quest Property SOTC_MasterQuest Auto Const Mandatory
@@ -23,16 +23,29 @@ Group PrimaryProperties
 	
 	SOTC:AuxilleryQuestScript Property AuxilleryQuestScript Auto Const Mandatory
 	{ Fill with Auxillery Controller Quest. Invoked on Shutdown. }
+	
+	SOTC:WorldManagerScript[] Property Worlds Auto Mandatory
+	{ Initialise one member with None. Fills dynamically. }
 
-	SOTC:ThreadControllerScript Property ThreadController Auto Const Mandatory
-	{ Link to thread delegator, stored on RefAlias on this Quest }
+	Holotape Property SOTC_MainMenuTape Auto Const Mandatory
+	{ Auto-Fills with MainMenuTape }
 
-	;SOTC:ActorQuestScript[] Property MasterActorList Auto
-	;{Initialise one member with None, fills dynamically}
-	;Moved to SpawnTypes[0]
+	Holotape Property SOTC_AuxMenuTape Auto Const Mandatory
+	{ Auto-Fills with AuxMenuTape }
 
-	SOTC:SpawnTypeMasterScript[] Property SpawnTypeMasters Auto Mandatory
-	{ Initialise one member with None, fills dynamically. Member 0 contains Master Actor List }
+	Actor Property Player Auto Const
+	{ Permanent link to Player if/when needed }
+
+EndGroup
+
+
+Group Dynamic
+
+	SOTC:ThreadControllerScript Property ThreadController Auto
+	{ Init None, fills dynamically. }
+
+	SOTC:SpawnTypeMasterScript[] Property SpawnTypeMasters Auto
+	{ Initialise one member with None, fills dynamically. Member 0 is the Master Actor List. }
 	
 	;LEGEND - SPAWNTYPES
 	;Spawntypes are essentially "categories" of spawns and species. These are used to provide
@@ -66,19 +79,7 @@ Group PrimaryProperties
 	
 	;NOTE: See "CLASSES VS SPAWNTYPES" commentary of the SpawnTypeMasterScript for more in-depth info
 	
-	SOTC:WorldAliasScript[] Property Worlds Auto Const Mandatory
-	{ Initialise one member with None. Fills dynamically. }
-
-	Holotape Property SOTC_MainMenuTape Auto Const Mandatory
-	{ Auto-Fills with MainMenuTape }
-
-	Holotape Property SOTC_AuxMenuTape Auto Const Mandatory
-	{ Auto-Fills with AuxMenuTape }
-
-	Actor Property Player Auto Const
-	{ Permanent link to Player if/when needed }
-
-EndGroup 
+EndGroup
 
 
 ;THIS was deemed unnecessary and removed. Left for reference. Region settings stored on own struct per Region.
@@ -97,6 +98,31 @@ EndGroup
 	;0 = Unused, Init with 0/None always, 1 = SOTC, 2 = WOTC, 3 = COTC, 4 = CUSTOM, Init with 0/None}
 
 ;EndGroup
+
+
+Group InstanceBaseObjects
+{Fill all accordingly}
+
+	ObjectReference Property kMasterCellMarker Auto Const Mandatory
+	{ Fill with the Master Marker in the SOTC Master Persistent Cell. }
+
+	MiscObject Property kThreadControllerObject Auto Const Mandatory
+	{ Unique }
+	
+	MiscObject Property kEventMonitorObject Auto Const Mandatory
+	{ Unique }
+	
+	MiscObject[] Property kSpawnTypeMasterObjects Auto Const Mandatory
+	{ SpawnTypeMasterScript base objects }
+	
+	MiscObject[] Property kActorManagerObjects Auto Const Mandatory
+	{ ActorManagerScript base objects }
+	
+	MiscObject[] Property kWorldManagerObjects Auto Const Mandatory
+	{ WorldManagerScript base objects }
+	
+EndGroup
+	
 
 
 Group ModSettings
@@ -157,13 +183,13 @@ Group MenuStuff
 	; Direct Region + Spawntype Preset are handled from Menu.
 	;Pending Events are all designated above a value of 10. Menu will detects this and lock Menu if above 10.
 
-	SOTC:RegionQuestScript Property MenuCurrentRegionScript Auto
+	SOTC:RegionManagerScript Property MenuCurrentRegionScript Auto
 	{ Initialise none. Set by menu when needed }
 
 	SOTC:SpawnTypeRegionalScript Property MenuCurrentRegSpawnTypeScript Auto
 	{ Initialise none. Set by menu when needed }
 
-	SOTC:ActorQuestScript Property MenuCurrentActorScript Auto
+	SOTC:ActorManagerScript Property MenuCurrentActorScript Auto
 	{ Initialise none. Set by menu when needed }
 
 EndGroup
@@ -326,6 +352,10 @@ Quest[] kEventQuestsPendingStart ;Used when in Menu mode, tp append and start Ev
 ;--------------------------
 
 
+Bool bInit ;Security check to make sure Init events/functions don't fire again while running
+Bool bRegisteredForPipboyClose ;Flag the script if this event is pending. 
+
+
 ;-----------
 ;Timer IDs
 ;-----------
@@ -342,7 +372,7 @@ Quest[] kEventQuestsPendingStart ;Used when in Menu mode, tp append and start Ev
 ;See SpHelperScript. Has no defined clock, balanced as used
 
 ;Int iRegionResetTimerID = 4 Const ;Interval between each Region Reset of all SPs. Per Region. Game Time
-;See RegionQuestScript. Clock Property on script
+;See RegionManagerScript. Clock Property on script
 
 ;Int iMasterSpCooldownTimerID = 5 Const ;Performance/balance helper. Time limit before another point can fire.
 ;Moved to ThreadController. Clock Property on ThreadController
@@ -368,8 +398,6 @@ Group DebugOptions
 	
 EndGroup
 
-Bool bInit ;Security check to make sure Init events don't fire again while running
-Bool bRegisteredForPipboyClose ;Flag the script if this event is pending. 
 
 ;-------------------------
 ;CUSTOM EVENT DEFINITIONS
@@ -386,26 +414,84 @@ CustomEvent ForceResetAllSps ;Reset all Regions SPs. Does not (re)start timer, s
 ;------------------------------------------------------------------------------------------------
 
 ;First time Init
-Event OnQuestInit() ;Will fail if ANYTHING goes wrong at Quest start, i.e failed to fill properties
+;Event OnQuestInit() ;Will fail if ANYTHING goes wrong at Quest start, i.e failed to fill properties
 	
+	;INIT NOW DONE IN MANUAL FUNCTION CALLS. 
+	
+;EndEvent
+
+
+;Triggered after setting preset for the first time and Pipboy closed
+Function PerformFirstTimeSetup(Int aiPresetToSet)
+
 	if !bInit
 		
-		bInit = true
-		kEventQuestsPendingStart = new Quest[0] ;Initialise this array at startup. 
+		SetMenuSettingsMode(10)
 		Player.Additem(SOTC_MainMenuTape, 1, false) ;We want to know it's been added.
+
+		iCurrentPreset = aiPresetToSet
 		
+		;Start creating instances
+		
+		ThreadController = (kMasterCellMarker.PlaceAtMe(kThreadControllerObject, 1 , false, false, false)) as SOTC:ThreadControllerScript
+		
+		ObjectReference kNewInstance
+
+		kNewInstance = kMasterCellMarker.PlaceAtMe(kThreadControllerObject, 1 , false, false, false)
+		(kNewInstance as SOTC:SettingsEventMonitorScript).PerformFirstTimeSetup(ThreadController)
+		
+		;Start SpawnTypeMaster first
+		Int iCounter 
+		Int iSize = kSpawnTypeMasterObjects.Length
+		
+		while iCounter < iSize
+		
+			kNewInstance = kMasterCellMarker.PlaceAtMe(kSpawnTypeMasterObjects[iCounter], 1 , false, false, false)
+			(kNewInstance as SOTC:SpawnTypeMasterScript).PerformFirstTimeSetup()
+			
+			iCounter += 1
+			
+		endwhile
+		
+		
+		;Start all ActorManagers
+		iCounter = 0
+		iSize = kActorManagerObjects.Length
+		
+		while iCounter < iSize
+		
+			kNewInstance = kMasterCellMarker.PlaceAtMe(kActorManagerObjects[iCounter], 1 , false, false, false)
+			(kNewInstance as SOTC:ActorManagerScript).PerformFirstTimeSetup(kMasterCellMarker) 
+			;This will start all subclasses for the Actor, may take some time.
+			
+			iCounter += 1
+			
+		endwhile
+		
+		
+		;Start Worlds & Regions
+		iCounter = 0
+		iSize = kWorldManagerObjects.Length
+		
+		while iCounter < iSize
+		
+			kNewInstance = kMasterCellMarker.PlaceAtMe(kWorldManagerObjects[iCounter], 1 , false, false, false)
+			(kNewInstance as SOTC:WorldManagerScript).PerformFirstTimeSetup(ThreadController, kMasterCellMarker, iCurrentPreset) 
+			;This will start corresponding Regions, may take some time
+			
+			iCounter += 1
+			
+		endwhile
+		
+		
+		StartPendingEventQuests() ;Will return immediately if no events
+		
+		;Instancing done, mod is ready.
+		
+		SOTC_MasterGlobal.SetValue(1.0) ;Officially turned on.
+		ClearMenuVars()
+	
 	endif
-	
-EndEvent
-
-
-;Triggered if setting preset for the first time
-Function PerformFirstTimeSetup(Int aiPreset)
-	
-	iCurrentPreset = aiPreset
-	iMenuSettingsMode = 5 ;Send this Event
-	SOTC_Global_MenuSettingsMode.SetValue(10.0) ;Lock Menu
-	RegisterForMenuOpenCloseEvent("PipboyMenu") ;Register to send event
 	
 	;Add more work if needed
 	
@@ -414,10 +500,10 @@ EndFunction
 
 Function FillMasterActorLists()
 
-	Int iCounter
-	SOTC:ActorQuestScript[] MasterActorList = SpawnTypeMasters[0].ActorLibrary
-	Int iSize = MasterActorList.Length
-	SOTC:ActorQuestScript CurrentActor = MasterActorList[0] ;Kick it off with first member
+	Int iCounter = 1 ;Start from Urban spawntype. 0 is Master list.
+	
+	Int iSize = SpawnTypeMasters[0].ActorList.Length
+	SOTC:ActorManagerScript CurrentActor = SpawnTypeMasters[0].ActorList[0] ;Kick it off with first member
 	
 	;NOTE: Remember that SpawnType 0 is the Main Random List, here we organise everything else.
 	
@@ -427,22 +513,36 @@ Function FillMasterActorLists()
 		;Decided 2 loops was better. Can use loop function as standalone later.
 		
 		iCounter += 1
-		CurrentActor = MasterActorList[iCounter] ;Set the next Actor
+		CurrentActor = SpawnTypeMasters[0].ActorList[iCounter] ;Set the next Actor
+		
+	endwhile
+	
+	;Remove all first members of None, to avoid script errors. (Patch 0.09.01)
+	iCounter = 0
+	iSize = SpawnTypeMasters.Length
+	
+	while iCounter < iSize
+	
+		if (SpawnTypeMasters[iCounter].ActorList.Length > 1) && (SpawnTypeMasters[iCounter].ActorList[0] == None)
+			SpawnTypeMasters[iCounter].ActorList.Remove(0)
+		endif
+		
+		iCounter += 1
 		
 	endwhile
 	
 EndFunction
 
 
-Function ClearMasterActorLists()
+Function SafelyClearMasterActorLists()
 
 	Int iCounter = 1 ;Start at 1, 0 is MasterList
 	Int iSize = SpawnTypeMasters.Length
 		
 	while iCounter < iSize ;Clear all the lists
 		
-		SpawnTypeMasters[iCounter].ActorLibrary.Clear()
-			
+		SpawnTypeMasters[iCounter].SafelyClearActorList()
+		
 	endwhile
 	
 EndFunction
@@ -450,14 +550,47 @@ EndFunction
 
 Function ResetMasterActorLists()
 
-	ClearMasterActorLists()
+	SafelyClearMasterActorLists()
 	FillMasterActorLists()
 	
 EndFunction
 
 
 ;Add an ActorQuestScript to all applicable SpawnTypes.
-Function AddActorToMasterSpawnTypes(SOTC:ActorQuestScript aActorToAdd)
+;Function AddActorToMasterSpawnTypes(SOTC:ActorQuestScript aActorToAdd)
+
+	;Int iCounter = 1 ;Must start from one
+	;Bool[] bAddToType = aActorToAdd.bAllowedSpawnTypes
+	;Int iSize = SpawnTypeMasters.Length 
+	;DEV NOTE: bAllowedTypes and this MUST be exact size, however the former can be safely larger (will not look at them)
+		
+	;while iCounter < iSize
+
+	;	if bAddToType[iCounter]
+	;		SpawnTypeMasters[iCounter].ActorLibrary.Add(aActorToAdd, 1)
+	;	endif
+		
+	;	iCounter += 1
+			
+	;endwhile
+	
+	;Remove all first members of None, to avoid script errors. (Patch 0.09.01)
+	;iCounter = 1
+	
+	;while iCounter < iSize
+	
+	;	if SpawnTypeMasters[iCounter].ActorLibrary[0] == None
+	;		SpawnTypeMasters[iCounter].ActorLibrary.Remove(0)
+	;	endif
+		
+	;	iCounter += 1
+		
+	;endwhile
+	
+;EndFunction
+
+
+Function AddActorToMasterSpawnTypes(SOTC:ActorManagerScript aActorToAdd)
 
 	Int iCounter
 	Bool[] bAddToType = aActorToAdd.bAllowedSpawnTypes
@@ -466,13 +599,13 @@ Function AddActorToMasterSpawnTypes(SOTC:ActorQuestScript aActorToAdd)
 	while iCounter < iSize
 
 		if bAddToType[iCounter]
-			SpawnTypeMasters.ActorLibrary.Add(aActorToAdd, 1)
+			SpawnTypeMasters.ActorList.Add(aActorToAdd, 1)
 		endif
 		
 		iCounter += 1
 			
 	endwhile
-	
+
 EndFunction
 	
 
@@ -515,7 +648,7 @@ Function SendMasterMassEvent()
 
 	if iMenuSettingsMode == 10 ;FULL PRESET
 		
-		PresetParams = new Var[3]
+		PresetParams = new Var[4]
 		sPresetType = "Full"
 		
 		PresetParams[0] = sPresetType ;The type of Preset change
@@ -530,7 +663,7 @@ Function SendMasterMassEvent()
 		
 	elseif iMenuSettingsMode == 11 ;ALL SPAWNTYPES/ACTORS ONLY
 		
-		PresetParams = new Var[2]
+		PresetParams = new Var[3]
 		sPresetType = "Spawntypes"
 		
 		PresetParams[0] = sPresetType ;The type of Preset change
@@ -554,7 +687,7 @@ Function SendMasterMassEvent()
 		ThreadController.PrepareToMonitorEvent("Regions") 
 		;String parameter to tell what script type will be receiving the event
 		
-		PresetParams = new Var[3]
+		PresetParams = new Var[4]
 		sPresetType = "SingleSpawntype"
 		
 		PresetParams[0] = sPresetType
@@ -621,19 +754,8 @@ EndFunction
 Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
 
 	if (asMenuName == "PipboyMenu") && (!abOpening) ; On Pip-Boy closing
-	
-		if iMenuSettingsMode == 5 ;First Time Setup
 		
-			FillMasterActorLists() ;Initialise Master Spawntypes
-			StartPendingEventQuests() ;Init any pending events now, they might want a preset too.
-			iMenuSettingsMode = 10
-			SendMasterMassEvent() ;Set the preset on all Regions/Spawntypes/Actors.
-			SOTC_MasterGlobal.SetValue(1.0) ;Officially turned on.
-			ClearMenuVars()
-			
-			;Add more work if needed
-		
-		elseif iMenuSettingsMode > 10 ;All settings events deferred to 10+ at this stage.
+		if iMenuSettingsMode > 10 ;All settings events deferred to 10+ at this stage.
 		
 			SendMasterMassEvent() ;This will "lock" the menu and require player to exit Menu Mode.
 		
@@ -674,8 +796,10 @@ EndFunction
 
 
 Function SetMenuSettingsMode(int aiMode)
-	iMenuSettingsMode = aiMode ;Local variable that script deals with
-	SOTC_Global_MenuSettingsMode.SetValue(aiMode as float) ;Global for the Menu
+	if iMenuSettingsMode != 5 ;Ensure first time settings mode does not get killed
+		iMenuSettingsMode = aiMode ;Local variable that script deals with
+		SOTC_Global_MenuSettingsMode.SetValue(aiMode as float) ;Global for the Menu
+	endif
 EndFunction
 
 ;LEGEND - MENU SETTINGS MODES
@@ -709,6 +833,7 @@ Function ClearMenuVars()
 	bForceResetCustomSpawnTypeSettings = false
 	SOTC_Global_CurrentMenuWorld.SetValue(0.0)
 	SOTC_Global_CurrentMenuRegion.SetValue(0.0)
+	Debug.Notification("Menu Cleared from function")
 EndFunction
 
 
@@ -811,7 +936,7 @@ EndFunction
 
 Bool Function CheckForBypassEvents() ;Check for any events not subject to EventLock
 
-	if Utility.RandomInt(0,100) <= iRE_BypassEventChance
+	if (kRE_BypassEvents[0] != None) && Utility.RandomInt(0,100) <= iRE_BypassEventChance
 		iEventType = 1
 		return true
 	else
@@ -841,7 +966,7 @@ Bool Function CheckForEvents()
 	endif
 	
 	;Failing the above, roll for a static event
-	if Utility.RandomInt(0,100) <= iRE_StaticEventChance
+	if (kRE_StaticEvents[0] != None) && (Utility.RandomInt(0,100) <= iRE_StaticEventChance)
 		iEventType = 3
 		StartTimer(1, iEventFireTimerID) ;Starts event code in own thread
 		return true
@@ -884,13 +1009,17 @@ EndFunction
 ;Append a new custom event to be started and added. Event Quests will be started when Menu mode is exited.
 Function AppendEventQuest(Quest akEventQuest)
 	
-	if kEventQuestsPendingStart[0] != None ;Because we keep the first member as none when this list is reset.
+	if kEventQuestsPendingStart == None ;Ensure the array is actually initialised
+		kEventQuestsPendingStart = new Quest[1] ;Ensure one member to avoid erroneous size return etc
+	endif
+
+	if kEventQuestsPendingStart[0] != None ;Security measure to avoid errors.
 		kEventQuestsPendingStart.Add(akEventQuest)
-	else
+	else ;First member is still none due to list empty
 		kEventQuestsPendingStart[0] = akEventQuest
 	endif
 	
-	
+	;Will start the Event Quest safely out of Menu Mode
 	if !bRegisteredForPipboyClose
 		RegisterForMenuOpenCloseEvent("PipboyMenu")
 		bRegisteredForPipboyClose = true ;Prevent unnecessary re-registration. 
@@ -901,18 +1030,69 @@ EndFunction
 
 Function StartPendingEventQuests()
 
-	Int iSize = kEventQuestsPendingStart.Length
-	Int iCounter
-	
-	while iCounter < iSize
-	
-		kEventQuestsPendingStart[iCounter].Start()
-		iCounter += 1
+	if kEventQuestsPendingStart == None ;Security measure ensures array is initialised (will do if not and return immediately)
+		kEventQuestsPendingStart = new Quest[1]
+		Debug.Trace("Pending new Events array was uninitialised and reset. Function returned, new array size is now: " +kEventQuestsPendingStart.Length)
+		return
+	endif
+
+	if kEventQuestsPendingStart[0] != None ;Security measure, if there is items in here this should not be None.
+
+		Int iSize = kEventQuestsPendingStart.Length
+		Int iCounter
 		
-	endwhile
+		while iCounter < iSize
+		
+			kEventQuestsPendingStart[iCounter].Start()
+			iCounter += 1
+			
+		endwhile
+		
+	endif
 	
 	kEventQuestsPendingStart.Clear()
-	kEventQuestsPendingStart[0] = None ;Ensure one member to avoid erroneous size return etc
+	kEventQuestsPendingStart = new Quest[1] ;Ensure one member to avoid erroneous size return etc
+	Debug.Trace("New Events started successfully. Array reset, size now: " +kEventQuestsPendingStart.Length)
+	
+EndFunction
+
+
+;New Event Quests being started for the first time or timed events firing/appending should use this function.
+Function SafelyRegisterActiveEvent(string asEventType, Quest akEventQuest)
+
+	;DEV NOTE: Event Arrays should always be kept initialised, with at least one member of None.
+	
+	if asEventType == "Bypass" ;Add a new Bypass Event active Event list
+
+		if kRE_BypassEvents[0] != None ;First member is still none due to list empty
+			kRE_BypassEvents.Add(akEventQuest)
+		else 
+			kRE_BypassEvents[0] = akEventQuest
+		endif
+		
+	endif
+	
+	
+	if asEventType == "Timed" ;Add a new Bypass Event active Event list
+
+		if kRE_TimedEvents[0] != None
+			kRE_TimedEvents.Add(akEventQuest)
+		else ;First member is still none due to list empty
+			kRE_TimedEvents[0] = akEventQuest
+		endif
+		
+	endif
+	
+	
+	if asEventType == "Static" ;Add a new Bypass Event active Event list
+
+		if kRE_StaticEvents[0] != None
+			kRE_StaticEvents.Add(akEventQuest)
+		else ;First member is still none due to list empty
+			kRE_StaticEvents[0] = akEventQuest
+		endif
+		
+	endif
 
 EndFunction
 

@@ -39,7 +39,7 @@ Bool bInit ;Security check to make sure Init events don't fire again while runni
 Event OnQuestInit()
 	
 	if !bInit
-		akDistanceTracker = PlayerRef.PlaceAtMe(akDistanceTracker) ;Create the tracker object
+		akDistanceTracker = PlayerRef.PlaceAtMe(akDistanceTracker, 1, true, false, false) ;Create the tracker object
 		RegisterForDistanceGreaterThanEvent(PlayerRef, akDistanceTracker, 2048) ;About half a cell @2048
 		bInit = true
 	endif

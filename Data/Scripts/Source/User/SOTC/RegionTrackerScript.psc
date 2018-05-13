@@ -1,4 +1,4 @@
-Scriptname SOTC:RegionTrackerScript extends ReferenceAlias
+Scriptname SOTC:RegionTrackerScript extends ObjectReference
 { Tracks Regional activity and cleans it up }
 
 ;Written by SMB92
@@ -20,19 +20,25 @@ Scriptname SOTC:RegionTrackerScript extends ReferenceAlias
 ;PROPERTIES & IMPORTS
 ;------------------------------------------------------------------------------------------------
 
-Group PrimaryProperties
+Group Primary
 
-	SOTC:RegionQuestScript Property RegionScript Auto Const
-	{ Fill with the RegionQuest this script is attached to }
+	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
+	{ Fill with MasterQuest }
 
 	Int Property iRegionResetTimerClock Auto
 	{ Initialise 0. Clock for Area Reset. Set by Menu. }
+	
+	;DEV NOTE: This script does nopt need to communicate with the ThreadController. SPs will do that.
 
 EndGroup
 
 
-Int iRegionResetTimerID = 4 Const
+Group Dynamic
 
+	SOTC:RegionManagerScript Property RegionManager Auto
+	{ Init None, filled at runtime. }
+	
+EndGroup
 
 Group PointKeywords
 { Auto-fill }
@@ -44,48 +50,45 @@ Group PointKeywords
 	
 EndGroup
 
-Group Points
+
+Group SpentPointArrays
 
 	ObjectReference[] Property kSpentPoints1 Auto 
-	{ Init one member of None. Converted to Property due to Init errors on mod start. }
+	{ Init one member of None. }
 	ObjectReference[] Property kSpentPoints2 Auto
-	{ Init one member of None. Converted to Property due to Init errors on mod start. }
+	{ Init one member of None. }
 	ObjectReference[] Property kSpentPoints3 Auto
-	{ Init one member of None. Converted to Property due to Init errors on mod start. }
+	{ Init one member of None. }
 	ObjectReference[] Property kSpentPoints4 Auto
-	{ Init one member of None. Converted to Property due to Init errors on mod start. }
+	{ Init one member of None. }
 
 EndGroup
 
-Bool bInit ;Security check to make sure Init events don't fire again while running
+
+Int iRegionResetTimerID = 4 Const
+Bool bInit ;Security check to make sure Init events/functions don't fire again while running
+
 
 ;------------------------------------------------------------------------------------------------
 ;INITIALISATION & SETTINGS EVENTS
 ;------------------------------------------------------------------------------------------------
 
-Event OnAliasInit()
-	
+;DEV NOTE: Init events/functions now handled by Masters creating the instances.
+
+Function PerformFirstTimeSetup(SOTC:RegionManagerScript aRegionManager, float afWaitClock)
+
 	if !bInit
-		
-		;Init the dynamic arrays - DEV NOTE: Converted to Proeprties in 0.08.04 due to initialisation errors.
-		;kSpentPoints1 = new ObjectReference[0]
-		;kSpentPoints2 = new ObjectReference[0]
-		;kSpentPoints3 = new ObjectReference[0]
-		;kSpentPoints4 = new ObjectReference[0]
-		
-		RegionScript.CleanupManager = Self
-		Utility.Wait(0.5) ;Wait 1/2 a second so RegionQuestScript should finish initialising
-		
-		;Now stagger the startup of the Cleanup timer, so all Regions cleanup timers have a much better
-		;chance of firing at different times. All at once may cause lag.
-		Utility.Wait((RegionScript.GetTrackerWaitClock()))
-		
+	
+		RegionManager = aRegionManager
+		Utility.Wait(afWaitClock) ;Staggers start of timers on Trackers, in attempt to prevent many
+		;instances from trying to perform cleanup at the same time.
 		BeginCleanupTimer()
+		
 		bInit = true
 		
 	endif
 	
-EndEvent
+EndFunction
 
 
 ;Reset all active/spent Spawnpoints
@@ -99,7 +102,7 @@ Event OnTimerGameTime(int aiTimerID)
 EndEvent
 
 
-;This will be called by RegionScript when its ready to begin running. Encapsulated to avoid Menu mode.
+;This will be called by RegionManager when its ready to begin running. Encapsulated to avoid Menu mode.
 Function BeginCleanupTimer()
 
 	StartTimerGameTime(iRegionResetTimerClock, iRegionResetTimerID)
@@ -123,8 +126,13 @@ Function AddSpentPoint(ObjectReference akSpentPoint)
 		kSpentPoints4.Add(akSpentPoint)
 		
 	else
-		Debug.MessageBox("Cleanup Manager is overloaded for Region " +RegionScript.iRegionID+ ", cannot add Point to arrays!")
+	
+		if MasterScript.bDebugMessagesEnabled
+			Debug.Notification("Cleanup Manager is overloaded for Region " +RegionManager.iRegionID+ ", cannot add Point to arrays!")
+		endif
+		Debug.Trace("Cleanup Manager is overloaded for Region " +RegionManager.iRegionID+ ", cannot add Point to arrays!")
 		;With 512 points possible to be tracked per Region, this message should never get shown. 
+		
 	endif
 
 EndFunction
@@ -135,35 +143,45 @@ Function ResetSpentPoints()
 
 	if kSpentPoints1.Length >= 0
 		ResetSpentPointsArrayLoop(kSpentPoints1)
+		SafelyClearSpentPointsArray(kSpentPoints1)
 	endif
 	
 	if kSpentPoints2.Length >= 0
 		ResetSpentPointsArrayLoop(kSpentPoints2)
+		SafelyClearSpentPointsArray(kSpentPoints2)
 	endif
 	
 	if kSpentPoints3.Length >= 0
 		ResetSpentPointsArrayLoop(kSpentPoints3)
+		SafelyClearSpentPointsArray(kSpentPoints3)
 	endif
 	
 	if kSpentPoints4.Length >= 0
 		ResetSpentPointsArrayLoop(kSpentPoints4)
+		SafelyClearSpentPointsArray(kSpentPoints4)
 	endif
 
 EndFunction
 
+
 ;Array looping function for above main function.
 Function ResetSpentPointsArrayLoop(ObjectReference[] akSpentPoints)
 	
-	int iSize = akSpentPoints.Length
 	int iCounter = 0
 	
-	while iCounter < iSize
+	if akSpentPoints[0] == None ;Security measure to avoid errors
+		akSpentPoints.Remove(0)
+	endif
+	
+	int iSize = akSpentPoints.Length
+	
+	while iCounter < iSize ;Will end immediately if above caused size to hit 0.
 	
 		if akSpentPoints[iCounter].HasKeyword(SOTC_SpGroupKeyword)
 			(akSpentPoints[iCounter] as SOTC:SpGroupScript).FactoryReset()
 			
-		;elseif akSpentPoints[iCounter].HasKeyword(SOTC_SpMiniKeyword)
-			;(akSpentPoints[iCounter] as SOTC:SpMiniScript).FactoryReset()
+		elseif akSpentPoints[iCounter].HasKeyword(SOTC_SpMiniKeyword)
+			(akSpentPoints[iCounter] as SOTC:SpMiniPointScript).FactoryReset()
 			
 		;elseif akSpentPoints[iCounter].HasKeyword(SOTC_PatrolPoint)
 			;(akSpentPoints[iCounter] as SOTC:SpPatrolScript).FactoryReset()
@@ -172,8 +190,18 @@ Function ResetSpentPointsArrayLoop(ObjectReference[] akSpentPoints)
 			;(akSpentPoints[iCounter] as SOTC:SpAmbushScript).FactoryReset()
 
 		endif
+		
+		iCounter += 1
 
 	endwhile
+	
+EndFunction
+
+
+Function SafelyClearSpentPointsArray(ObjectReference[] akSpentPoints)
+
+	akSpentPoints.Clear()
+	akSpentPoints = new ObjectReference[1]
 	
 EndFunction
 

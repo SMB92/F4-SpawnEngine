@@ -1,5 +1,5 @@
-Scriptname SOTC:ActorWorldPresetsScript extends ReferenceAlias
-{ This script is a central point of holding ActorRegionPresetScripts for each World }
+Scriptname SOTC:ActorWorldPresetsScript extends ObjectReference
+{ This script is a central point of holding ActorRegionPresetScripts for each World. }
 ;Written by SMB92
 ;Special thanks to J. Ostrus [BigandFlabby] for code contributions that made this mod possible.
 
@@ -19,13 +19,10 @@ Scriptname SOTC:ActorWorldPresetsScript extends ReferenceAlias
 ;PROPERTIES & IMPORTS
 ;------------------------------------------------------------------------------------------------
 
-Group PrimaryProperties
+Group Primary
 
 	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
 	{ Fill with MasterQuest }
-
-	SOTC:ActorQuestScript Property ActorScript Auto Const Mandatory
-	{ Fill with the owning ActorQuest }
 
 	Int Property iWorldID Auto Const Mandatory
 	{ Init with ID of the intended World this preset script will cover. }
@@ -35,6 +32,14 @@ Group PrimaryProperties
 	; [2] - NUKA WORLD
 	; [3] - NEW VEGAS
 
+EndGroup
+
+
+Group Dynamic
+
+	SOTC:ActorManagerScript Property ActorManager Auto
+	{ Init None, filled at runtime by the Manager. }
+	
 EndGroup
 
 
@@ -53,7 +58,7 @@ for each Preset. Limit of 3 Presets is hardcoded because of this. }
 
 EndGroup
 
-Bool bInit ;Security check to make sure Init events don't fire again while running
+Bool bInit ;Security check to make sure Init events/functions don't fire again while running
 
 ;DEV NOTE: Checks must be implemented properly if an Actor has no World/Region Preset defined. First
 ;check will compare the size of the array to the iWorldID, this will ensure the array has enough
@@ -64,14 +69,20 @@ Bool bInit ;Security check to make sure Init events don't fire again while runni
 ;INITIALISATION EVENTS
 ;------------------------------------------------------------------------------------------------
 
-Event OnAliasInit()
+;DEV NOTE: Init events/functions now handled by Masters creating the instances.
+
+;Manager passes self in to set instance when calling this
+Function PerformFirstTimeSetup(SOTC:ActorManagerScript aActorManager)
 	
 	if !bInit
-		ActorScript.WorldPresets.Insert(Self, iWorldID)
+	
+		ActorManager = aActorManager
+		ActorManager.WorldPresets[iWorldID] = Self
 		bInit = true
+		
 	endif
 	
-EndEvent
+EndFunction
 
 ;------------------------------------------------------------------------------------------------
 ;RETURN FUNCTIONS

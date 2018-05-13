@@ -56,8 +56,8 @@ import SOTC:Struct_ClassDetails
 SOTC:RandomEvents:SevenDaysQuestScript Property Controller Auto Const
 { Fill with the Controller Quest for this Event }
 
-SOTC:ThreadControllerScript Property ThreadController Auto Const
-{ Fill with ThreadController script }
+SOTC:MasterQuestScript Property MasterScript Auto Const
+{ Fill with MasterQuest }
 
 ActorBase[] kGroupList ; The group of Spawned Actors
 
@@ -69,11 +69,14 @@ ActorBase[] kGroupList ; The group of Spawned Actors
 ;Function called by Controller to start the Event Spawn.
 Function BeginSpawn(SOTC:ActorClassPresetScript aActorParamsScript)
 
+	;ThreadController = MasterScript.ThreadController ;Call when needed instead.
+
 	;Set the Params struct. Always use the "None" difficulty level (4)
 	ClassDetailsStruct ActorParams = aActorParamsScript.ClassDetails[4] 
 	
 
-	;NEED TO COMPLETE
+	;CURRENTLY INCOMPLETE AWAITING UPDATE.
+	
 
 EndFunction
 

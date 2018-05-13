@@ -54,13 +54,13 @@ Scriptname SOTC:RandomEvents:GhoulApocPointScript extends ObjectReference
 import SOTC:Struct_ClassDetails
 
 SOTC:RandomEvents:GhoulApocQuestScript Property Controller Auto Const
-{ Fill with the Controller Quest for this Event }
+{ Fill with the Controller Quest for this Event. }
 
-SOTC:ThreadControllerScript Property ThreadController Auto Const
-{ Fill with ThreadController script }
+SOTC:MasterQuestScript Property MasterScript Auto Const
+{ Fill with MasterQuest }
 
-SOTC:ActorQuestScript Property GhoulScript Auto Const
-{ Fill with ActorQuest for Ghouls }
+Int Property iGhoulID Auto Const
+{ Fill with ID number for Ghouls on the MasterActorList. Pulls from there. }
 
 ReferenceAlias[] Property kPackages Auto Const
 { Fill one member with a basic Sandbox package, the other a basic Travel Package.
@@ -78,16 +78,16 @@ Function BeginSpawn()
 	kGroupList = new ActorBase[0] ;Init the tracker array
 	ReferenceAlias kPackage = kPackages[(Utility.RandomInt(0,1))] ;Pick one of the packages to use this spawn.
 	
+	SOTC:ActorManagerScript GhoulActorManager = MasterScript.SpawnTypeMasters[0].ActorList[iGhoulID]
 	;Now we will get Parameters from one of the first 3 Classes at random (Common, Uncommon, Rare)
-	SOTC:ActorClassPresetScript ActorParamsScript = GhoulScript.GetRandomRarityBasedClass()
+	SOTC:ActorClassPresetScript ActorParamsScript = GhoulActorManager.GetRandomRarityBasedClass()
 	Int iDifficulty = Utility.RandomInt(0-4) ;Randomise difficulty level
 	ClassDetailsStruct ActorParams = ActorParamsScript.ClassDetails[iDifficulty] ;Now point to params struct
 	
-	; Without further adieu
+	
+	;CURRENTLY INCOMPLETE AWAITING UPDATE.
 	
 	
-	
-	;NEED TO COMPLETE - actually with adieu ;)
 
 EndFunction
 

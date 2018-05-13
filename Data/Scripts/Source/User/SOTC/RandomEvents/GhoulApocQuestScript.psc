@@ -59,9 +59,6 @@ Group PrimaryProperties
 
 	SOTC:MasterQuestScript Property MasterScript Auto Const
 	{ Fill with MasterQuest }
-
-	SOTC:ThreadControllerScript Property ThreadController Auto Const
-	{ Link to thread delegator, stored on RefAlias on this Quest }
 	
 	Activator Property kEventHelper Auto Const
 	{ Fill with associated Object containing spawn code for this Event }
