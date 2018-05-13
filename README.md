@@ -55,8 +55,6 @@ Please be patient while work continues on both a working test file and official 
 - Added missing parameters to RR_ControllerScript for PlaceAtMe(), was using default true value for abDeleteWhenAble.
 - Fixed CheckForEvents() function not checking if any Events were actually listed.
 - Uncommented RegionTrackerScript SpMiniPoint detection/check for cleanup now that it is included.
-- Added check to SetMenuSettingsMode function on MasterScript so that Menu doesn't kill first time setup function.
-- Fixed broken setting of Menu Mode on first time startup. Added SetMenuModeCall to OnQuestOnit() on Master script.
 - Fixed incomplete ResetSpentPointsLoop() on RegionTrackerScript
 - Fixed wrong return and operator check from RegionSpawnCheck(), always denying SPs.
 - Decided to remove kPackageKeywords as a property on the SpHelperScript and instead force pass them in. Not really a huge optimization but I didn't think it was necessary to store a list of all keywords permanently. There are now no permanent properties on this script.
