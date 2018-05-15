@@ -75,6 +75,8 @@ Function PerformFirstTimeSetup(SOTC:ActorManagerScript aActorManager)
 		AddGroupToClassPresets(true) ;PA units enabled by default.
 		bInit = true
 		
+		Debug.Trace("An ActorGroupLoadout Init completed for +ActorManager ")
+		
 	endif
 
 EndFunction

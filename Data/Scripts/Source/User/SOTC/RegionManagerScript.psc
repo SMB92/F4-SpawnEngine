@@ -15,34 +15,24 @@ Scriptname SOTC:RegionManagerScript extends ObjectReference
 ;PROPERTIES & IMPORTS
 ;------------------------------------------------------------------------------------------------
 
-import SOTC:Struct_RegionPresetDetails
-
-Group PrimaryProperties
+Group Primary
 { Primary Properties Group }
 
 	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
 	{ Fill with MasterQuest. }
 
-	Int Property iWorldID Auto Const Mandatory
-	{ Initialise with ID No. of this Region's World. }
-	;LEGEND - WORLD IDs
-	; [0] - COMMONWEALTH
-	; [1] - FAR HARBOR
-	; [2] - NUKA WORLD
-
-	Int Property iRegionID Auto Const Mandatory
-	{ Initialise with Region No. in World. }
-	
-	RegionPresetDetailsStruct[] Property PresetDetails Auto Mandatory
-	{ Init one member for each Preset on index 1-3, leave index 0 as None. 
-Fill struct members/settings accordingly. }
-
 	MiscObject Property kTrackerObject Auto Const
 	{ Fill with base MiscObject for the Tracker for this Region. Instanced at runtime. }
 	
-	MiscObject[] Property kSpawnTypeObjects Auto Const
-	{ Fill with base MiscObjects containing the ST Regional scripts for this Region. Instanced at runtime. }
+	MiscObject Property kSpawnTypeObject Auto Const
+	{ Fill with base MiscObject containing the SpawnTypeRegionalScript. }
 	;DEV NOTE: Only STR's with a BaseClassID need unique base objects, the rest of the members can be the same base object
+	
+	FormList[] Property kSpawnTypeRegLootLists Auto Const Mandatory
+	{ Fill with each Regular loot list for each SpawnType, in order. Will be passed to corresponding instance per member. }
+	
+	FormList[] Property kSpawnTypeBossLootLists Auto Const Mandatory
+	{ Fill with each Boss loot list for each SpawnType, in order. Will be passed to corresponding instance per member. }
 	;as they will be setup with all other data required data from here.
 
 EndGroup
@@ -53,48 +43,41 @@ Group Dynamic
 	SOTC:ThreadControllerScript Property ThreadController Auto
 	{ Init None. Fills dynamically. }
 	
-	SOTC:RegionTrackerScript Property CleanupManager Auto Mandatory
+	SOTC:RegionTrackerScript Property CleanupManager Auto
 	{ Initialise with one member of None. Fills dynamically. }
 
-	SOTC:SpawnTypeRegionalScript[] Property SpawnTypes Auto Mandatory
+	SOTC:SpawnTypeRegionalScript[] Property SpawnTypes Auto
 	{ Initialise with one member of None. Fills dynamically. }
 	
-EndGroup
+	Int Property iWorldID Auto
+	{ Init 0, filled at runtime. }
+	;LEGEND - WORLD IDs
+	; [0] - COMMONWEALTH
+	; [1] - FAR HARBOR
+	; [2] - NUKA WORLD
+
+	Int Property iRegionID Auto
+	{ Init 0, filled at runtime.. }
 	
-
-Group ObjectInventory
-{ All In-world objects such as Spawnpoints and Travel Locs here }
-
-	ObjectReference[] Property kTravelLocs Auto Mandatory
-	{ Fill with all "Travel Location" Xmarkers placed in world }
-
-	;ObjectReference[] Property kSpawnPoints Auto ;May not be necessary, or even can be moved to tracking script
-	;{ Fill with all SpawnPoints placed in Region (not MiniPoints) }
-
-	;ObjectReference[] Property kMiniPoints Auto ;May not be necessary, or can move to tracking script
-	;{ Fill with all MiniPoints, if any, in this Region }
+	ObjectReference[] Property kTravelLocs Auto
+	{ Init one member of None, will fill dynamically at runtime. }
 	
-	;ObjectReference[] Property kPatrolPoints Auto ;May not be necessary, or can move to tracking script
-	;{ Fill with all PatrolPoints, if any, in this Region }
-	
-	;SPAWNPOINTS have been commented out for now. This may be introduced again if necessary.
-
 EndGroup
 
 
 Group EncounterZoneProperties
 {EZ Properties and settings for this Region}
 
-	EncounterZone[] Property kRegionLevelsEasy Auto Const Mandatory
+	EncounterZone[] Property kRegionLevelsEasy Auto
 	{ Fill with custom EZs to suit this Region/Difficulty }
 
-	EncounterZone[] Property kRegionLevelsHard Auto Const Mandatory
+	EncounterZone[] Property kRegionLevelsHard Auto
 	{ Fill with custom EZs to suit this Region/Difficulty }
 
-	EncounterZone[] Property kRegionLevelsEasyNoBorders Auto Const Mandatory
+	EncounterZone[] Property kRegionLevelsEasyNoBorders Auto
 	{ Fill with custom EZs to suit this Region/Difficulty }
 
-	EncounterZone[] Property kRegionLevelsHardNoBorders Auto Const Mandatory
+	EncounterZone[] Property kRegionLevelsHardNoBorders Auto
 	{ Fill with custom EZs to suit this Region/Difficulty }
 
 	Int Property iEzApplyMode Auto
@@ -145,14 +128,14 @@ Group FeatureSettings
 { Settings for various features supported on the Regional level. }
 
 	Int Property iRandomSwarmChance Auto
-	{ Initialise 0, set in Menu. If any value above 0, there is a chance of a random swarm/infestation. }
+	{ Initialise 20, set in Menu. If any value above 0, there is a chance of a random swarm/infestation. }
 	
 	Int Property iRandomStampedeChance Auto
-	{ Initialise 0, set in Menu. Can only occur during a successful Swarm/Infestation, and if Actor
-	supports this mode. If any value above 0, there is a chance of a stampede. }
+	{ Initialise 10, set in Menu. Can only occur during a successful Swarm/Infestation, and if Actor
+supports this mode. If any value above 0, there is a chance of a stampede. }
 	
 	Int Property iRandomAmbushChance Auto
-	{ Initialise 0, set in Menu. If any value above 0, there is a chance of a random swarm/infestation. }
+	{ Initialise 5, set in Menu. If any value above 0, there is a chance of a random swarm/infestation. }
 
 EndGroup
 
@@ -180,11 +163,13 @@ ObjectReference kEventPoint ;When an event fires, this will set with the interce
 ;DEV NOTE: Init events/functions now handled by Masters creating the instances.
 
 Function PerformFirstTimeSetup(SOTC:WorldManagerScript aWorldManager, SOTC:ThreadControllerScript aThreadController, \
-ObjectReference akMasterMarker, Int aiPresetToSet)
+ObjectReference akMasterMarker, Int aiWorldID, Int aiRegionID, Int aiPresetToSet)
 	
 	if !bInit
 		
 		ThreadController = aThreadController
+		iWorldID = aiWorldID
+		iRegionID = aiRegionID
 		iCurrentPreset = aiPresetToSet
 		aWorldManager.Regions[iRegionID] = Self ;Only needs to access it once
 		
@@ -196,18 +181,24 @@ ObjectReference akMasterMarker, Int aiPresetToSet)
 		
 		;Create tracker first
 		fTrackerWaitClock = (ThreadController.IncrementActiveRegionsCount(1)) * 1.2 as float
+		
+		Debug.Trace("Region +iRegionID on World +iWorldID Prepped")
+		
 		;This function returns the current count of Regions, so we can use this for our stagger timer.
 		kNewInstance = akMasterMarker.PlaceAtMe(kTrackerObject, 1 , false, false, false)
 		(kNewInstance as SOTC:RegionTrackerScript).PerformFirstTimeSetup(Self, fTrackerWaitClock)
 		
 		;Create instances of spawntype objectreferences and set them up
 		Int iCounter
-		Int iSize = kSpawnTypeObjects.Length
+		Int iSize = 16 ;Need to figure out more intuitive way, currently hard set to number of default.
 		
 		while iCounter < iSize
 		
-			kNewInstance = akMasterMarker.PlaceAtMe(kSpawnTypeObjects[iCounter], 1 , false, false, false)
-			(kNewInstance as SOTC:SpawnTypeRegionalScript).PerformFirstTimeSetup(Self, iRegionID, iWorldID, ThreadController, true, iCurrentPreset)
+			Debug.Trace("Creating SpawnTypeRegional manager +iCounter on Region +iRegionID on World +iWorldID")
+		
+			kNewInstance = akMasterMarker.PlaceAtMe(kSpawnTypeObject, 1 , false, false, false)
+			(kNewInstance as SOTC:SpawnTypeRegionalScript).PerformFirstTimeSetup(Self, iRegionID, iWorldID, \
+			ThreadController, iCounter, kSpawnTypeRegLootLists[iCounter], kSpawnTypeBossLootLists[iCounter], iCurrentPreset)
 			
 			iCounter += 1
 			
@@ -215,7 +206,10 @@ ObjectReference akMasterMarker, Int aiPresetToSet)
 		
 		bInit = true
 		
+		Debug.Trace("Region +iRegionID on World +iWorldID creation complete")
+		
 	endif
+	
 	
 EndFunction
 

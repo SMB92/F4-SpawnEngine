@@ -15,13 +15,21 @@ Scriptname SOTC:SpawnTypeMasterScript extends ObjectReference
 ;PROPERTIES & IMPORTS
 ;------------------------------------------------------------------------------------------------
 
-Group PrimaryProperties
+Group Primary
 
 	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
 	{ Fill with MasterQuest }
 
-	Int Property iSpawnTypeID Auto Mandatory
-	{ Fill with intended SpawnType ID No. }
+EndGroup
+
+
+Group Dynamic
+
+	SOTC:ActorManagerScript[] Property ActorList Auto
+	{ Initialiase with one member of None, fills dynamically }
+	
+	Int Property iSpawnTypeID Auto
+	{ Init 0, filled at runtime. }
 	
 	;LEGEND - SPAWNTYPES
 	;Spawntypes are essentially "categories" of spawns and species. These are used to provide
@@ -53,17 +61,6 @@ Group PrimaryProperties
 	; [14] - SWARM/INFESTATION (CLASS-BASED) - Stores all Actors that support Swarm/Infestation
 	; [15] - STAMPEDE (CLASS-BASED) - Stores all Actors that support extended Swarm feature Stampede.
 
-	String Property sSpawnTypeString Auto Mandatory
-	{ Fill with defining string for this Spawntype }
-
-EndGroup
-
-
-Group Dynamic
-
-	SOTC:ActorManagerScript[] Property ActorList Auto
-	{ Initialiase with one member of None, fills dynamically }
-
 EndGroup
 
 
@@ -94,12 +91,15 @@ Bool bInit ;Security check to make sure Init events/functions don't fire again w
 
 ;DEV NOTE: Init events/functions now handled by Masters creating the instances.
 
-Function PerformFirstTimeSetup()
+Function PerformFirstTimeSetup(Int aiSpawnTypeID)
 	
 	if !bInit
-	
+		
+		iSpawnTypeID = aiSpawnTypeID
 		MasterScript.SpawnTypeMasters[iSpawnTypeID] = Self
-		bInit = true 
+		bInit = true
+		
+		Debug.Trace("SpawnTypeMaster +iSpawnTypeID creation complete")
 		
 	endif
 	
@@ -112,6 +112,7 @@ Function SafelyClearActorList()
 	ActorList = new SOTC:ActorManagerScript[1]
 	
 EndFunction
+
 
 ;------------------------------------------------------------------------------------------------
 ;RETURN FUNCTIONS

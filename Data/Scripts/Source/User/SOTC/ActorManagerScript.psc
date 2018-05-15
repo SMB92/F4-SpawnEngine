@@ -16,7 +16,6 @@ Scriptname SOTC:ActorManagerScript extends ObjectReference
 ;------------------------------------------------------------------------------------------------
 
 Group Primary
-{ Primary Properties Group }
 
 	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
 	{ Fill with MasterQuest }
@@ -158,6 +157,7 @@ Function PerformFirstTimeSetup(ObjectReference akMasterMarker)
 	if !bInit
 
 		MasterScript.SpawnTypeMasters[0].ActorList[iActorID] = Self ;Set self on Master
+		Debug.Trace("+iActorID +sActorType set on Masterlist")
 		
 		;Create instances of subclass objectreferences and set them up
 		
@@ -165,6 +165,8 @@ Function PerformFirstTimeSetup(ObjectReference akMasterMarker)
 		Int iCounter
 		Int iSize = kWorldPresetObjects.Length
 		ObjectReference kNewInstance
+		
+		Debug.Trace("Initialising WorldPresets for +iActorID +sActorType")
 		
 		while iCounter < iSize
 		
@@ -179,6 +181,8 @@ Function PerformFirstTimeSetup(ObjectReference akMasterMarker)
 		iCounter = 0
 		iSize = kClassPresetObjects.Length
 		
+		Debug.Trace("Initialising ClassPresets for +iActorID +sActorType")
+		
 		while iCounter < iSize
 		
 			kNewInstance = akMasterMarker.PlaceAtMe(kClassPresetObjects[iCounter], 1 , false, false, false)
@@ -192,6 +196,8 @@ Function PerformFirstTimeSetup(ObjectReference akMasterMarker)
 		iCounter = 0
 		iSize = kGroupLoadoutObjects.Length
 		
+		Debug.Trace("Initialising GroupLoadouts for +iActorID +sActorType")
+		
 		while iCounter < iSize
 		
 			kNewInstance = akMasterMarker.PlaceAtMe(kGroupLoadoutObjects[iCounter], 1 , false, false, false)
@@ -202,6 +208,8 @@ Function PerformFirstTimeSetup(ObjectReference akMasterMarker)
 		endwhile
 		
 		bInit = true
+		
+		Debug.Trace(" +iActorID +sActorType init complete")
 	
 	endif
 	

@@ -20,8 +20,50 @@ Group Primary
 	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
 	{ Fill with MasterQuest }
 
-	Int Property iSpawnTypeID Auto Const Mandatory
-	{ Initialise with intended Spawntype ID this instance will be used for. }
+EndGroup
+
+
+Group Dynamic
+
+	SOTC:ThreadControllerScript Property ThreadController Auto
+	{ Init None, fills at runtime. }
+
+	SOTC:SpawnTypeMasterScript Property ActorListScript Auto
+	{ Init None, fills at runtime. }
+
+	SOTC:RegionManagerScript Property RegionManager Auto
+	{ Init None, fills at runtime. }
+	
+	Int Property iRegionID Auto
+	{ Init 0, fills at runtime. }
+	
+	Int Property iWorldID Auto
+	{ Init 0, fills at runtime. }
+	; LEGEND - WORLDS
+	; [0] - COMMONWEALTH
+	; [1] - FAR HARBOR
+	; [2] - NUKA WORLD
+	
+	Bool Property bSpawnTypeEnabled Auto
+	{ Init True. Change in Menu. }
+	
+	Int Property iCurrentPreset Auto
+	{ Initialise 0. Set by Menu/Preset. Determines each Actors Rarity in this Spawntype/Region }
+	
+	Bool Property bCustomSettingsActive Auto
+	{ Init False. Set by Menu when custom settings have been applied. }
+
+	SOTC:ActorManagerScript[] Property CommonActorList Auto
+	{ Initialise one member of None. Fills dynamically. }
+
+	SOTC:ActorManagerScript[] Property UncommonActorList Auto
+	{ Initialise one member of None. Fills dynamically. }
+
+	SOTC:ActorManagerScript[] Property RareActorList Auto
+	{ Initialise one member of None. Fills dynamically. }
+	
+	Int Property iSpawnTypeID Auto
+	{ Init 0, filled at runtime. }
 	
 	;LEGEND - SPAWNTYPES
 	;Spawntypes are essentially "categories" of spawns and species. These are used to provide
@@ -55,8 +97,8 @@ Group Primary
 	
 	;NOTE: See "CLASSES VS SPAWNTYPES" commentary of the SpawnTypeMasterScript for more in-depth info
 	
-	Int Property iBaseClassID Auto Const Mandatory
-	{ If this is a Class-Based SpawnType, fill with ID of the Class. Else fill 0. }
+	Int Property iBaseClassID Auto
+	{ Init 0. Filled at runtime if required. }
 	
 	;LEGEND - CLASSES
 	; [0] - DEBUG AS OF VERSION 0.06.02.180506
@@ -68,53 +110,6 @@ Group Primary
 	; [6] - SNIPER
 	; [X] - SWARM/INFESTATION (no need to actually define a Class!)
 	; [X] - STAMPEDE (no need to actually define a Class!)
-	
-	String Property sSpawnTypeString Auto Const Mandatory
-	{ Fill with defining string for this Spawntype. }
-	
-
-
-EndGroup
-
-
-Group Dynamic
-
-	SOTC:ThreadControllerScript Property ThreadController Auto
-	{ Init None, fills at runtime. }
-
-	SOTC:SpawnTypeMasterScript Property ActorListScript Auto
-	{ Init None, fills at runtime. }
-
-	SOTC:RegionManagerScript Property RegionManager Auto
-	{ Init None, fills at runtime. }
-	
-	Int Property iRegionID Auto
-	{ Fill with the RegionID this ST instance will be used for. }
-	
-	Int Property iWorldID Auto
-	{ Fill with World ID }
-	; LEGEND - WORLDS
-	; [0] - COMMONWEALTH
-	; [1] - FAR HARBOR
-	; [2] - NUKA WORLD
-	
-	Bool Property bSpawnTypeEnabled Auto
-	{ Init False. Filled at Startup by Manager, and when changed in Menu. }
-	
-	Int Property iCurrentPreset Auto
-	{ Initialise 0. Set by Menu/Preset. Determines each Actors Rarity in this Spawntype/Region }
-	
-	Bool Property bCustomSettingsActive Auto
-	{ Init False. Set by Menu when custom settings have been applied. }
-
-	SOTC:ActorManagerScript[] Property CommonActorList Auto
-	{ Initialise one member of None. Fills dynamically. }
-
-	SOTC:ActorManagerScript[] Property UncommonActorList Auto
-	{ Initialise one member of None. Fills dynamically. }
-
-	SOTC:ActorManagerScript[] Property RareActorList Auto
-	{ Initialise one member of None. Fills dynamically. }
 
 EndGroup
 
@@ -123,7 +118,7 @@ Group LootSystemProperties
 
 	Bool Property bLootSystemEnabled Auto
 	{ Init False. Set in Menu. When on, spawned Actors of this type may possibly 
-	receive a loot item from one of the Formlists below }
+receive a loot item from one of the Formlists below }
 	
 	Formlist Property kRegularLootList Auto
 	{ Fill with Formlist made for this Actor Type's regular loot }
@@ -131,11 +126,11 @@ Group LootSystemProperties
 	Formlist Property kBossLootList Auto
 	{ Fill with Formlist made for this Actor Type's boss loot }
 	
-	Int Property iRegularLootChance Auto
-	{ Init 20. Change in Menu. Chance an Actor will receive a loot item }
+	Int Property iRegularLootChance = 20 Auto
+	{ Init 20. Change in Menu. Chance an Actor will receive a loot item. }
 	
-	Int Property iBossLootChance Auto
-	{ Init 10. Change in Menu. Chance an Actor will receive a loot item }
+	Int Property iBossLootChance = 10 Auto
+	{ Init 10. Change in Menu. Chance an Actor will receive a loot item. }
 
 EndGroup
 
@@ -176,7 +171,7 @@ Bool bInit ;Security check to make sure Init events/functions don't fire again w
 
 ;Manager passes self in to set instance when calling this
 Function PerformFirstTimeSetup(SOTC: RegionManagerScript aRegionManager, Int aiRegionID, Int aiWorldID, \
-SOTC:ThreadControllerScript aThreadController, Bool abEnable, Int aiPresetToSet)
+SOTC:ThreadControllerScript aThreadController, Int aiSpawntypeID, Formlist akRegLoot, Formlist akBossLoot, Int aiPresetToSet)
 
 	if !bInit
 		
@@ -185,16 +180,37 @@ SOTC:ThreadControllerScript aThreadController, Bool abEnable, Int aiPresetToSet)
 		RegionManager = aRegionManager
 		iRegionID = aiRegionID
 		iWorldID = aiWorldID
+		iSpawnTypeID = aiSpawntypeID
+		kRegularLootList = akRegLoot
+		kBossLootList = akBossLoot
 		
 		iCurrentPreset = aiPresetToSet
 		
 		ActorListScript = MasterScript.SpawnTypeMasters[iSpawnTypeID]
 		RegionManager.SpawnTypes[iSpawnTypeID] = Self
 		
+		SetBaseClassIfRequired()
+		
 		FillDynActorLists()
 		
 		bInit = true
 		
+		Debug.Trace("SpawnType on Region +iRegionID on World +iWorldID creation complete")
+		
+	endif
+	
+EndFunction
+
+
+;Associates the Class of this Spawntype of it is based on one, on first time setup.
+Function SetBaseClassIfRequired()
+
+	if iSpawnTypeID == 11 ;Ambush(Rush)
+		iBaseClassID = 4
+	elseif iSpawnTypeID == 12 ;Ambush(Static)
+		iBaseClassID = 5
+	elseif iSpawnTypeID == 13 ;Snipers
+		iBaseClassID == 6
 	endif
 	
 EndFunction

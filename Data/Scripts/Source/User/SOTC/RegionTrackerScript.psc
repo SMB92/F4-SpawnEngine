@@ -25,8 +25,8 @@ Group Primary
 	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
 	{ Fill with MasterQuest }
 
-	Int Property iRegionResetTimerClock Auto
-	{ Initialise 0. Clock for Area Reset. Set by Menu. }
+	Int Property iRegionResetTimerClock = 300 Auto
+	{ Initialise 300 seconds by default. Clock for Area Reset. Set by Menu. }
 	
 	;DEV NOTE: This script does nopt need to communicate with the ThreadController. SPs will do that.
 
@@ -83,6 +83,7 @@ Function PerformFirstTimeSetup(SOTC:RegionManagerScript aRegionManager, float af
 		Utility.Wait(afWaitClock) ;Staggers start of timers on Trackers, in attempt to prevent many
 		;instances from trying to perform cleanup at the same time.
 		BeginCleanupTimer()
+		Debug.Trace("Region Tracker Created")
 		
 		bInit = true
 		

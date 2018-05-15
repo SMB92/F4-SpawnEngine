@@ -407,6 +407,7 @@ CustomEvent PresetUpdate ;Update sent to Regions and/or Spawntypes for Preset ch
 CustomEvent MasterSingleSettingUpdate ;Event to send single settings updates to scripts.
 CustomEvent ForceResetAllSps ;Reset all Regions SPs. Does not (re)start timer, safe from Menu, but
 ;we will force the user to exit menu anyway as it may take some time to complete.
+CustomEvent InitTravelMarkers
 
 
 ;------------------------------------------------------------------------------------------------
@@ -435,19 +436,25 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		
 		ThreadController = (kMasterCellMarker.PlaceAtMe(kThreadControllerObject, 1 , false, false, false)) as SOTC:ThreadControllerScript
 		
+		Debug.Trace("ThreadController created on Master: +ThreadController")
+		
 		ObjectReference kNewInstance
 
 		kNewInstance = kMasterCellMarker.PlaceAtMe(kThreadControllerObject, 1 , false, false, false)
 		(kNewInstance as SOTC:SettingsEventMonitorScript).PerformFirstTimeSetup(ThreadController)
+		
+		Debug.Trace("EventMonitor created on ThreadController")
 		
 		;Start SpawnTypeMaster first
 		Int iCounter 
 		Int iSize = kSpawnTypeMasterObjects.Length
 		
 		while iCounter < iSize
-		
+			
+			Debug.Trace("Creating SpawnTypeMaster +iCounter on Master")
+			
 			kNewInstance = kMasterCellMarker.PlaceAtMe(kSpawnTypeMasterObjects[iCounter], 1 , false, false, false)
-			(kNewInstance as SOTC:SpawnTypeMasterScript).PerformFirstTimeSetup()
+			(kNewInstance as SOTC:SpawnTypeMasterScript).PerformFirstTimeSetup(iCounter)
 			
 			iCounter += 1
 			
@@ -459,6 +466,8 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		iSize = kActorManagerObjects.Length
 		
 		while iCounter < iSize
+		
+			Debug.Trace("Initialising ActorManager +iCounter on Master")
 		
 			kNewInstance = kMasterCellMarker.PlaceAtMe(kActorManagerObjects[iCounter], 1 , false, false, false)
 			(kNewInstance as SOTC:ActorManagerScript).PerformFirstTimeSetup(kMasterCellMarker) 
@@ -475,6 +484,8 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		
 		while iCounter < iSize
 		
+			Debug.Trace("Creating World +iCounter on Master")
+		
 			kNewInstance = kMasterCellMarker.PlaceAtMe(kWorldManagerObjects[iCounter], 1 , false, false, false)
 			(kNewInstance as SOTC:WorldManagerScript).PerformFirstTimeSetup(ThreadController, kMasterCellMarker, iCurrentPreset) 
 			;This will start corresponding Regions, may take some time
@@ -484,12 +495,24 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		endwhile
 		
 		
+		Debug.Trace("Events starting: +kEventQuestsPendingStart")
 		StartPendingEventQuests() ;Will return immediately if no events
 		
 		;Instancing done, mod is ready.
 		
 		SOTC_MasterGlobal.SetValue(1.0) ;Officially turned on.
 		ClearMenuVars()
+		
+		Debug.Trace("Sending Init event to Travel markers")
+		
+		;Notify TravelLoc Markers they can safely add themselves to their Regions now.
+		Var[] kArgs = new Var[1]
+		Bool b = true
+		kArgs[0] = b
+		
+		SendCustomEvent("InitTravelMarkers", kArgs)
+		
+		Debug.Trace("Setup Complete")
 	
 	endif
 	

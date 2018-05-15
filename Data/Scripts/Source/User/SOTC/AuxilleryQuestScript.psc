@@ -92,7 +92,11 @@ Function InitSpawnEngine()
 
 	SOTC_MasterQuest.Start()
 	
+	Debug.Trace("MasterQuest started, performing setup")
+	
 	(SOTC_MasterQuest as SOTC:MasterQuestScript).PerformFirstTimeSetup(iPresetToSet)
+	
+	Debug.Trace("First time setup complete")
 	
 	bSpawnEngineStarting = false
 	

@@ -3,6 +3,10 @@
 
 ## NEWS
 
+### Completing the dynamic initialisation design in update 0.10.02.180515
+
+[15/05/2018] - This update focuses on the new Init procedures introduced in 0.10.01, further refining them and making the mod much simpler to create new data for Actors and Regions. While there may be a few little holes left to plug, I'm very happy with the changes. 
+
 ### Update 0.10.01.180513 fixes major design flaw, overhauled instancing methods, major changes to initialisation procedures.
 
 [13/05/2018] Earlier last week I was preparing to drop an Alpha when I discovered that my design was hugely flawed by the fact that you cannot rely on ReferenceAliases to uniquely instance scripts. This was always a gamble I guess, however some false positives in some previous testing I did with this is what lead me down this road. I had spent so much time on focusing on scripts and functionality/features that I had not thought to check how this would work on this scale. In any case, I quickly moved to a way more reliable method of using dynamically instanced ObjectReferences (prefilled MiscObjects that will be instanced at runtime). As a result this update includes massive amounts of changes, but do know that the overall functionality/mechanics/gameplay has not really changed. See update log for more info. And yes Version 0.09.01 was skipped, this version tried another method of working with Aliases that lead to the same result. This version will not be posted as that method has been abandoned completely. 
@@ -43,6 +47,18 @@ Please be patient while work continues on both a working test file and official 
 
 ## UPDATE LOG
 
+##### [15/05/2018] SpawnEngine updated to version 0.10.02.180515
+
+###### HOUSEKEEPING:
+- More cleaning/additions to commentary etc
+- Update NPP lag file.
+- Trace added to all Init procedures. This will be permanent, not just for debug. 
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Expanded upon the new "Init-by-function" procedures, rendering the RegionManger, WorldManager and SpawnType scripts (both Master and Regional) into one base object, making setup so much easier. Now the mod will create as many instances as needed and fill each one out with required data
+- As a result of the above, many more properties have been made "dynamic" and moved to such property groups. 
+
+------
 ##### [13/05/2018] SpawnEngine updated to version 0.10.01.180513
 
 ###### HOUSEKEEPING:
@@ -78,6 +94,7 @@ Please be patient while work continues on both a working test file and official 
 - Some commentary may still refer to older system. Will remove as discovered.
 - A new method has been drawn up to safely update the mod while it is active in game. Drafts for this system have not been included in this update, but are being worked on.
 
+------
 ##### [09/05/2018] SpawnEngine updated to version 0.08.04.180509
 
 ###### HOUSEKEEPING:

@@ -80,6 +80,8 @@ Function PerformFirstTimeSetup(SOTC:ActorManagerScript aActorManager)
 		ActorManager.WorldPresets[iWorldID] = Self
 		bInit = true
 		
+		Debug.Trace("ActorWorldPreset +iWorldID setup complete for +ActorManager ")
+		
 	endif
 	
 EndFunction

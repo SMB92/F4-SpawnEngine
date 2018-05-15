@@ -31,7 +31,10 @@ Group Primary
 	String Property sWorldName Auto Const
 	{ Fill with name of Worldspace. May be used to display. }
 	
-	MiscObject[] Property kRegionManagerObjects Auto Const Mandatory
+	Int Property iNumOfRegions Auto
+	{ Fill with number of Regions for this World to start. }
+	
+	MiscObject Property kRegionManagerObject Auto Const Mandatory
 	{ RegionManagerScript base objects }
 	
 EndGroup
@@ -62,18 +65,24 @@ Function PerformFirstTimeSetup(SOTC:ThreadControllerScript aThreadController, Ob
 		;Create all RegionManager instances, initialising each of them as we go.
 		ObjectReference kNewInstance
 		Int iCounter
-		Int iSize = kRegionManagerObjects.Length
+		Int iSize = iNumOfRegions
+		
+		Debug.Trace("World +iWorldID +sWorldName started initialising")
 		
 		while iCounter < iSize
 		
-			kNewInstance = akMasterMarker.PlaceAtMe(kRegionManagerObjects[iCounter], 1 , false, false, false)
-			(kNewInstance as SOTC:RegionManagerScript).PerformFirstTimeSetup(Self, aThreadController, akMasterMarker, aiPresetToSet)
+			kNewInstance = akMasterMarker.PlaceAtMe(kRegionManagerObject, 1 , false, false, false)
+			(kNewInstance as SOTC:RegionManagerScript).PerformFirstTimeSetup(Self, aThreadController, akMasterMarker, \ 
+			iWorldID, iCounter, aiPresetToSet)
 			
 			iCounter += 1
+			Debug.Trace("Region +iCounter Created in World +iWorldID")
 			
 		endwhile
 		
 		bInit = true
+		
+		Debug.Trace("World +iWorldID +sWorldName finished initialising")
 		
 	endif
 		
