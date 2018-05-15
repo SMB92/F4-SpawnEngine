@@ -51,7 +51,7 @@ Please be patient while work continues on both a working test file and official 
 
 ###### HOUSEKEEPING:
 - More cleaning/additions to commentary etc
-- Update NPP lag file.
+- Update NPP lang file.
 - Trace added to all Init procedures. This will be permanent, not just for debug. 
 
 ###### SCRIPT OPTIMIZATION/REVISION/FIXES:
