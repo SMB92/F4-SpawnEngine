@@ -47,7 +47,7 @@ Group Dynamic
 	{ Initialise with one member of None. Fills dynamically. }
 
 	SOTC:SpawnTypeRegionalScript[] Property SpawnTypes Auto
-	{ Initialise with one member of None. Fills dynamically. }
+	{ Initialise None on as many members as there are SpawnTypes. Sets dynamically. }
 	
 	Int Property iWorldID Auto
 	{ Init 0, filled at runtime. }
@@ -69,16 +69,16 @@ Group EncounterZoneProperties
 {EZ Properties and settings for this Region}
 
 	EncounterZone[] Property kRegionLevelsEasy Auto
-	{ Fill with custom EZs to suit this Region/Difficulty }
+	{ Init with one member of None. Fills from Formlist on WorldManager. }
 
 	EncounterZone[] Property kRegionLevelsHard Auto
-	{ Fill with custom EZs to suit this Region/Difficulty }
+	{ Init with one member of None. Fills from Formlist on WorldManager. }
 
 	EncounterZone[] Property kRegionLevelsEasyNoBorders Auto
-	{ Fill with custom EZs to suit this Region/Difficulty }
+	{ Init with one member of None. Fills from Formlist on WorldManager. }
 
 	EncounterZone[] Property kRegionLevelsHardNoBorders Auto
-	{ Fill with custom EZs to suit this Region/Difficulty }
+	{ Init with one member of None. Fills from Formlist on WorldManager. }
 
 	Int Property iEzApplyMode Auto
 	{ Initialise with 0. Set in Menu }

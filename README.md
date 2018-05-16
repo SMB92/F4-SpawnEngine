@@ -3,6 +3,10 @@
 
 ## NEWS
 
+### SpawnEngine re-enters Alpha status for the first time since August 2017 with update 0.10.03.180516, SpawnPoints now functional in game.
+
+[16/05/2018] Today marks the first day since the August 21 Alpha, made with the first iteration of the mod, that SpawnEngine has entered a fully functioning in-game state. Spawning over 100 Super Mutants using the wonderful SuperMutant Redux mod in the blink of an eye (at least on my system). This version will now enter private testing and we can start batting out SpawnPoints all over the map! 
+
 ### Completing the dynamic initialisation design in update 0.10.02.180515
 
 [15/05/2018] - This update focuses on the new Init procedures introduced in 0.10.01, further refining them and making the mod much simpler to create new data for Actors and Regions. While there may be a few little holes left to plug, I'm very happy with the changes. 
@@ -47,6 +51,24 @@ Please be patient while work continues on both a working test file and official 
 
 ## UPDATE LOG
 
+##### [16/05/2018] SpawnEngine updated to version 0.10.03.180516
+
+###### HOUSEKEEPING:
+- Fixed bad prefix on bClassesToApply Property on ActorGroupLoadoutScript. Was iClassesToApply.
+- Removed obsolete forcing of Counter start at 1 on GroupLoadoutScript AddGroupToClassPresets(), 0 is now debug preset and all groups apply to it.
+- Adpated some Property descriptions on RegionManager for new system.
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Changed SpawnTypeMaster base MiscObject Property on Master to be single not array, now that is single base object.
+- Added security check and removal of None members on GroupLoadouts array on ActorManager before calling AddGroupToClasses()
+- Added new EncounterZone formlist array Properties to WorldManager, this will handle transferring of lists to Regions when instances created.
+- Added/fixed first time setup of ClassPresets on ActorManager, was not checking if Class was defined or not (if array member was None or not). Added check and Trace if skipped.
+- Added same iBaseClassID Property to SpawnTypeMaster, and same SetBaseClassIfRequired() function from the Regional counterpart.
+- Fixed Master instancing of EventMonitor, was creating another ThreadController (bad copy!)
+- Removed "new" Property iNumOfRegions from WorldManager, this was a brainfart. Instead will init the actual (dynamic instances) Regions array with as many members of None as there are intended Regions, and check the length of it. 
+- Added security check on SpawnTypeRegionalScript, to skip filling of dynamic actor lists if no Actors are declared on the Master version. Mainly for the purposes of the Alpha, eventually there will be actors on all Types.
+
+------
 ##### [15/05/2018] SpawnEngine updated to version 0.10.02.180515
 
 ###### HOUSEKEEPING:

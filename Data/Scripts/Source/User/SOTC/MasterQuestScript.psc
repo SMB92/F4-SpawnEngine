@@ -112,7 +112,7 @@ Group InstanceBaseObjects
 	MiscObject Property kEventMonitorObject Auto Const Mandatory
 	{ Unique }
 	
-	MiscObject[] Property kSpawnTypeMasterObjects Auto Const Mandatory
+	MiscObject Property kSpawnTypeMasterObject Auto Const Mandatory
 	{ SpawnTypeMasterScript base objects }
 	
 	MiscObject[] Property kActorManagerObjects Auto Const Mandatory
@@ -440,20 +440,20 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		
 		ObjectReference kNewInstance
 
-		kNewInstance = kMasterCellMarker.PlaceAtMe(kThreadControllerObject, 1 , false, false, false)
+		kNewInstance = kMasterCellMarker.PlaceAtMe(kEventMonitorObject, 1 , false, false, false)
 		(kNewInstance as SOTC:SettingsEventMonitorScript).PerformFirstTimeSetup(ThreadController)
 		
 		Debug.Trace("EventMonitor created on ThreadController")
 		
 		;Start SpawnTypeMaster first
 		Int iCounter 
-		Int iSize = kSpawnTypeMasterObjects.Length
+		Int iSize = 16
 		
 		while iCounter < iSize
 			
 			Debug.Trace("Creating SpawnTypeMaster +iCounter on Master")
 			
-			kNewInstance = kMasterCellMarker.PlaceAtMe(kSpawnTypeMasterObjects[iCounter], 1 , false, false, false)
+			kNewInstance = kMasterCellMarker.PlaceAtMe(kSpawnTypeMasterObject, 1 , false, false, false)
 			(kNewInstance as SOTC:SpawnTypeMasterScript).PerformFirstTimeSetup(iCounter)
 			
 			iCounter += 1
@@ -476,6 +476,12 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 			iCounter += 1
 			
 		endwhile
+		
+		;Fill Master Actor Lists
+		
+		Debug.Trace("Filling Master SpawnType ActorLists")
+		FillMasterActorLists()
+		Debug.Trace("Master SpawnType ActorLists Filled")
 		
 		
 		;Start Worlds & Regions
@@ -856,7 +862,6 @@ Function ClearMenuVars()
 	bForceResetCustomSpawnTypeSettings = false
 	SOTC_Global_CurrentMenuWorld.SetValue(0.0)
 	SOTC_Global_CurrentMenuRegion.SetValue(0.0)
-	Debug.Notification("Menu Cleared from function")
 EndFunction
 
 

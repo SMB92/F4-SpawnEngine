@@ -31,11 +31,17 @@ Group Primary
 	String Property sWorldName Auto Const
 	{ Fill with name of Worldspace. May be used to display. }
 	
-	Int Property iNumOfRegions Auto
-	{ Fill with number of Regions for this World to start. }
-	
 	MiscObject Property kRegionManagerObject Auto Const Mandatory
 	{ RegionManagerScript base objects }
+	
+	Formlist[] Property kRegionEzLists_Easy Auto Const
+	{ Fill each member with the Formlist of EncounterZones for the corresponding Region. } 
+	Formlist[] Property kRegionEzLists_Hard Auto Const
+	{ Fill each member with the Formlist of EncounterZones for the corresponding Region. }
+	Formlist[] Property kRegionEzLists_EasyNoBorders Auto Const
+	{ Fill each member with the Formlist of EncounterZones for the corresponding Region. }
+	Formlist[] Property kRegionEzLists_HardNoBorders Auto Const
+	{ Fill each member with the Formlist of EncounterZones for the corresponding Region. }
 	
 EndGroup
 
@@ -43,7 +49,7 @@ EndGroup
 Group Dynamic
 
 	SOTC:RegionManagerScript[] Property Regions Auto
-	{ Init one member of None. Fills dynamically. }
+	{ Init a member of None for as many Regions intneded for this World. Sets dynamically. }
 	
 EndGroup
 
@@ -65,7 +71,7 @@ Function PerformFirstTimeSetup(SOTC:ThreadControllerScript aThreadController, Ob
 		;Create all RegionManager instances, initialising each of them as we go.
 		ObjectReference kNewInstance
 		Int iCounter
-		Int iSize = iNumOfRegions
+		Int iSize = Regions.Length ;Must be initialised with as many members of None as there are going to be Regions.
 		
 		Debug.Trace("World +iWorldID +sWorldName started initialising")
 		

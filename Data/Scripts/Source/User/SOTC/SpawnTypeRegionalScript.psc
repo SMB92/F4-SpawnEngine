@@ -243,6 +243,12 @@ Function FillDynActorLists()
 
 	SOTC:ActorManagerScript[] ActorList = ActorListScript.ActorList ;Link to master array for this ST
 	;We won't store this in a permanent variable, we only need to know about it here
+	
+	;Security check, mainly for Alpha purposes, to skip this function if no Actors are declared on Master Spawntype
+	if ActorList[0] == None
+		Debug.Trace("Regional SpawnType script detected empty Master version list, skipping filling of dynamic lists")
+		return
+	endif
 
 	int iSize = ActorList.Length 
 	int iCounter = 0

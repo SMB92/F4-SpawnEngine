@@ -30,7 +30,7 @@ Group Primary
 	Bool Property bHasPowerArmorUnits Auto Const Mandatory
 	{ If either ActorBase array above has PA Units, sets this true } 
 
-	Bool[] Property iClassesToApply Auto Mandatory ;SEE NOTES BELOW Mandatory
+	Bool[] Property bClassesToApply Auto Mandatory ;SEE NOTES BELOW Mandatory
 	{ Initialise members True on index matching ID No. of Classes this group can be added to.
 Set false for Classes not desired. Only add to Classes that exist for this Actor. }
 	;NOTE: THIRD PARTY MODS can modify this property directly if they want, but it is left Const so
@@ -86,14 +86,15 @@ Function AddGroupToClassPresets(Bool abAllowPowerArmorGroups)
 
 	if (!bHasPowerArmorUnits) || (abAllowPowerArmorGroups) ;If doesn't OR assume does and parameter is true
 	
-		int iCounter = 1 ;MUST START AT ONE FOR THIS SCRIPT, INDEX 0 ON CLASSPRESETS IS ALWAYS NONE.
+		int iCounter = 0
 		;iCounter actually equals iClass
-		int iSize = iClassesToApply.Length
+		int iSize = bClassesToApply.Length ;This array must have exact number of members as classes supported. 
 		
 		while iCounter < iSize
 			
-			if iClassesToApply[iCounter]
+			if bClassesToApply[iCounter]
 				ActorManager.ClassPresets[iCounter].GroupLoadouts.Add(Self)
+				;If ActorManager does not have this class defined, this will fail and log an error.
 			endif
 			
 			iCounter += 1

@@ -60,6 +60,20 @@ Group Dynamic
 	; [13] - SNIPER (CLASS-BASED) - Stores all Actor that support Sniper Class
 	; [14] - SWARM/INFESTATION (CLASS-BASED) - Stores all Actors that support Swarm/Infestation
 	; [15] - STAMPEDE (CLASS-BASED) - Stores all Actors that support extended Swarm feature Stampede.
+	
+	Int Property iBaseClassID Auto
+	{ Init 0. Filled at runtime if required. }
+	
+	;LEGEND - CLASSES
+	; [0] - DEBUG AS OF VERSION 0.06.02.180506
+	; [1] - COMMON RARITY
+	; [2] - UNCOMMON RARITY
+	; [3] - RARE RARITY
+	; [4] - AMBUSH - RUSH (Wait for and rush the player)
+	; [5] - AMBUSH - STATIC (for "hidden" ambushes such as Mirelurks and Molerats)
+	; [6] - SNIPER
+	; [X] - SWARM/INFESTATION (no need to actually define a Class!)
+	; [X] - STAMPEDE (no need to actually define a Class!)
 
 EndGroup
 
@@ -97,10 +111,25 @@ Function PerformFirstTimeSetup(Int aiSpawnTypeID)
 		
 		iSpawnTypeID = aiSpawnTypeID
 		MasterScript.SpawnTypeMasters[iSpawnTypeID] = Self
+		SetBaseClassIfRequired()
 		bInit = true
 		
 		Debug.Trace("SpawnTypeMaster +iSpawnTypeID creation complete")
 		
+	endif
+	
+EndFunction
+
+
+;Associates the Class of this Spawntype of it is based on one, on first time setup.
+Function SetBaseClassIfRequired()
+
+	if iSpawnTypeID == 11 ;Ambush(Rush)
+		iBaseClassID = 4
+	elseif iSpawnTypeID == 12 ;Ambush(Static)
+		iBaseClassID = 5
+	elseif iSpawnTypeID == 13 ;Snipers
+		iBaseClassID == 6
 	endif
 	
 EndFunction
