@@ -3,13 +3,17 @@
 
 ## NEWS
 
+### Hotfix 0.10.04 makes Travel Markers persistent
+
+[17/05/2018] I made a slight oversight in that spawns never Traveled because Travel Markers never received their Init events... cos they weren't persistent. I've made a new script that will be used to store them in arrays. This will be expanded upon later.
+
 ### SpawnEngine re-enters Alpha status for the first time since August 2017 with update 0.10.03.180516, SpawnPoints now functional in game.
 
 [16/05/2018] Today marks the first day since the August 21 Alpha, made with the first iteration of the mod, that SpawnEngine has entered a fully functioning in-game state. Spawning over 100 Super Mutants using the wonderful SuperMutant Redux mod in the blink of an eye (at least on my system). This version will now enter private testing and we can start batting out SpawnPoints all over the map! 
 
 ### Completing the dynamic initialisation design in update 0.10.02.180515
 
-[15/05/2018] - This update focuses on the new Init procedures introduced in 0.10.01, further refining them and making the mod much simpler to create new data for Actors and Regions. While there may be a few little holes left to plug, I'm very happy with the changes. 
+[15/05/2018] This update focuses on the new Init procedures introduced in 0.10.01, further refining them and making the mod much simpler to create new data for Actors and Regions. While there may be a few little holes left to plug, I'm very happy with the changes. 
 
 ### Update 0.10.01.180513 fixes major design flaw, overhauled instancing methods, major changes to initialisation procedures.
 
@@ -51,6 +55,13 @@ Please be patient while work continues on both a working test file and official 
 
 ## UPDATE LOG
 
+##### [17/05/2018] SpawnEngine updated to version 0.10.04.180517
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Added new script to store Travel Markers in arrays, in order to keep them persistent. This is one object that really needs to be, not much choice in that.
+- Added instantiation code for above new Object to Master. 
+
+------
 ##### [16/05/2018] SpawnEngine updated to version 0.10.03.180516
 
 ###### HOUSEKEEPING:

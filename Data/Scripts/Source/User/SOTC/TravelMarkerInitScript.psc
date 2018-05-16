@@ -25,7 +25,7 @@ Group Primary
 
 	Int Property iRegionID Auto Const Mandatory
 	{ ID of the Region to add to. }
-	
+
 EndGroup
 
 Bool bInit ;Security check to make sure Init events/functions don't fire again while running

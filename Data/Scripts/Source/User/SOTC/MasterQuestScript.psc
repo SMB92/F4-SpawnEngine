@@ -79,6 +79,9 @@ Group Dynamic
 	
 	;NOTE: See "CLASSES VS SPAWNTYPES" commentary of the SpawnTypeMasterScript for more in-depth info
 	
+	SOTC:TravelMarkerPersistScript Property TravelMarkerStore Auto
+	{ Init None, instanced at runtime. Store all Travel Markers placed in World. }
+	
 EndGroup
 
 
@@ -110,6 +113,9 @@ Group InstanceBaseObjects
 	{ Unique }
 	
 	MiscObject Property kEventMonitorObject Auto Const Mandatory
+	{ Unique }
+	
+	MiscObject Property kTravelMarkerStoreObject Auto Const Mandatory
 	{ Unique }
 	
 	MiscObject Property kSpawnTypeMasterObject Auto Const Mandatory
@@ -444,6 +450,10 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		(kNewInstance as SOTC:SettingsEventMonitorScript).PerformFirstTimeSetup(ThreadController)
 		
 		Debug.Trace("EventMonitor created on ThreadController")
+		
+		kNewInstance = kMasterCellMarker.PlaceAtMe(kTravelMarkerStoreObject, 1 , false, false, false)
+		TravelMarkerStore = (kNewInstance as SOTC:TravelMarkerPersistScript)
+		Debug.Trace("TravelMarkerStore created on Master")
 		
 		;Start SpawnTypeMaster first
 		Int iCounter 
