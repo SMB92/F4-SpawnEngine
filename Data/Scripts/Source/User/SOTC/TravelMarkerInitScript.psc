@@ -52,7 +52,7 @@ Event SOTC:MasterQuestScript.InitTravelMarkers(SOTC:MasterQuestScript akSender, 
 	if (akArgs as Bool) == True ;Initialise, add to RegionManager
 	
 		MasterScript.Worlds[iWorldID].Regions[iRegionID].kTravelLocs.Add(Self as ObjectReference, 1)
-		Debug.Trace("Travel Marker Added to Region +iRegionID of World +iWorldID")
+		Debug.Trace("Travel Marker Added to Region")
 	
 	else ;Assume false, shutdown stage, try to delete instances. Only use in absolute shutdown stage
 	

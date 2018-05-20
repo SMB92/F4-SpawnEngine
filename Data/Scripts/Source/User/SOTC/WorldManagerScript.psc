@@ -73,22 +73,22 @@ Function PerformFirstTimeSetup(SOTC:ThreadControllerScript aThreadController, Ob
 		Int iCounter
 		Int iSize = Regions.Length ;Must be initialised with as many members of None as there are going to be Regions.
 		
-		Debug.Trace("World +iWorldID +sWorldName started initialising")
+		Debug.Trace("World initialising")
 		
 		while iCounter < iSize
 		
 			kNewInstance = akMasterMarker.PlaceAtMe(kRegionManagerObject, 1 , false, false, false)
 			(kNewInstance as SOTC:RegionManagerScript).PerformFirstTimeSetup(Self, aThreadController, akMasterMarker, \ 
-			iWorldID, iCounter, aiPresetToSet)
+			iWorldID, iCounter, aiPresetToSet, kRegionEzLists_Easy[iCounter], kRegionEzLists_Hard[iCounter], \
+			kRegionEzLists_EasyNoBorders[iCounter], kRegionEzLists_HardNoBorders[iCounter])
 			
 			iCounter += 1
-			Debug.Trace("Region +iCounter Created in World +iWorldID")
 			
 		endwhile
 		
 		bInit = true
 		
-		Debug.Trace("World +iWorldID +sWorldName finished initialising")
+		Debug.Trace("World initialised")
 		
 	endif
 		

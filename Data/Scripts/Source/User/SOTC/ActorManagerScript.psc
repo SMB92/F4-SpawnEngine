@@ -157,7 +157,7 @@ Function PerformFirstTimeSetup(ObjectReference akMasterMarker)
 	if !bInit
 
 		MasterScript.SpawnTypeMasters[0].ActorList[iActorID] = Self ;Set self on Master
-		Debug.Trace("+iActorID +sActorType set on Masterlist")
+		Debug.Trace("Actor set on Masterlist")
 		
 		;Create instances of subclass objectreferences and set them up
 		
@@ -166,7 +166,7 @@ Function PerformFirstTimeSetup(ObjectReference akMasterMarker)
 		Int iSize = kWorldPresetObjects.Length
 		ObjectReference kNewInstance
 		
-		Debug.Trace("Initialising WorldPresets for +iActorID +sActorType")
+		Debug.Trace("Initialising WorldPresets")
 		
 		while iCounter < iSize
 		
@@ -181,7 +181,7 @@ Function PerformFirstTimeSetup(ObjectReference akMasterMarker)
 		iCounter = 0
 		iSize = kClassPresetObjects.Length
 		
-		Debug.Trace("Initialising ClassPresets for +iActorID +sActorType")
+		Debug.Trace("Initialising ClassPresets")
 		
 		while iCounter < iSize
 			
@@ -189,7 +189,7 @@ Function PerformFirstTimeSetup(ObjectReference akMasterMarker)
 				kNewInstance = akMasterMarker.PlaceAtMe(kClassPresetObjects[iCounter], 1 , false, false, false)
 				(kNewInstance as SOTC:ActorClassPresetScript).PerformFirstTimeSetup(Self)
 			else
-				Debug.Trace("Skipped adding Class +iCounter for +sActorType, is not defined")
+				Debug.Trace("Skipped adding a Class as it isn't defined")
 			endif
 			
 			iCounter += 1
@@ -200,7 +200,7 @@ Function PerformFirstTimeSetup(ObjectReference akMasterMarker)
 		iCounter = 0
 		iSize = kGroupLoadoutObjects.Length
 		
-		Debug.Trace("Initialising GroupLoadouts for +iActorID +sActorType")
+		Debug.Trace("Initialising GroupLoadouts")
 		
 		while iCounter < iSize
 		
@@ -216,16 +216,30 @@ Function PerformFirstTimeSetup(ObjectReference akMasterMarker)
 			Grouploadouts.Remove(0)
 		endif
 		
+		;Now check and remove all None members from the first index of ClassPresets GroupLoadout arrays
+		;There should be one GroupLoadout for each Preset!!
+		iCounter = 0
+		iSize = ClassPresets.Length
+			
+		while iCounter < iSize
+			
+			if (ClassPresets[iCounter] != None) && (ClassPresets[iCounter].GroupLoadouts[0] == None) && (ClassPresets[iCounter].GroupLoadouts.Length >= 1)
+			;Check if Actor has CP, first member is None and if any more members in the list, if so, remove first member of None. 
+				ClassPresets[iCounter].GroupLoadouts.Remove(0)
+			endif
+				
+		endwhile
+		
 		bInit = true
 		
-		Debug.Trace(" +iActorID +sActorType init complete")
+		Debug.Trace("Actor initialisation complete")
 	
 	endif
 	
 EndFunction
 
 
-;Distributes Group loadouts and also cleans up arrays ready for functions.
+;Distributes Group loadouts and also cleans up arrays ready for functions. Not used in first time setup however.
 Function DistributeGroupLoadouts()
 	
 	Bool bAllowPaGroups = MasterScript.bAllowPowerArmorGroups
@@ -239,8 +253,6 @@ Function DistributeGroupLoadouts()
 	
 	;Clear first
 	iSize = ClassPresets.Length
-	Debug.Notification("About to add Group to Class, length of Classes is " +ClassPresets.Length)
-	Debug.Notification("About to clear " +ClassPresets)
 	
 	while iCounter < iSize
 		
@@ -251,8 +263,6 @@ Function DistributeGroupLoadouts()
 		
 	endwhile
 	
-	Debug.Notification("Clearing Done " +ClassPresets)
-	
 	;Refill/init
 	iCounter = 0
 	iSize = GroupLoadouts.Length
@@ -262,18 +272,16 @@ Function DistributeGroupLoadouts()
 		;If PA groups are disallowed, external function call returns immediately and loop continues.
 		iCounter += 1
 	endwhile
-	
-	Debug.Notification("Distribution Done " +ClassPresets)
 		
-	;Now check and remove all None members from the 1st index of ClassPresets
+	;Now check and remove all None members from the first index of ClassPresets GroupLoadouts arrays
 	;There should be one GroupLoadout for each Preset!!
 	iCounter = 0
 	iSize = ClassPresets.Length
 		
 	while iCounter < iSize
 		
-		if (ClassPresets[iCounter] != None) && (ClassPresets[iCounter].GroupLoadouts[0] == None) && (ClassPresets[iCounter].GroupLoadouts.Length >= 2)
-		;Check if Actor has CP, first member is None and if any more members in the list, if so, remove first member. 
+		if (ClassPresets[iCounter] != None) && (ClassPresets[iCounter].GroupLoadouts[0] == None) && (ClassPresets[iCounter].GroupLoadouts.Length >= 1)
+		;Check if Actor has CP, first member is None and if any more members in the list, if so, remove first member of None. 
 			ClassPresets[iCounter].GroupLoadouts.Remove(0)
 		endif
 			
@@ -320,8 +328,8 @@ Function AddRemovePowerArmorGroups(Bool abRemove)
 		
 	while iCounter < iSize
 		
-		if (ClassPresets[iCounter] != None) && (ClassPresets[iCounter].GroupLoadouts[0] == None) && (ClassPresets[iCounter].GroupLoadouts.Length >= 2)
-		;Check if Actor has CP, first member is None and if any more members in the list, if so, remove first member. 
+		if (ClassPresets[iCounter] != None) && (ClassPresets[iCounter].GroupLoadouts[0] == None) && (ClassPresets[iCounter].GroupLoadouts.Length >= 1)
+		;Check if Actor has CP, first member is None and if any more members in the list, if so, remove first member of None. 
 			ClassPresets[iCounter].GroupLoadouts.Remove(0)
 		endif
 			

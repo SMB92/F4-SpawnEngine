@@ -3,6 +3,10 @@
 
 ## NEWS
 
+### Update 0.11.01 fixes EncounterZone system, transfer to Region instances
+
+[20/05/2018] As noted in the Issues section previously, the change in instancing methods broke the EncounterZone system. 4 arrays of Formlists are now stored on the WorldManager, and passed accordingly to a RegionManager when it is created. 
+
 ### Hotfix 0.10.04 makes Travel Markers persistent
 
 [17/05/2018] I made a slight oversight in that spawns never Traveled because Travel Markers never received their Init events... cos they weren't persistent. I've made a new script that will be used to store them in arrays. This will be expanded upon later.
@@ -55,6 +59,26 @@ Please be patient while work continues on both a working test file and official 
 
 ## UPDATE LOG
 
+##### [20/05/2018] SpawnEngine updated to version 0.11.01.180520
+
+###### HOUSEKEEPING:
+- Removed obsolete variable types from Traces leftover from when they were in-game Notifications.
+- Some more changes of commentary, property descriptions here and there.
+- Updated Notepad++ Lang file for new functions.
+- Removed an obsolete, commented out, function on the Master script. 
+- Changed parameter order on SpawnTypeRegionalScript, moved aiPresetToSet up a few so it looks better organised.
+- Added Trace to ActorGroupLoadoutScript AddGroupToClassPresets() function to log when Group successfully added to ClassPreset.
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Fixed array security check on ActorManager's GroupLoadout functions, was checking if list size was greater than 2, only needed to check if greater than 1.
+- Added missing security feature from DistributeGroupLoadouts() function on ActorManager to the PerformFirstTimeSetup() function, to remove first member of None if present on ClassPreset's GroupLoadout arrays.
+- Fixed bad initialisation of Var arrays on MasterSingleSettings Events, was initialising array with 1 member, needed 2.  
+
+###### MAJOR/MINOR FEATURE UPDATES & ADDITIONS:
+- [MINOR] Added Difficulty change as an Event to the MasterSingleSettingsUpdate Event. Was an oversight that this wasn't added earlier, as ClassPresets were based on Difficulty but since changed to be based on Master Preset, so nothing special is required anymore.
+- [MAJOR] Fixed EncounterZone system, added 4 arrays of Formlists to the WorldManager and 4 new parameters to the RegionManager's PerformFirstTimeSetup() function. WorldManager will now pass a formlist from each array to the RegionManager, and a new function on the RegionManager is used to transfer the contents to local arrays for permanent storage during first time setup.
+
+------
 ##### [17/05/2018] SpawnEngine updated to version 0.10.04.180517
 
 ###### SCRIPT OPTIMIZATION/REVISION/FIXES:

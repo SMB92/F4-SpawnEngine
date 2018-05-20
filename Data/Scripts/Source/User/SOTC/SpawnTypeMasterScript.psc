@@ -114,7 +114,7 @@ Function PerformFirstTimeSetup(Int aiSpawnTypeID)
 		SetBaseClassIfRequired()
 		bInit = true
 		
-		Debug.Trace("SpawnTypeMaster +iSpawnTypeID creation complete")
+		Debug.Trace("SpawnTypeMaster creation complete")
 		
 	endif
 	

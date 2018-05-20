@@ -171,7 +171,7 @@ Bool bInit ;Security check to make sure Init events/functions don't fire again w
 
 ;Manager passes self in to set instance when calling this
 Function PerformFirstTimeSetup(SOTC: RegionManagerScript aRegionManager, Int aiRegionID, Int aiWorldID, \
-SOTC:ThreadControllerScript aThreadController, Int aiSpawntypeID, Formlist akRegLoot, Formlist akBossLoot, Int aiPresetToSet)
+SOTC:ThreadControllerScript aThreadController, Int aiSpawntypeID, Int aiPresetToSet, Formlist akRegLoot, Formlist akBossLoot)
 
 	if !bInit
 		
@@ -195,7 +195,7 @@ SOTC:ThreadControllerScript aThreadController, Int aiSpawntypeID, Formlist akReg
 		
 		bInit = true
 		
-		Debug.Trace("SpawnType on Region +iRegionID on World +iWorldID creation complete")
+		Debug.Trace("SpawnType on Region created")
 		
 	endif
 	

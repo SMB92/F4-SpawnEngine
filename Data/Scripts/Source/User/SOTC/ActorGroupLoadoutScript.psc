@@ -75,7 +75,7 @@ Function PerformFirstTimeSetup(SOTC:ActorManagerScript aActorManager)
 		AddGroupToClassPresets(true) ;PA units enabled by default.
 		bInit = true
 		
-		Debug.Trace("An ActorGroupLoadout Init completed for +ActorManager ")
+		Debug.Trace("ActorGroupLoadout Init completed")
 		
 	endif
 
@@ -95,6 +95,12 @@ Function AddGroupToClassPresets(Bool abAllowPowerArmorGroups)
 			if bClassesToApply[iCounter]
 				ActorManager.ClassPresets[iCounter].GroupLoadouts.Add(Self)
 				;If ActorManager does not have this class defined, this will fail and log an error.
+				Debug.Trace("GroupLoadout added to ClassPreset")
+				;DEV NOTE: Security checks could be placed here to remove first member of None
+				;if present on ClassPreset's GroupLoadout arrays, however this may be the slower
+				;option, therefore this check is being done on the calling functions after this.
+				;It should be noted that if calling this from some other script (such as an addon)
+				;care should be taken in regard to this.
 			endif
 			
 			iCounter += 1

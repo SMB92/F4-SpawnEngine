@@ -145,6 +145,8 @@ EndGroup
 Float fTrackerWaitClock ;Wait timer based on Init order. Staggers the startup of the Trackers
 ;cleanup timer, in an attempt to prevent all Regions cleanup timers from firing simultaneously.
 
+Int iTravelMarkerInitWaitTimerID = 1 Const ;Timer for cleaning TravelLocs array after Init.
+
 
 ;Temp Variables
 ;---------------
@@ -163,7 +165,8 @@ ObjectReference kEventPoint ;When an event fires, this will set with the interce
 ;DEV NOTE: Init events/functions now handled by Masters creating the instances.
 
 Function PerformFirstTimeSetup(SOTC:WorldManagerScript aWorldManager, SOTC:ThreadControllerScript aThreadController, \
-ObjectReference akMasterMarker, Int aiWorldID, Int aiRegionID, Int aiPresetToSet)
+ObjectReference akMasterMarker, Int aiWorldID, Int aiRegionID, Int aiPresetToSet, \
+Formlist akEzEasyList, Formlist akEzHardList, Formlist akEzEasyNBList, Formlist akEzHardNBList) ;Added Ez Transfer fucntions in 0.11.01
 	
 	if !bInit
 		
@@ -176,13 +179,20 @@ ObjectReference akMasterMarker, Int aiWorldID, Int aiRegionID, Int aiPresetToSet
 		RegisterForCustomEvent(MasterScript, "PresetUpdate")
 		RegisterForCustomEvent(MasterScript, "ForceResetAllSps")
 		RegisterForCustomEvent(MasterScript, "MasterSingleSettingUpdate")
+		RegisterForCustomEvent(MasterScript, "InitTravelMarkers") 
 		
 		ObjectReference kNewInstance
 		
 		;Create tracker first
 		fTrackerWaitClock = (ThreadController.IncrementActiveRegionsCount(1)) * 1.2 as float
 		
-		Debug.Trace("Region +iRegionID on World +iWorldID Prepped")
+		;Create local EncounterZone lists
+		TransferEzFormlistToArray(akEzEasyList, kRegionLevelsEasy)
+		TransferEzFormlistToArray(akEzHardList, kRegionLevelsHard)
+		TransferEzFormlistToArray(akEzEasyNBList, kRegionLevelsEasyNoBorders)
+		TransferEzFormlistToArray(akEzHardNBList, kRegionLevelsHardNoBorders)
+		
+		Debug.Trace("Region Prepped, creating subclasses now")
 		
 		;This function returns the current count of Regions, so we can use this for our stagger timer.
 		kNewInstance = akMasterMarker.PlaceAtMe(kTrackerObject, 1 , false, false, false)
@@ -194,11 +204,11 @@ ObjectReference akMasterMarker, Int aiWorldID, Int aiRegionID, Int aiPresetToSet
 		
 		while iCounter < iSize
 		
-			Debug.Trace("Creating SpawnTypeRegional manager +iCounter on Region +iRegionID on World +iWorldID")
+			Debug.Trace("Creating SpawnTypeRegional manager on Region")
 		
 			kNewInstance = akMasterMarker.PlaceAtMe(kSpawnTypeObject, 1 , false, false, false)
 			(kNewInstance as SOTC:SpawnTypeRegionalScript).PerformFirstTimeSetup(Self, iRegionID, iWorldID, \
-			ThreadController, iCounter, kSpawnTypeRegLootLists[iCounter], kSpawnTypeBossLootLists[iCounter], iCurrentPreset)
+			ThreadController, iCounter, iCurrentPreset, kSpawnTypeRegLootLists[iCounter], kSpawnTypeBossLootLists[iCounter])
 			
 			iCounter += 1
 			
@@ -206,11 +216,30 @@ ObjectReference akMasterMarker, Int aiWorldID, Int aiRegionID, Int aiPresetToSet
 		
 		bInit = true
 		
-		Debug.Trace("Region +iRegionID on World +iWorldID creation complete")
+		Debug.Trace("Region creation complete")
 		
 	endif
 	
 	
+EndFunction
+
+
+;Transfer Formlist of EZs stored on WOrldManager to local arrays on instantiation. Added in ver. 0.11.01
+Function TransferEzFormlistToArray(Formlist akEzFormlist, EncounterZone[] akEzArray)
+
+	int iCounter
+	Int iSize = akEzFormlist.GetSize() ;Indexing 0 based just like arrays.
+	akEzArray = new EncounterZone[iSize] ;Initialise same size as Formlist, members set not added
+	
+	while iCounter < iSize
+	
+		akEzArray[iCounter] = (akEzFormlist.GetAt(iCounter)) as EncounterZone ;Cast to actual type
+		iCounter += 1
+		
+	endwhile
+	
+	Debug.Trace("EncounterZone formlist successfully transferred to local array")
+
 EndFunction
 
 
@@ -271,8 +300,12 @@ EndEvent
 
 
 Event SOTC:MasterQuestScript.MasterSingleSettingUpdate(SOTC:MasterQuestScript akSender, Var[] akArgs)
-
-	if (akArgs[0] as string) == "EzApplyMode"
+	
+	if (akArgs[0] as string) == "Difficulty"
+	
+		iCurrentDifficulty = akArgs[1] as Int
+	
+	elseif (akArgs[0] as string) == "EzApplyMode"
 	
 		iEzApplyMode = akArgs[1] as Int
 
@@ -309,6 +342,34 @@ Event SOTC:MasterQuestScript.ForceResetAllSps(SOTC:MasterQuestScript akSender, V
 	CleanupManager.ResetSpentPoints()
 	ThreadController.iEventFlagCount += 1 ;Flag as complete
 
+EndEvent
+
+
+;This script receives this Event as it waits some time, enough for MArkers to finish adding
+;Themselves everywhere, and then cleans up the first Member of None on the TM array.
+Event SOTC:MasterQuestScript.InitTravelMarkers(SOTC:MasterQuestScript akSender, Var[] akArgs)
+
+	if (akArgs as Bool) == True ;Initialise, add to RegionManager
+	
+		StartTimer(10, iTravelMarkerInitWaitTimerID)
+		
+	endif
+	
+EndEvent
+
+
+Event OnTimer(Int aiTimerID)
+
+	if aiTimerID == iTravelMarkerInitWaitTimerID
+	
+		if kTravelLocs[0] == None
+			kTravelLocs.Remove(0)
+			;Clean off the remianing None member on first index
+			Debug.Trace("A Region cleaned up its kTavelLocs array")
+		endif
+		
+	endif
+	
 EndEvent
 
 

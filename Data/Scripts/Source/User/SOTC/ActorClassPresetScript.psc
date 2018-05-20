@@ -91,7 +91,7 @@ Function PerformFirstTimeSetup(SOTC:ActorManagerScript aActorManager)
 		ActorManager.ClassPresets[iClassID] = Self
 		bInit = true
 		
-		Debug.Trace("ActorClassPreset Init completed for  +iClassID +ActorManager ")
+		Debug.Trace("ActorClassPreset Init completed")
 		
 	endif
 	

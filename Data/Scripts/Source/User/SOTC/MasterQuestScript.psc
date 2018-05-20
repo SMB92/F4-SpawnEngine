@@ -22,7 +22,7 @@ Group Primary
 	{ Auto-fills. Link to own Quest }
 	
 	SOTC:AuxilleryQuestScript Property AuxilleryQuestScript Auto Const Mandatory
-	{ Fill with Auxillery Controller Quest. Invoked on Shutdown. }
+	{ Fill with Auxillery Controller Quest. }
 	
 	SOTC:WorldManagerScript[] Property Worlds Auto Mandatory
 	{ Initialise one member with None. Fills dynamically. }
@@ -197,6 +197,8 @@ Group MenuStuff
 
 	SOTC:ActorManagerScript Property MenuCurrentActorScript Auto
 	{ Initialise none. Set by menu when needed }
+	
+	;The above 3 are required to be Properties for ease of access in Menu. 
 
 EndGroup
 
@@ -442,7 +444,7 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		
 		ThreadController = (kMasterCellMarker.PlaceAtMe(kThreadControllerObject, 1 , false, false, false)) as SOTC:ThreadControllerScript
 		
-		Debug.Trace("ThreadController created on Master: +ThreadController")
+		Debug.Trace("ThreadController created on Master")
 		
 		ObjectReference kNewInstance
 
@@ -461,7 +463,7 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		
 		while iCounter < iSize
 			
-			Debug.Trace("Creating SpawnTypeMaster +iCounter on Master")
+			Debug.Trace("Creating SpawnTypeMaster")
 			
 			kNewInstance = kMasterCellMarker.PlaceAtMe(kSpawnTypeMasterObject, 1 , false, false, false)
 			(kNewInstance as SOTC:SpawnTypeMasterScript).PerformFirstTimeSetup(iCounter)
@@ -477,7 +479,7 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		
 		while iCounter < iSize
 		
-			Debug.Trace("Initialising ActorManager +iCounter on Master")
+			Debug.Trace("Initialising ActorManager on Master")
 		
 			kNewInstance = kMasterCellMarker.PlaceAtMe(kActorManagerObjects[iCounter], 1 , false, false, false)
 			(kNewInstance as SOTC:ActorManagerScript).PerformFirstTimeSetup(kMasterCellMarker) 
@@ -489,9 +491,9 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		
 		;Fill Master Actor Lists
 		
-		Debug.Trace("Filling Master SpawnType ActorLists")
+		Debug.Trace("Filling Master SpawnType Actor lists")
 		FillMasterActorLists()
-		Debug.Trace("Master SpawnType ActorLists Filled")
+		Debug.Trace("Master SpawnType Actor lists filled")
 		
 		
 		;Start Worlds & Regions
@@ -500,7 +502,7 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		
 		while iCounter < iSize
 		
-			Debug.Trace("Creating World +iCounter on Master")
+			Debug.Trace("Initialising WorldManager")
 		
 			kNewInstance = kMasterCellMarker.PlaceAtMe(kWorldManagerObjects[iCounter], 1 , false, false, false)
 			(kNewInstance as SOTC:WorldManagerScript).PerformFirstTimeSetup(ThreadController, kMasterCellMarker, iCurrentPreset) 
@@ -511,7 +513,7 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		endwhile
 		
 		
-		Debug.Trace("Events starting: +kEventQuestsPendingStart")
+		Debug.Trace("Events starting")
 		StartPendingEventQuests() ;Will return immediately if no events
 		
 		;Instancing done, mod is ready.
@@ -595,40 +597,7 @@ Function ResetMasterActorLists()
 EndFunction
 
 
-;Add an ActorQuestScript to all applicable SpawnTypes.
-;Function AddActorToMasterSpawnTypes(SOTC:ActorQuestScript aActorToAdd)
-
-	;Int iCounter = 1 ;Must start from one
-	;Bool[] bAddToType = aActorToAdd.bAllowedSpawnTypes
-	;Int iSize = SpawnTypeMasters.Length 
-	;DEV NOTE: bAllowedTypes and this MUST be exact size, however the former can be safely larger (will not look at them)
-		
-	;while iCounter < iSize
-
-	;	if bAddToType[iCounter]
-	;		SpawnTypeMasters[iCounter].ActorLibrary.Add(aActorToAdd, 1)
-	;	endif
-		
-	;	iCounter += 1
-			
-	;endwhile
-	
-	;Remove all first members of None, to avoid script errors. (Patch 0.09.01)
-	;iCounter = 1
-	
-	;while iCounter < iSize
-	
-	;	if SpawnTypeMasters[iCounter].ActorLibrary[0] == None
-	;		SpawnTypeMasters[iCounter].ActorLibrary.Remove(0)
-	;	endif
-		
-	;	iCounter += 1
-		
-	;endwhile
-	
-;EndFunction
-
-
+;Adds a single ActorManager to all applicable Master Lists
 Function AddActorToMasterSpawnTypes(SOTC:ActorManagerScript aActorToAdd)
 
 	Int iCounter
@@ -750,37 +719,44 @@ Function SendMasterSingleSettingUpdateEvent(string asSetting, Bool abBool01, Int
 	
 	Var[] SettingParams
 	
-	if asSetting == "EzApplyMode"
+	if asSetting == "Difficulty"
 	
-		SettingParams = new Var[1]
+		SettingParams = new Var[2]
+		SettingParams[0] = asSetting
+		SettingParams[1] = iCurrentDifficulty
+		SendCustomEvent("MasterSingleSettingUpdate", SettingParams)
+	
+	elseif asSetting == "EzApplyMode"
+	
+		SettingParams = new Var[2]
 		SettingParams[0] = asSetting
 		SettingParams[1] = iEzApplyMode
 		SendCustomEvent("MasterSingleSettingUpdate", SettingParams)
 		
 	elseif asSetting == "EzBorderMode"
 	
-		SettingParams = new Var[1]
+		SettingParams = new Var[2]
 		SettingParams[0] = asSetting
 		SettingParams[1] = iEzBorderMode
 		SendCustomEvent("MasterSingleSettingUpdate", SettingParams)
 	
 	elseif asSetting == "RegionSwarmChance"
 	
-		SettingParams = new Var[1]
+		SettingParams = new Var[2]
 		SettingParams[0] = asSetting
 		SettingParams[1] = iRandomSwarmChance
 		SendCustomEvent("MasterSingleSettingUpdate", SettingParams)
 		
 	elseif asSetting == "RegionAmbushChance"
 	
-		SettingParams = new Var[1]
+		SettingParams = new Var[2]
 		SettingParams[0] = asSetting
 		SettingParams[1] = iRandomAmbushChance
 		SendCustomEvent("MasterSingleSettingUpdate", SettingParams)
 		
 	elseif asSetting == "SpawnTypesLootEnableDisable"
 	
-		SettingParams = new Var[1]
+		SettingParams = new Var[2]
 		SettingParams[0] = asSetting
 		SettingParams[1] = abBool01
 		
