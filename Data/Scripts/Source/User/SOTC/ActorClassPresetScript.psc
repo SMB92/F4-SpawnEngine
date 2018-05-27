@@ -110,7 +110,22 @@ Function RemovePowerArmorGroups()
 			GroupLoadouts.Remove(iCounter, 1) ;Remove that member
 		endif
 		
+		iCounter += 1
+		
 	endwhile
+	
+EndFunction
+
+
+;Added patch 0.12.01, local function to clean first member of None from GL arrays.
+;Was probably not necessary as it was discovered that error was caused by not incrementing the
+;Counter, but probably good to have here anyway universal usage.
+Function CleanGroupLoadoutsArray()
+
+	if (GroupLoadouts.Length > 1) && (GroupLoadouts[0] == None)
+		GroupLoadouts.Remove(0)
+		Debug.Trace("Removed remaining member of None on ClassPreset GroupLoadouts array")
+	endif
 	
 EndFunction
 

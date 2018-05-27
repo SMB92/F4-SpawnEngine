@@ -82,7 +82,7 @@ EndGroup
 
 Group Config
 
-	Int Property iChanceToFire Auto Const Mandatory
+	Int Property iChanceToFire = 100 Auto Const Mandatory
 	{ Use this define an extra chance/dice roll for this SP or set 100 for always. }
 
 	Bool Property bAllowVanilla Auto Const Mandatory
@@ -203,9 +203,11 @@ Bool bApplyStampedePackage ;Quick flag to set Random Stampede enabled
 
 Event OnCellAttach()
 	
-	;Staggering the startup might help to randomise SPs in an area when Threads are scarce
-	StartTimer((Utility.RandomFloat(0.2,0.5)), iStaggerStartupTimerID)
-
+	if (!bSpawnpointActive)
+		;Staggering the startup might help to randomise SPs in an area when Threads are scarce
+		StartTimer((Utility.RandomFloat(0.2,0.5)), iStaggerStartupTimerID)
+	endif
+	
 EndEvent
 
 
@@ -214,50 +216,57 @@ Event OnTimer(int aiTimerID)
 	if aiTimerID == iStaggerStartupTimerID
 
 		;Initial checks
-		if (!Self.IsDisabled()) && (!bSpawnpointActive) ;INITIAL CHECK
+		if (!bSpawnpointActive) ;INITIAL CHECK
 		;Check if we are enabled, currently running
 		
 			;NOTE: Master and Regional checks are done before GetThread, so it is possible for an event to intercept before ThreadController can deny
 			;Events are usually exempt from ThreadController checks, although they do count towards any of the limits.
 			
+			Debug.Trace("SpawnPoint firing, setting script links")
 			SetSpScriptLinks()
 		
 			;Master Level checks/intercepts
 			if MasterScript.MasterSpawnCheck(Self as ObjectReference, bAllowVanilla) ;MASTER CHECK: If true, denied
 				;Master script assuming control, kill this thread and disable
-				Self.Disable()
+				Debug.Trace("SpawnPoint denied by Master check")
+				bSpawnpointActive = true
 				CleanupManager.AddSpentPoint(Self as ObjectReference) ;All points are added by Object rather than script type				
 				return
 			endif
 			
-			Debug.Notification("Passed Master Check")
+			Debug.Trace("SpawnPoint passed Master Check")
 			
 			;Region Level checks/intercept. This will send in local spawn parameters if no intercept takes place.
 			;NOTE: as of version 0.06.01, no events are defined on RegionManager, will always return false. 
 			if RegionManager.RegionSpawnCheck(Self as ObjectReference, iPresetRestriction) ;REGION CHECK: If true, denied
 				;Region script assuming control, kill this thread and disable
-				Self.Disable()
+				Debug.Trace("MiniPoint denied by Region check")
+				bSpawnpointActive = true
 				CleanupManager.AddSpentPoint(Self as ObjectReference) ;All points can be added by Object rather than script type
 				return
 			endif
 			
-			Debug.Notification("Passed Region Check")
+			Debug.Trace("SpawnPoint passed Region Check")
 			
 			if (SpawnTypeScript.bSpawnTypeEnabled) && (ThreadController.GetThread(iThreadsRequired)) && \
 			((Utility.RandomInt(1,100)) < iChanceToFire) ;LOCAL CHECK
-				Debug.Notification("Spawning")
+				Debug.Trace("SpawnPoint Spawning")
 				PrepareLocalSpawn() ;Do Spawning
+				Debug.Trace("SpawnPoint successfully spent")
+			else
+				;Denied by dice, Disable and wait some time before trying again.
+				Debug.Trace("SpawnPoint denied by dice or Spawntype disabled, cooling off before next attempt allowed")
+				bSpawnpointActive = true
+				StartTimer(ThreadController.iSpCooldownTimerClock, iSpCooldownTimerID)
 			Endif
 			
-		else
-			;Denied, Disable and wait some time before trying again.
-			Self.Disable()
-			StartTimer(ThreadController.iSpCooldownTimerClock, iSpCooldownTimerID)
+		;else
+			;Do nothing
 		endif
 
 	elseif aiTimerID == iSpCooldownTimerID
 	
-		Self.Enable()
+		bSpawnpointActive = false
 	
 	endif
 	
@@ -285,7 +294,7 @@ Function PrepareLocalSpawn() ;Determine how to proceed
 			PrepareInteriorSpawn()
 		else ;Nip it in the bud
 			ThreadController.ReleaseThreads(iThreadsRequired)
-			Self.Disable()
+			bSpawnpointActive = true
 			StartTimer(ThreadController.iSpCooldownTimerClock, iSpCooldownTimerID)
 		endif
 		
@@ -299,13 +308,12 @@ Function PrepareLocalSpawn() ;Determine how to proceed
 	
 	endif
 	
-	Self.Disable()
 	bSpawnpointActive = true
 	CleanupManager.AddSpentPoint(Self as ObjectReference) ;All points are added by Object rather than script type
 	;Cleanup will be handled by the CleanupManager upon Region reset timer firing.
 	ThreadController.ReleaseThreads(iThreadsRequired) ;Spawning done, threads can be released.
 	
-	Debug.Notification("Done Local Spawn")
+	Debug.Trace("Done Local Spawn")
 	
 EndFunction
 
@@ -337,6 +345,7 @@ Function FactoryReset()
 	endif
 	
 	ThreadController.IncrementActiveSpCount(-1)
+	bSpawnpointActive = false
 
 EndFunction
  

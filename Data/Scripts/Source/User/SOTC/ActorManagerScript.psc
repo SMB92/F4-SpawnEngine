@@ -214,6 +214,7 @@ Function PerformFirstTimeSetup(ObjectReference akMasterMarker)
 		;Remove first member of None if still present. Safe to call AFTER GL's have instanced
 		if GroupLoadouts[0] == None 
 			Grouploadouts.Remove(0)
+			Debug.Trace("Removed remaining member of None on ActorManager GroupLoadouts array")
 		endif
 		
 		;Now check and remove all None members from the first index of ClassPresets GroupLoadout arrays
@@ -223,12 +224,14 @@ Function PerformFirstTimeSetup(ObjectReference akMasterMarker)
 			
 		while iCounter < iSize
 			
-			if (ClassPresets[iCounter] != None) && (ClassPresets[iCounter].GroupLoadouts[0] == None) && (ClassPresets[iCounter].GroupLoadouts.Length >= 1)
-			;Check if Actor has CP, first member is None and if any more members in the list, if so, remove first member of None. 
-				ClassPresets[iCounter].GroupLoadouts.Remove(0)
+			if (ClassPresets[iCounter] != None) ;Check if ClassPreset actually defined
+				ClassPresets[iCounter].CleanGroupLoadoutsArray()
 			endif
-				
+			
+			iCounter += 1
+			
 		endwhile
+
 		
 		bInit = true
 		
@@ -249,6 +252,7 @@ Function DistributeGroupLoadouts()
 	
 	if GroupLoadouts[0] == None ;Check if first member is None from Init (patch 0.09.01)
 		GroupLoadouts.Remove(0)
+		;There will always be at least one actual GL on this Manager, this is safe.
 	endif
 	
 	;Clear first
@@ -279,12 +283,13 @@ Function DistributeGroupLoadouts()
 	iSize = ClassPresets.Length
 		
 	while iCounter < iSize
-		
-		if (ClassPresets[iCounter] != None) && (ClassPresets[iCounter].GroupLoadouts[0] == None) && (ClassPresets[iCounter].GroupLoadouts.Length >= 1)
-		;Check if Actor has CP, first member is None and if any more members in the list, if so, remove first member of None. 
-			ClassPresets[iCounter].GroupLoadouts.Remove(0)
+
+		if (ClassPresets[iCounter] != None) ;Check if ClassPreset actually defined
+			ClassPresets[iCounter].CleanGroupLoadoutsArray()
 		endif
-			
+		
+		iCounter += 1
+
 	endwhile
 	
 EndFunction
@@ -296,6 +301,7 @@ Function AddRemovePowerArmorGroups(Bool abRemove)
 	Int iCounter
 	Int iSize
 
+	
 	if !abRemove ;Add
 	
 		iSize = GroupLoadouts.Length
@@ -310,7 +316,9 @@ Function AddRemovePowerArmorGroups(Bool abRemove)
 		
 		endwhile
 		
+		
 	else ;Assume remove
+	
 	
 		iSize = ClassPresets.Length
 		
@@ -321,18 +329,20 @@ Function AddRemovePowerArmorGroups(Bool abRemove)
 		
 	endif
 	
+	
 	;Now check and remove all None members from the 1st index of ClassPresets
 	;There should be one GroupLoadout for each Preset!!
 	iCounter = 0
 	iSize = ClassPresets.Length
 		
 	while iCounter < iSize
-		
-		if (ClassPresets[iCounter] != None) && (ClassPresets[iCounter].GroupLoadouts[0] == None) && (ClassPresets[iCounter].GroupLoadouts.Length >= 1)
-		;Check if Actor has CP, first member is None and if any more members in the list, if so, remove first member of None. 
-			ClassPresets[iCounter].GroupLoadouts.Remove(0)
+
+		if (ClassPresets[iCounter] != None) ;Check if ClassPreset actually defined
+			ClassPresets[iCounter].CleanGroupLoadoutsArray()
 		endif
-			
+		
+		iCounter += 1
+
 	endwhile
 	
 EndFunction

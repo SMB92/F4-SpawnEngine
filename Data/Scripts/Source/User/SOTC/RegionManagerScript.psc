@@ -181,8 +181,6 @@ Formlist akEzEasyList, Formlist akEzHardList, Formlist akEzEasyNBList, Formlist 
 		RegisterForCustomEvent(MasterScript, "MasterSingleSettingUpdate")
 		RegisterForCustomEvent(MasterScript, "InitTravelMarkers") 
 		
-		ObjectReference kNewInstance
-		
 		;Create tracker first
 		fTrackerWaitClock = (ThreadController.IncrementActiveRegionsCount(1)) * 1.2 as float
 		
@@ -195,10 +193,11 @@ Formlist akEzEasyList, Formlist akEzHardList, Formlist akEzEasyNBList, Formlist 
 		Debug.Trace("Region Prepped, creating subclasses now")
 		
 		;This function returns the current count of Regions, so we can use this for our stagger timer.
-		kNewInstance = akMasterMarker.PlaceAtMe(kTrackerObject, 1 , false, false, false)
-		(kNewInstance as SOTC:RegionTrackerScript).PerformFirstTimeSetup(Self, fTrackerWaitClock)
+		CleanupManager = (akMasterMarker.PlaceAtMe(kTrackerObject, 1 , false, false, false)) as SOTC:RegionTrackerScript
+		CleanupManager.PerformFirstTimeSetup(Self, fTrackerWaitClock)
 		
 		;Create instances of spawntype objectreferences and set them up
+		ObjectReference kNewInstance
 		Int iCounter
 		Int iSize = 16 ;Need to figure out more intuitive way, currently hard set to number of default.
 		
@@ -460,7 +459,7 @@ Bool Function RegionSpawnCheck(ObjectReference akCallingPoint, Int aiPresetRestr
 	;NOTE - Random events are currently not fully implemented on the Regional level. No code iSize
 	;included here for them yet. 
 	
-	if !bRegionEnabled && ((Utility.RandomInt(1,100)) < iRegionSpawnChance)
+	if !bRegionEnabled && ((Utility.RandomInt(1,100)) <= iRegionSpawnChance)
 		return true ;Red light.
 	endif
 	

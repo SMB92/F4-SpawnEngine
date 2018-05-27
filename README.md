@@ -1,7 +1,12 @@
 # F4-SpawnEngine
 *Fallout 4 Mod "SpawnEngine" aka "Spawns of the Commonwealth" by SMB92*
+NOTE THAT THIS REPO DOES NOT CURRENTLY CONTAIN A PLAYABLE PLUGIN/RELEASE CANDIDATE. THERE IS CURRENTLY NO UP TO DATE DOCUMENTATION EITHER AT THIS TIME. PLEASE BE PATIENT WHILE WORK CONTINUES. ALSO TAKE NOTE THAT ANY PLUGIN FILES PRODUCED BY ME WILL NOT BE SUBJECT TO OPEN SOURCE LICENSE, AND WILL REQUIRE MY EXPLICIT PERMISSION TO USE. LICENSING WILL BE UPDATED TO REFLECT THIS IN DUE TIME.
 
 ## NEWS
+
+### SpawnEngine updated to version 0.12.01, Alpha proves solid
+
+[27/05/2018] This version was released as the second Alpha RC for private testing and has proven to be working optimally. This update kills off a number of gremlins in the code, mostly oversights in Init procedures which led to errors in SpawnPoints. The next update will likely be a public alpha demo, however I am also working on some new methods for the Random Events Framework.
 
 ### Update 0.11.01 fixes EncounterZone system, transfer to Region instances
 
@@ -53,12 +58,30 @@
 
 ### First Public source released!
 
-[25/04/2018] Dubbed version 0.05.00.180425, all current source scripts have been pushed to this hub. Documentation is currently limited to what I've commented into the scripts, and no ESP file has been comitted (although compiled scripts are currently present, just to show that the source is in working order). A Notepad++ Language file is provided on the main page, which highlights all current script types, variables thereof and all Function definitions. It also includes some missing vanilla syntax. 
+[25/04/2018] Dubbed version 0.05.00.180425, all current source scripts have been pushed to this hub. Documentation is currently limited to what I've commented into the scripts, and no ESP file has been committed (although compiled scripts are currently present, just to show that the source is in working order). A Notepad++ Language file is provided on the main page, which highlights all current script types, variables thereof and all Function definitions. It also includes some missing vanilla syntax. 
 
 Please be patient while work continues on both a working test file and official documentation.
 
 ## UPDATE LOG
 
+##### [27/05/2018] SpawnEngine updated to version 0.12.01.180527
+
+###### HOUSEKEEPING:
+- Update NPP Lang file to include new function on ActorClassPresetsScript
+- Add some commentary.
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Fixed MasterScript AddActorToMasterSpawnTypes() function not calling from Master Spawntype from index (how this was allowed to compile, I am not sure, guess it's one of those obscurities).
+- Fixed never ending loops on security functions on ActorManagerScript trying to clean up first member of None on GroupLoadouts arrays on ClassPresets. This was due to me forgetting to increment the counter, but a local function was added to the ActorClassPresetsScript to deal with this anyway. This is probably better/faster overall.
+- Fixed never ending loop on RemovePowerArmorGroups() on ActorClassPresetsScript.
+- Fixed/Changed Spawn Chance checks (dice rolls) to check if <= rather than just <, as a roll of 100 on 100% chance SPs (which is oddly quite common) would cause denial. 
+- Fixed SpawnPoints not disabling/flagging as Active after successful Spawn, which caused shitloads of Spawns and spam. 
+- Removed all instances of Disable/Enable/IsDisabled from Spawnpoints. Unnecesary, can just use bSpawnpointActive flag for all use cases.
+- Fixed Spawnpoints not entering cooldown state when denied at the proper time (when denied by dice roll).
+- Changed how the Master instance of the SpawnTypeMasterScript ActorList is initialised, will now be initialised to the exact amount of Actors supported by the mod. This fixes the problems with filling ActorLists and the errors seen on Spawnpoints because of this.
+- Fixed RegionManager not actually setting created instance of RegionTrackerScript as CleanupManager.
+
+------
 ##### [20/05/2018] SpawnEngine updated to version 0.11.01.180520
 
 ###### HOUSEKEEPING:

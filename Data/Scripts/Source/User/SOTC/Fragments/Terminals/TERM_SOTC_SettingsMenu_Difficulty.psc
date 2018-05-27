@@ -10,6 +10,7 @@ SOTC:MasterQuestScript MasterScript = MasterQuest as SOTC:MasterQuestScript
 If MasterScript.iMenuSettingsMode == 0 ;Master Mode, apply to all
 
 	MasterScript.iCurrentDifficulty = 0
+	MasterScript.SendMasterSingleSettingUpdateEvent("Difficulty", false, 0, 0.0)
 
 elseif MasterScript.iMenuSettingsMode == 1 ;Regional Mode, apply to Region only
 
@@ -29,6 +30,7 @@ SOTC:MasterQuestScript MasterScript = MasterQuest as SOTC:MasterQuestScript
 If MasterScript.iMenuSettingsMode == 0 ;Master Mode, apply to all
 
 	MasterScript.iCurrentDifficulty = 1
+	MasterScript.SendMasterSingleSettingUpdateEvent("Difficulty", false, 0, 0.0)
 
 elseif MasterScript.iMenuSettingsMode == 1 ;Regional Mode, apply to Region only
 
@@ -48,6 +50,7 @@ SOTC:MasterQuestScript MasterScript = MasterQuest as SOTC:MasterQuestScript
 If MasterScript.iMenuSettingsMode == 0 ;Master Mode, apply to all
 
 	MasterScript.iCurrentDifficulty = 2
+	MasterScript.SendMasterSingleSettingUpdateEvent("Difficulty", false, 0, 0.0)
 
 elseif MasterScript.iMenuSettingsMode == 1 ;Regional Mode, apply to Region only
 
@@ -67,6 +70,7 @@ SOTC:MasterQuestScript MasterScript = MasterQuest as SOTC:MasterQuestScript
 If MasterScript.iMenuSettingsMode == 0 ;Master Mode, apply to all
 
 	MasterScript.iCurrentDifficulty = 3
+	MasterScript.SendMasterSingleSettingUpdateEvent("Difficulty", false, 0, 0.0)
 
 elseif MasterScript.iMenuSettingsMode == 1 ;Regional Mode, apply to Region only
 
@@ -85,7 +89,8 @@ SOTC:MasterQuestScript MasterScript = MasterQuest as SOTC:MasterQuestScript
 
 If MasterScript.iMenuSettingsMode == 0 ;Master Mode, apply to all
 
-	MasterScript.iCurrentDifficulty = 4
+	MasterScript.iCurrentDifficulty = 4 ;YES 4 = NONE IN BETHESDA LAND :D
+	MasterScript.SendMasterSingleSettingUpdateEvent("Difficulty", false, 0, 0.0)
 
 elseif MasterScript.iMenuSettingsMode == 1 ;Regional Mode, apply to Region only
 

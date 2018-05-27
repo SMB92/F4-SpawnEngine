@@ -476,6 +476,8 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		;Start all ActorManagers
 		iCounter = 0
 		iSize = kActorManagerObjects.Length
+		SpawnTypeMasters[0].InitMasterActorList(iSize) ;Initialise the Master ActorList to exact amount of Actors available (0.12.01)
+		Debug.Trace("Initialised Master ActorList, instancing ActorManagers now")		
 		
 		while iCounter < iSize
 		
@@ -490,7 +492,6 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		endwhile
 		
 		;Fill Master Actor Lists
-		
 		Debug.Trace("Filling Master SpawnType Actor lists")
 		FillMasterActorLists()
 		Debug.Trace("Master SpawnType Actor lists filled")
@@ -607,7 +608,8 @@ Function AddActorToMasterSpawnTypes(SOTC:ActorManagerScript aActorToAdd)
 	while iCounter < iSize
 
 		if bAddToType[iCounter]
-			SpawnTypeMasters.ActorList.Add(aActorToAdd, 1)
+			SpawnTypeMasters[iCounter].ActorList.Add(aActorToAdd, 1)
+			;Both bAllowed and STMasters arrays are the same in terms of index.
 		endif
 		
 		iCounter += 1
@@ -913,7 +915,7 @@ Bool Function MasterSpawnCheck(ObjectReference akCallingPoint, Bool abAllowVanil
 	
 	;Vanilla Mode check
 	
-	if (!abAllowVanilla) && (bVanillaMode) && ((Utility.RandomInt(1,100)) < iMasterSpawnChance)
+	if (!abAllowVanilla) && (bVanillaMode) && ((Utility.RandomInt(1,100)) <= iMasterSpawnChance)
 		return true ;Denied due to vanilla mode
 	endif
 	

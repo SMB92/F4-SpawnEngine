@@ -83,9 +83,10 @@ Function PerformFirstTimeSetup(SOTC:RegionManagerScript aRegionManager, float af
 		Utility.Wait(afWaitClock) ;Staggers start of timers on Trackers, in attempt to prevent many
 		;instances from trying to perform cleanup at the same time.
 		BeginCleanupTimer()
-		Debug.Trace("Region Tracker Created")
 		
 		bInit = true
+		
+		Debug.Trace("Region Tracker Created")
 		
 	endif
 	

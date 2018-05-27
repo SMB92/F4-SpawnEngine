@@ -121,6 +121,15 @@ Function PerformFirstTimeSetup(Int aiSpawnTypeID)
 EndFunction
 
 
+;Added in version 0.12.01, only called on the "Master" instance (index 0).
+;Inits ActorList array to be exact amount of Actors supported by mod. 
+Function InitMasterActorList(Int aiNumOfActors)
+
+	ActorList = new SOTC:ActorManagerScript[aiNumOfActors]
+	
+EndFunction
+
+
 ;Associates the Class of this Spawntype of it is based on one, on first time setup.
 Function SetBaseClassIfRequired()
 
@@ -135,6 +144,7 @@ Function SetBaseClassIfRequired()
 EndFunction
 
 
+;Used for non-master instances.
 Function SafelyClearActorList()
 
 	ActorList.Clear()
