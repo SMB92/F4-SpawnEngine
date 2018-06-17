@@ -1,5 +1,5 @@
-Scriptname SOTC:TravelMarkerPersistScript extends ObjectReference
-{ Store all Travel Markers in arrays here, keeps them persistent. }
+Scriptname SOTC:PointPersistScript extends ObjectReference
+{ Store all in game placed markers that need to be persistent here. }
 ;Written by SMB92
 ;Special thanks to J. Ostrus [BigandFlabby] for code contributions that made this mod possible.
 
@@ -19,14 +19,21 @@ Scriptname SOTC:TravelMarkerPersistScript extends ObjectReference
 ;PROPERTIES & IMPORTS
 ;------------------------------------------------------------------------------------------------
 
-;This is just here to ensure this script initialises properly.
+;NOTE: This script does not have to be instanced.
+
 SOTC:MasterQuestScript Property MasterScript Auto Const
 { Fill with the MasterQuest }
 
-ObjectReference[] Property kTravelMarkersList01 Auto Const
+;DEV NOTE: As of version 0.13.01, all SpawnPoints are permanently persistent via storage on this
+;script. The main reason is due to cell conflicts, altough regardless it was somewaht impossible
+;to delete them at runtime anyway. Uninstallation will now simply iterate this list, disabling
+;each Object in the lists. 
+
+ObjectReference[] Property kTravelPoints Auto Const
 { Fill with placed Travel Markers! }
-ObjectReference[] Property kTravelMarkersList02 Auto Const
-{ Fill with even more placed Travel Markers! }
+
+ObjectReference[] Property kSpawnPoints Auto Const
+{ Fill with placed SpawnPoints of any sort! }
 
 
 ;------------------------------------------------------------------------------------------------

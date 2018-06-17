@@ -11,9 +11,16 @@ Scriptname SOTC:MasterQuestScript extends Quest Conditional
 ; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
 ; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
 
-;------------------------------------------------------------------------------------------------
+;DEV NOTE ON DYNAMIC ARRAY INITIALISATION:
+;Over the course of development, I have found at times when initialising an array with 0 members,
+;the array seems to get trashed by the engine (maybe after so much time passes?) and this leads to
+;errors due to working with a "None Array" (i.e, adding/inserting logs an error that array is None).
+;From 0.10.01 forward, all arrays are initialised with 1 member of None, and after work has been
+;done/array initialised, that member is removed. 
+
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Group Primary
 {Primary Properties Group}
@@ -33,7 +40,7 @@ Group Primary
 	Holotape Property SOTC_AuxMenuTape Auto Const Mandatory
 	{ Auto-Fills with AuxMenuTape }
 
-	Actor Property Player Auto Const
+	Actor Property PlayerRef Auto Const
 	{ Permanent link to Player if/when needed }
 
 EndGroup
@@ -75,12 +82,13 @@ Group Dynamic
 	;style of ambush
 	; [13] - SNIPER (CLASS-BASED) - Stores all Actor that support Sniper Class
 	; [14] - SWARM/INFESTATION (CLASS-BASED) - Stores all Actors that support Swarm/Infestation
-	; [15] - STAMPEDE (CLASS-BASED) - Stores all Actors that support extended Swarm feature Stampede.
+	; [15] - RAMPAGE (CLASS-BASED) - Stores all Actors that support Rampage feature.
 	
 	;NOTE: See "CLASSES VS SPAWNTYPES" commentary of the SpawnTypeMasterScript for more in-depth info
 	
-	SOTC:TravelMarkerPersistScript Property TravelMarkerStore Auto
-	{ Init None, instanced at runtime. Store all Travel Markers placed in World. }
+	;No longer instanced as of version 0.13.01
+	;SOTC:PointPersistScript Property PointPersistStore Auto
+	;{ Init None, instanced at runtime. Store all Travel Markers placed in World. }
 	
 EndGroup
 
@@ -112,11 +120,12 @@ Group InstanceBaseObjects
 	MiscObject Property kThreadControllerObject Auto Const Mandatory
 	{ Unique }
 	
-	MiscObject Property kEventMonitorObject Auto Const Mandatory
+	MiscObject Property kSettingsEventMonitorObject Auto Const Mandatory
 	{ Unique }
 	
-	MiscObject Property kTravelMarkerStoreObject Auto Const Mandatory
-	{ Unique }
+	;No longer instanced as of version 0.13.01.
+	;MiscObject Property kPointPersistBaseObject Auto Const Mandatory
+	;{ Unique }
 	
 	MiscObject Property kSpawnTypeMasterObject Auto Const Mandatory
 	{ SpawnTypeMasterScript base objects }
@@ -220,7 +229,9 @@ Group SettingsGlobals
 	{ Auto-fill }
 	GlobalVariable Property SOTC_Global_CurrentMenuWorld Auto Const Mandatory
 	{ Auto-fill }
-	GlobalVariable Property SOTC_Global_CurrentMenuRegion Auto Const Mandatory ;Highly reused
+	GlobalVariable Property SOTC_Global_CurrentMenuRegion Auto Const Mandatory
+	{ Auto-fill }
+	GlobalVariable Property SOTC_Global_RegionCount Auto Const Mandatory
 	{ Auto-fill }
 	
 	;Generic Variables for promiscuous use in Menu
@@ -251,22 +262,41 @@ Group SettingsGlobals
 EndGroup
 
 
+;----------------------------------------
+;Rarity Chances Preset Struct Definition
+;----------------------------------------
+
+;Rarity chances can only be defined on the Master level, no need to put in separate script for importing.
+Struct RarityChancesPresetStruct
+
+Int iCommonChance
+Int iUncommonChance
+;These values should be balanced so they equal less than 100 when added together, as the remainder serves as Rare Chance.
+
+EndStruct
+
+
 Group SpawnSettings
 { Settings used in spawn code. Initialise all 0/None/False, set in menu. }
 
 	Int Property iRerollChance Auto
-	{ Initialise with 0, set by Menu. Chance of a supported Spawnpoint rolling out another group }
+	{ Initialise with 0, set by Menu. Chance of a MultiPoint rolling out another group. }
 
 	Int Property iRerollMaxCount Auto
-	{ Initialise with 0, set by Menu. Maximum number of times a Reroll can occur }
+	{ Initialise with 0, set by Menu. Maximum number of times a MultiPoint Reroll can occur. }
+	
+	RarityChancesPresetStruct[] Property RarityChancePresets Auto Const
+	{ Fill each members struct with balanced values for Rarity chances. }
 
-	Int Property iCommonChance Auto
+	Int Property iCommonActorChance Auto
 	{ Initialise with 0, set by Menu. Chance of Common Actor appearing in a Region }
 
-	Int Property iUncommonChance Auto
+	Int Property iUncommonActorChance Auto
 	{ Initialise with 0, set by Menu. Chance of Common Actor appearing in a Region. Above this, spawns Rare }
 
 EndGroup
+
+Int iCurrentRarityChancePreset ;Local storage of the last value selected from Menu
 
 
 ;------------------------------
@@ -313,7 +343,7 @@ Group FeatureSettings
 	{ Initialise 0, set in Menu. If any value above 0, there is a chance of a random Swarm/Infestation }
 	;This setting is also defined on a Regional level
 	
-	Int Property iRandomStampedeChance Auto
+	Int Property iRandomRampageChance Auto
 	{ Initialise 0, set in Menu. If any value above 0, there is a chance of a random 
 	Stampede upon successful Swarm, if the Actor supports this. }
 	;This setting is also defined on a Regional level
@@ -325,11 +355,11 @@ Group FeatureSettings
 	;RANDOM EVENTS FRAMEWORK PROPERTIES
 	;-----------------------------------
 	
-	ObjectReference Property kEventPoint Auto 
+	SOTC:SpawnPointScript Property kEventPoint Auto 
 	{ Init None. Fills with intercepted SpawnPoint to start events at. }
 	
-	Int Property iEventCooldownTimerClock Auto
-	{ Init 300 (5 minutes default). Change from Menu. }
+	Float Property fEventCooldownTimerClock = 300.0 Auto
+	{ Default value of 300.0 (5 minutes). Change from Menu. }
 	
 	Quest[] Property kRE_BypassEvents Auto Mandatory ;Type 1
 	{ Init one member of None. Dynamically fills. Events here can bypass timed locks. }
@@ -355,7 +385,8 @@ EndGroup
 Bool bEventLockEngaged ;Used to skip/block spawn event checker
 Int iEventType ;Set when a Random Event is about to fire. Determines type of Event.
 
-Quest[] kEventQuestsPendingStart ;Used when in Menu mode, tp append and start Event Quests on Menu Mode exit. 
+Quest[] kEventQuestsPendingStart ;Used when in Menu mode, tp append and start Event Quests on Menu Mode exit.
+Quest[] kActiveEventQuests ;Used to keep a central database of active EventQuests, for uninstallation etc. 
 
 ;--------------------------
 
@@ -415,12 +446,12 @@ CustomEvent PresetUpdate ;Update sent to Regions and/or Spawntypes for Preset ch
 CustomEvent MasterSingleSettingUpdate ;Event to send single settings updates to scripts.
 CustomEvent ForceResetAllSps ;Reset all Regions SPs. Does not (re)start timer, safe from Menu, but
 ;we will force the user to exit menu anyway as it may take some time to complete.
-CustomEvent InitTravelMarkers
+CustomEvent InitTravelLocs
 
 
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;INITIALISATION FUNCTIONS & EVENTS
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ;First time Init
 ;Event OnQuestInit() ;Will fail if ANYTHING goes wrong at Quest start, i.e failed to fill properties
@@ -436,7 +467,7 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 	if !bInit
 		
 		SetMenuSettingsMode(10)
-		Player.Additem(SOTC_MainMenuTape, 1, false) ;We want to know it's been added.
+		PlayerRef.Additem(SOTC_MainMenuTape, 1, false) ;We want to know it's been added.
 
 		iCurrentPreset = aiPresetToSet
 		
@@ -448,14 +479,15 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		
 		ObjectReference kNewInstance
 
-		kNewInstance = kMasterCellMarker.PlaceAtMe(kEventMonitorObject, 1 , false, false, false)
+		kNewInstance = kMasterCellMarker.PlaceAtMe(kSettingsEventMonitorObject, 1 , false, false, false)
 		(kNewInstance as SOTC:SettingsEventMonitorScript).PerformFirstTimeSetup(ThreadController)
 		
 		Debug.Trace("EventMonitor created on ThreadController")
 		
-		kNewInstance = kMasterCellMarker.PlaceAtMe(kTravelMarkerStoreObject, 1 , false, false, false)
-		TravelMarkerStore = (kNewInstance as SOTC:TravelMarkerPersistScript)
-		Debug.Trace("TravelMarkerStore created on Master")
+		;No longer instanced as of version 0.13.01. Left for reference.
+		;kNewInstance = kMasterCellMarker.PlaceAtMe(kPointPersistBaseObject, 1 , false, false, false)
+		;PointPersistStore = (kNewInstance as SOTC:PointPersistScript)
+		;Debug.Trace("TravelMarkerStore created on Master")
 		
 		;Start SpawnTypeMaster first
 		Int iCounter 
@@ -529,7 +561,7 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		Bool b = true
 		kArgs[0] = b
 		
-		SendCustomEvent("InitTravelMarkers", kArgs)
+		SendCustomEvent("InitTravelLocs", kArgs)
 		
 		Debug.Trace("Setup Complete")
 	
@@ -598,7 +630,7 @@ Function ResetMasterActorLists()
 EndFunction
 
 
-;Adds a single ActorManager to all applicable Master Lists
+;Adds a single ActorManager to all applicable Master Lists.
 Function AddActorToMasterSpawnTypes(SOTC:ActorManagerScript aActorToAdd)
 
 	Int iCounter
@@ -617,16 +649,85 @@ Function AddActorToMasterSpawnTypes(SOTC:ActorManagerScript aActorToAdd)
 	endwhile
 
 EndFunction
-	
 
-;------------------------------------------------------------------------------------------------
+
+;This function returns the mod to the pre-activated state, removing all dynamically produced data.
+;DEV NOTE: Full uninstallation is handled by the AuxQuest/Auxillery Menu.
+Function MasterFactoryReset()
+	
+	if ThreadController.ActiveThreadCheck() ;If currently active threads, return immediately. This will advise the Player as well. 
+		ClearMenuVars()
+		return
+	endif
+	
+	;Else, continue with reset. 
+	
+	PlayerRef.RemoveItem(SOTC_MainMenuTape, 1) ;We want to know its been removed
+	SOTC_MasterGlobal.SetValue(2.0) ;Reset State
+	ThreadController.ToggleThreadKiller(true) ;Emergency stop all thread requests.
+	
+	Int iCounter
+	Int iSize
+	
+	
+	;First we will kill off the Region Instances and shuit down the World Managers, factory resetting all SpawnPoints and other data. 
+	iSize = Worlds.Length
+	while iCounter < iSize
+		Worlds[iCounter].MasterFactoryReset()
+		Worlds[iCounter].Disable()
+		Worlds[iCounter].Delete()
+		iCounter += 1
+		Debug.Trace("World Deleted")
+	endwhile
+	Worlds.Clear() ;De-persist.
+	Debug.Trace("All Worlds Cleaned up and Deleted")
+	
+	
+	;Now we will kill all the Master SpawnTypes except the Master Actor List (0)
+	iCounter = 1
+	iSize = SpawnTypeMasters.Length
+	while iCounter < iSize
+		SpawnTypeMasters[iCounter].MasterFactoryReset()
+		SpawnTypeMasters[iCounter].Disable()
+		SpawnTypeMasters[iCounter].Delete()
+		iCounter += 1
+		Debug.Trace("SpawnType Master Deleted")
+	endwhile
+	Debug.Trace("All SpawnType Masters Cleaned up and Deleted, except Type 0 (Master List)")
+	
+	
+	;Go back to SpawnTypeMasters[0] and start destroying all ActorManager instances.
+	SpawnTypeMasters[0].MasterFactoryReset()
+	SpawnTypeMasters[0].Disable()
+	SpawnTypeMasters[0].Delete()
+	SpawnTypeMasters.Clear() ;De-persist.
+	Debug.Trace("Master Actor List destroyed")
+	
+	
+	;Destroy the ThreadController and Event Monitor
+	ThreadController.MasterFactoryReset()
+	ThreadController.Disable()
+	ThreadController.Delete()
+	ThreadController = None ;De-persist. 
+	Debug.Trace("ThreadController destroyed")
+	
+	
+	;Clear Menu Vars before handover to AuxQuestScript
+	ClearMenuVars()
+	;Handover to AuxilleryQuestScript. This will stop this Quest. 
+	AuxilleryQuestScript.FinaliseMasterFactoryReset()
+	
+EndFunction
+
+
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;TIMER EVENTS
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ;Timers for various things, including Spawn Events
 Event OnTimer(Int aiTimerID)
 
-	if aiTimerID == iEventCooldownTimerClock
+	if aiTimerID == fEventCooldownTimerClock
 		bEventLockEngaged = false
 	
 	elseif aiTimerID == iEventFireTimerID
@@ -644,46 +745,46 @@ Event OnTimer(Int aiTimerID)
 EndEvent
 
 
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;MASTER SETTINGS FUNCTIONS & EVENTS
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
-;Create a new Var array from PresetDetails struct and send custom event
+;Sends the custom Master level Event according to the current MenuSettingMode. 
 Function SendMasterMassEvent()
 
 	;DEV NOTE: Do not try to declare Var arrays as a Property, the CK's UI doesn't understand it.
 
-	Var[] PresetParams
+	Var[] Params
 	string sPresetType
 
 	if iMenuSettingsMode == 10 ;FULL PRESET
 		
-		PresetParams = new Var[4]
+		Params = new Var[4]
 		sPresetType = "Full"
 		
-		PresetParams[0] = sPresetType ;The type of Preset change
-		PresetParams[1] = bForceResetCustomRegionSettings
-		PresetParams[2] = bForceResetCustomSpawnTypeSettings
-		PresetParams[3] = iCurrentPreset
+		Params[0] = sPresetType ;The type of Preset change
+		Params[1] = bForceResetCustomRegionSettings
+		Params[2] = bForceResetCustomSpawnTypeSettings
+		Params[3] = iCurrentPreset
 		
 		ThreadController.PrepareToMonitorEvent("Regions") 
 		;String parameter to tell what script type will be receiving the event
 		
-		SendCustomEvent("PresetUpdate", PresetParams)
+		SendCustomEvent("PresetUpdate", Params)
 		
 	elseif iMenuSettingsMode == 11 ;ALL SPAWNTYPES/ACTORS ONLY
 		
-		PresetParams = new Var[3]
+		Params = new Var[3]
 		sPresetType = "Spawntypes"
 		
-		PresetParams[0] = sPresetType ;The type of Preset change
-		PresetParams[1] = bForceResetCustomSpawnTypeSettings
-		PresetParams[2] = iValue01
+		Params[0] = sPresetType ;The type of Preset change
+		Params[1] = bForceResetCustomSpawnTypeSettings
+		Params[2] = iValue01
 		
 		ThreadController.PrepareToMonitorEvent("Regions") 
 		;String parameter to tell what script type will be receiving the event		
 		
-		SendCustomEvent("PresetUpdate", PresetParams)
+		SendCustomEvent("PresetUpdate", Params)
 		
 	elseif iMenuSettingsMode == 12 ;FORCE RESET ALL SPAWNPOINTS
 		
@@ -697,15 +798,15 @@ Function SendMasterMassEvent()
 		ThreadController.PrepareToMonitorEvent("Regions") 
 		;String parameter to tell what script type will be receiving the event
 		
-		PresetParams = new Var[4]
+		Params = new Var[4]
 		sPresetType = "SingleSpawntype"
 		
-		PresetParams[0] = sPresetType
-		PresetParams[1] = iValue01 ;The ID of the Spawntype.
-		PresetParams[2] = bForceResetCustomSpawnTypeSettings
-		PresetParams[3] = iValue02 ;The Preset to set
+		Params[0] = sPresetType
+		Params[1] = iValue01 ;The ID of the Spawntype.
+		Params[2] = bForceResetCustomSpawnTypeSettings
+		Params[3] = iValue02 ;The Preset to set
 		
-		SendCustomEvent("PresetUpdate", PresetParams)
+		SendCustomEvent("PresetUpdate", Params)
 		
 	endif
 	
@@ -713,7 +814,7 @@ EndFunction
 
 
 ;Used to send custom single setting changes on the Master level, from the menu directly.
-Function SendMasterSingleSettingUpdateEvent(string asSetting, Bool abBool01, Int aiInt01, Float aiFloat01) ;Parameters optional if needed
+Function SendMasterSingleSettingUpdateEvent(string asSetting, Bool abBool01 = false, Int aiInt01 = 0, Float aiFloat01 = 0.0) ;Parameters optional if needed
 
 	;NOTE: Here we use strings for the first Var[] member so that this one event can be universal.
 	;Will be received by all scripts that registered, but ignored if it isn't for them.
@@ -749,18 +850,19 @@ Function SendMasterSingleSettingUpdateEvent(string asSetting, Bool abBool01, Int
 		SettingParams[1] = iRandomSwarmChance
 		SendCustomEvent("MasterSingleSettingUpdate", SettingParams)
 		
+	elseif asSetting == "RegionRampageChance"
+	
+		SettingParams = new Var[2]
+		SettingParams[0] = asSetting
+		SettingParams[1] = iRandomRampageChance
+		SendCustomEvent("MasterSingleSettingUpdate", SettingParams)
+		
 	elseif asSetting == "RegionAmbushChance"
 	
 		SettingParams = new Var[2]
 		SettingParams[0] = asSetting
 		SettingParams[1] = iRandomAmbushChance
 		SendCustomEvent("MasterSingleSettingUpdate", SettingParams)
-		
-	elseif asSetting == "SpawnTypesLootEnableDisable"
-	
-		SettingParams = new Var[2]
-		SettingParams[0] = asSetting
-		SettingParams[1] = abBool01
 		
 	endif
 	
@@ -772,31 +874,38 @@ Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
 
 	if (asMenuName == "PipboyMenu") && (!abOpening) ; On Pip-Boy closing
 		
-		if iMenuSettingsMode > 10 ;All settings events deferred to 10+ at this stage.
+		if (iMenuSettingsMode >= 10) && (iMenuSettingsMode <= 30)  ;Settings events allocated to value range 10-30.
 		
 			SendMasterMassEvent() ;This will "lock" the menu and require player to exit Menu Mode.
+			
+			;Check if Random Events pending start.
+			if kEventQuestsPendingStart[0] != None 
+			;Array is initialized with one memmer of None for security purposes, if first member is not none, invoke start.
+				StartPendingEventQuests()
+			endif
+			
+			
+		elseif iMenuSettingsMode == 100 ;Factory Reset
+			
+			MasterFactoryReset()
+			;Full uninstallation is done from AuxQuest.
 		
 		endif
 		
 	endif
-	
-	;Check if Random Events pending start.
-	if kEventQuestsPendingStart[0] != None ;Array is initialized 0, if first member is not none, invoke start.
-		StartPendingEventQuests()
-	endif
-	
+
 	;ClearMenuVars() - Moved to SettingsEventMonitor
 	UnregisterForAllMenuOpenCloseEvents()
 	
 EndEvent
 
 
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;MENU FUNCTIONS & EVENTS
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;Used for quick setting variables/Globals.
 
-Function RegisterMasterForPipBoyCloseEvent(Int aiValue01, Int aiValue02) ;Register For Pipboy close event. Parameters optional
+Function RegisterMasterForPipBoyCloseEvent(Int aiValue01 = 0, Int aiValue02 = 0) ;Register For Pipboy close event. Parameters optional
 	
 	iValue01 = aiValue01 ;A temp value that can be used by events if needed.
 	iValue02 = aiValue02 ;A temp value that can be used by events if needed.
@@ -813,10 +922,12 @@ EndFunction
 
 
 Function SetMenuSettingsMode(int aiMode)
+	
 	if iMenuSettingsMode != 5 ;Ensure first time settings mode does not get killed
 		iMenuSettingsMode = aiMode ;Local variable that script deals with
 		SOTC_Global_MenuSettingsMode.SetValue(aiMode as float) ;Global for the Menu
 	endif
+	
 EndFunction
 
 ;LEGEND - MENU SETTINGS MODES
@@ -832,11 +943,148 @@ EndFunction
 ; Direct Region + Spawntype Preset are handled from Menu.
 ;Pending Events are all designated above a value of 10. Menu will detect this and lock if so.
 
+
+;Ensures only the correct amount of options appear in the RegionSelectionMenu
+Function SetMenuCurrentWorld(Int aiWorldID)
+	
+	SOTC_Global_CurrentMenuWorld.SetValue(aiWorldID as Float)
+	SOTC_Global_RegionCount.SetValue(((Worlds[aiWorldID].Regions.Length - 1) as Float)) ;We need the offset value
+	
+EndFunction
+
+
+Function SetMenuCurrentRegion(Int aiRegionID)
+	
+	SOTC_Global_CurrentMenuRegion.SetValue(aiRegionID as float) ;This value is semi obsolete as of version 0.13.01
+	MenuCurrentRegionScript = Worlds[(SOTC_Global_CurrentMenuWorld.GetValue() as Int)].Regions[aiRegionID]
+
+EndFunction
+
+
+;This function either sets Menu Globals to current values before viewing a Menu option, or it sets
+;the new value selected from said Menu. 
+Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 = 0)
+
+	if asSetting == "MasterPreset"
+	
+		if abSetValues
+			iCurrentPreset = aiValue01
+		endif
+		SOTC_Global01.SetValue(iCurrentPreset as Float)
+		
+	elseif asSetting == "MasterDifficulty"
+		
+		if abSetValues
+			iCurrentDifficulty = aiValue01
+			SendMasterSingleSettingUpdateEvent("Difficulty", iCurrentDifficulty)
+		endif
+		SOTC_Global01.SetValue(iCurrentDifficulty as Float)
+		
+	elseif asSetting == "MasterChance"
+		
+		if abSetValues
+			iMasterSpawnChance = aiValue01
+		endif
+		SOTC_Global01.SetValue(iMasterSpawnChance as Float)
+		
+	elseif asSetting == "VanillaMode"
+		
+		if abSetValues
+			bVanillaMode = aiValue01 as Bool
+		endif
+		SOTC_Global01.SetValue(bVanillaMode as Float)
+		
+	elseif asSetting == "SpWarning"
+		
+		if abSetValues
+			bSpawnWarningEnabled = aiValue01 as Bool
+		endif
+		SOTC_Global01.SetValue(bSpawnWarningEnabled as Float)
+		
+	elseif asSetting == "RegionSwarmChance"
+	
+		if abSetValues
+			iRandomSwarmChance = aiValue01
+			SendMasterSingleSettingUpdateEvent("RegionSwarmChance")
+		endif
+		SOTC_Global01.SetValue(iRandomSwarmChance as Float)
+		
+	elseif asSetting == "RegionRampageChance"
+	
+		if abSetValues
+			iRandomRampageChance = aiValue01
+			SendMasterSingleSettingUpdateEvent("RegionRampageChance")
+		endif
+		SOTC_Global01.SetValue(iRandomRampageChance as Float)
+		
+	elseif asSetting == "RegionAmbushChance"
+	
+		if abSetValues
+			iRandomAmbushChance = aiValue01
+			SendMasterSingleSettingUpdateEvent("RegionAmbushChance")
+		endif
+		SOTC_Global01.SetValue(iRandomAmbushChance as Float)
+		
+	elseif asSetting == "EzApplyMode"
+	
+		if abSetValues
+			iEzApplyMode = aiValue01
+			SendMasterSingleSettingUpdateEvent("EzApplyMode")
+		endif
+		SOTC_Global01.SetValue(iEzApplyMode as Float)
+	
+	elseif asSetting == "EzBorderMode"
+		
+		if abSetValues
+			iEzBorderMode = aiValue01
+			SendMasterSingleSettingUpdateEvent("EzBorderMode")
+		endif
+		SOTC_Global01.SetValue(iEzBorderMode as Float)
+		
+	elseif asSetting == "RarityChances"
+	;DEV NOTE - Rarity chances are a bit different from other settings, only presets are given
+	;for the user to select from (I.E 65/25/10 or 70/20/10 etc etc). Global01 is set to the last
+	;known selected preset index in Menu, which is also stored on a variable here permanently.
+		
+		if abSetValues
+			SetRarityChancesPreset(aiValue01)
+		endif
+		SOTC_Global01.SetValue(iCurrentRarityChancePreset as Float)
+		
+	elseif asSetting == "RerollChance"
+		
+		if abSetValues
+			iRerollChance = aiValue01
+		endif
+		SOTC_Global01.SetValue(iRerollChance as Float)
+		
+	elseif asSetting == "RerollMaxCount"
+		
+		if abSetValues
+			iRerollMaxCount = aiValue01
+		endif
+		SOTC_Global01.SetValue(iRerollMaxCount as Float)
+		
+	endif
+	
+EndFunction
+
+
+Function SetRarityChancesPreset(Int aiPresetToSet)
+	
+	iCurrentRarityChancePreset = aiPresetToSet
+	iCommonActorChance = RarityChancePresets[aiPresetToSet].iCommonChance
+	iUncommonActorChance = RarityChancePresets[aiPresetToSet].iUncommonChance
+	
+EndFunction
+
+
+;Used for wiping any custom settings when setting a Master level preset
 Function SetPresetRegionOverrideMode(Bool abMode)
 	bForceResetCustomRegionSettings = abMode ;Local variable that script deals with
 EndFunction
 
-
+;Same as above but for Regional SpawnType managers, the above overrides this.
 Function SetPresetSpawnTypeOverrideMode(Bool abMode)
 	bForceResetCustomSpawnTypeSettings = abMode ;Local variable that script deals with
 EndFunction
@@ -850,12 +1098,16 @@ Function ClearMenuVars()
 	bForceResetCustomSpawnTypeSettings = false
 	SOTC_Global_CurrentMenuWorld.SetValue(0.0)
 	SOTC_Global_CurrentMenuRegion.SetValue(0.0)
+	SOTC_Global_RegionCount.SetValue(0.0)
+	MenuCurrentActorScript = None
+	MenuCurrentRegionScript = None
+	MenuCurrentRegSpawnTypeScript = None
 EndFunction
 
 
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;CHANCE FUNCTIONS
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ;If a normal Spawn, this will return an Int between 1-3, corresponding to rarity
 ;Rarity levels are Common, Uncommon and Rare.
@@ -863,9 +1115,9 @@ Int Function RollForRarity()
 
 	Int i = Utility.RandomInt(1,100)
 	
-	if i <= iCommonChance
+	if i <= iCommonActorChance
 		return 1
-	elseif i <= iUncommonChance
+	elseif i <= iUncommonActorChance
 		return 2
 	else  ;Failing the above, must be Rare. If not an Int, must be bad CPU :D
 		return 3
@@ -894,9 +1146,9 @@ Int Function RollGroupsToSpawnCount(int aiMaxCount)
 EndFunction
 
 
-;------------------------------------------------------------------------------------------------
-;SPAWN FUNCTIONS & EVENTS
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+;SPAWN UTILITY FUNCTIONS & EVENTS
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Bool Function MasterSpawnCheck(ObjectReference akCallingPoint, Bool abAllowVanilla)
 
@@ -905,8 +1157,9 @@ Bool Function MasterSpawnCheck(ObjectReference akCallingPoint, Bool abAllowVanil
 	endif
 	
 	;Check all pending events if they have been flagged. This is done in priority order
-	if (!bEventLockEngaged) && (akCallingPoint is SOTC:SpGroupScript) ;Only main points can have events.
-	
+	if (!bEventLockEngaged) && ((akCallingPoint as SOTC:SpawnPointScript).bEventSafe) ;Point must be marked as safe. 
+		
+		akCallingPoint = kEventPoint ;Set the Point for the Event Quest to remotely access
 		if CheckForEvents()
 			return true ;deny the calling point
 		endif
@@ -919,35 +1172,33 @@ Bool Function MasterSpawnCheck(ObjectReference akCallingPoint, Bool abAllowVanil
 		return true ;Denied due to vanilla mode
 	endif
 	
-	;If we got this far than all good, SP can proceed, optionally displaying a debug message
-	if bSpawnWarningEnabled
-		ShowSpawnWarning()
-	endif
-	
+	;If we got this far than all good, SP can proceed.
 	return false ;Proceed
 	
 EndFunction
 
 
-;Show a random, passive debug message iumpying a SpawnPoint has fired nearby.
+;Show a random, passive debug message implying a SpawnPoint has fired nearby.
 Function ShowSpawnWarning()
 
-	Int i = Utility.RandomInt(1,3)
+	if bSpawnWarningEnabled
+
+		Int i = Utility.RandomInt(1,2)
+		
+		if i == 1
+			Debug.Notification("You hear movement in the distance")
+		elseif i == 2
+			Debug.Notification("You sense a presence ahead")
+		endif
 	
-	if i == 1
-		Debug.Notification("You hear movement in the distance")
-	elseif i == 2
-		Debug.Notification("You suddenly get the feeling things are about to go south")
-	elseif i ==3
-		Debug.Notification("You feel danger drawing near")
 	endif
 	
 EndFunction
 
 
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;RANDOM EVENTS FRAMEWORK FUNCTIONS & EVENTS
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 Bool Function CheckForBypassEvents() ;Check for any events not subject to EventLock
@@ -1002,7 +1253,7 @@ Function BeginTimedEvent()
 	;should be reinserted at index 0. 
 	
 	;Start the cooldown Timer before new event can fire.
-	StartTimer(iEventCooldownTimerClock, iEventCooldownTimerID)
+	StartTimer(fEventCooldownTimerClock, iEventCooldownTimerID)
 	bEventLockEngaged = true ;Lock it up.
 	
 EndFunction
@@ -1016,7 +1267,7 @@ Function BeginStaticEvent()
 	;NOTE - If this event fails to fire due to some check implemented on the Event code, nothing happens.
 	
 	;Start the cooldown Timer before new event can fire.
-	StartTimer(iEventCooldownTimerClock, iEventCooldownTimerID)
+	StartTimer(fEventCooldownTimerClock, iEventCooldownTimerID)
 	bEventLockEngaged = true ;Lock it up.
 
 EndFunction
@@ -1073,7 +1324,7 @@ Function StartPendingEventQuests()
 EndFunction
 
 
-;New Event Quests being started for the first time or timed events firing/appending should use this function.
+;New Event Quests being added for the first time or timed events firing/appending should use this function.
 Function SafelyRegisterActiveEvent(string asEventType, Quest akEventQuest)
 
 	;DEV NOTE: Event Arrays should always be kept initialised, with at least one member of None.

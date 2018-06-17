@@ -49,7 +49,7 @@ EndGroup
 Group Dynamic
 
 	SOTC:RegionManagerScript[] Property Regions Auto
-	{ Init a member of None for as many Regions intneded for this World. Sets dynamically. }
+	{ Init a member of None for as many Regions intended for this World. Sets dynamically. }
 	
 EndGroup
 
@@ -57,7 +57,7 @@ EndGroup
 Bool bInit ;Security check to make sure Init events/functions don't fire again while running
 
 ;------------------------------------------------------------------------------------------------
-;INITIALISATION EVENTS
+;INITIALISATION FUNCTIONS& EVENTS
 ;------------------------------------------------------------------------------------------------
 
 ;DEV NOTE: Init events/functions now handled by Masters creating the instances.
@@ -93,6 +93,28 @@ Function PerformFirstTimeSetup(SOTC:ThreadControllerScript aThreadController, Ob
 	endif
 		
 EndFunction
+
+
+;Resets and destorys all Region instances
+Function MasterFactoryReset()
+
+	Int iCounter
+	Int iSize = Regions.Length
+	
+	while iCounter < iSize
+		Regions[iCounter].MasterFactoryReset()
+		Regions[iCounter].Disable()
+		Regions[iCounter].Delete()
+		Regions[iCounter] = None ;De-persist.
+		iCounter += 1
+		Debug.Trace("Region instance destroyed")
+	endwhile
+	Debug.Trace("All Regions on World destroyed")
+	
+	;Master script will destroy this instance after this has returned. 
+	
+EndFunction
+	
 
 ;------------------------------------------------------------------------------------------------
 ;RETURN FUNCTIONS

@@ -111,6 +111,19 @@ Function AddGroupToClassPresets(Bool abAllowPowerArmorGroups)
 	
 EndFunction
 
+
+;Clears all dynamic data ready for destruction of this instance.
+Function MasterFactoryReset()
+
+	ActorManager = None ;De-persist.
+	
+	Debug.Trace("ActorGroupLoadout instance ready for destruction")
+	
+	;ActorManager will destroy this instance once returned.
+	;May not be necessary from here, but could be expanded in future. 
+	
+EndFunction
+
 ;------------------------------------------------------------------------------------------------
 ;RETURN FUNCTIONS
 ;------------------------------------------------------------------------------------------------

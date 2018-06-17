@@ -11,9 +11,9 @@ Scriptname SOTC:RegionManagerScript extends ObjectReference
 ; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
 ; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
 
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Group Primary
 { Primary Properties Group }
@@ -26,14 +26,13 @@ Group Primary
 	
 	MiscObject Property kSpawnTypeObject Auto Const
 	{ Fill with base MiscObject containing the SpawnTypeRegionalScript. }
-	;DEV NOTE: Only STR's with a BaseClassID need unique base objects, the rest of the members can be the same base object
 	
-	FormList[] Property kSpawnTypeRegLootLists Auto Const Mandatory
-	{ Fill with each Regular loot list for each SpawnType, in order. Will be passed to corresponding instance per member. }
-	
-	FormList[] Property kSpawnTypeBossLootLists Auto Const Mandatory
-	{ Fill with each Boss loot list for each SpawnType, in order. Will be passed to corresponding instance per member. }
-	;as they will be setup with all other data required data from here.
+	GlobalVariable Property SOTC_Global01 Auto Const Mandatory
+	{ Auto-fill }
+	GlobalVariable Property SOTC_Global02 Auto Const Mandatory
+	{ Auto-fill }
+	GlobalVariable Property SOTC_Global03 Auto Const Mandatory
+	{ Auto-fill }
 
 EndGroup
 
@@ -57,7 +56,7 @@ Group Dynamic
 	; [2] - NUKA WORLD
 
 	Int Property iRegionID Auto
-	{ Init 0, filled at runtime.. }
+	{ Init 0, filled at runtime. }
 	
 	ObjectReference[] Property kTravelLocs Auto
 	{ Init one member of None, will fill dynamically at runtime. }
@@ -98,9 +97,6 @@ EndGroup
 
 Group RegionSettings
 { Various settings for this Region }
-
-	Bool Property bRegionEnabled Auto Mandatory ;On/Off switch for this Region
-	{ Initialise true. Set in Menu. Disables the mod in this Region if set false. }
 	
 	Int Property iRegionSpawnChance = 100 Auto
 	{ Default 100, change in Menu. Chance SpawnPoints firing in this Region, has massive effect on balance. }
@@ -128,14 +124,14 @@ Group FeatureSettings
 { Settings for various features supported on the Regional level. }
 
 	Int Property iRandomSwarmChance Auto
-	{ Initialise 20, set in Menu. If any value above 0, there is a chance of a random swarm/infestation. }
+	{ Initialise 0, set in Menu. If any value above 0, there is a chance of a random swarm/infestation. }
 	
-	Int Property iRandomStampedeChance Auto
-	{ Initialise 10, set in Menu. Can only occur during a successful Swarm/Infestation, and if Actor
+	Int Property iRandomRampageChance Auto
+	{ Initialise 0, set in Menu. Can only occur during a successful Swarm/Infestation, and if Actor
 supports this mode. If any value above 0, there is a chance of a stampede. }
 	
 	Int Property iRandomAmbushChance Auto
-	{ Initialise 5, set in Menu. If any value above 0, there is a chance of a random swarm/infestation. }
+	{ Initialise 0, set in Menu. If any value above 0, there is a chance of a random swarm/infestation. }
 
 EndGroup
 
@@ -145,22 +141,22 @@ EndGroup
 Float fTrackerWaitClock ;Wait timer based on Init order. Staggers the startup of the Trackers
 ;cleanup timer, in an attempt to prevent all Regions cleanup timers from firing simultaneously.
 
-Int iTravelMarkerInitWaitTimerID = 1 Const ;Timer for cleaning TravelLocs array after Init.
+Int iTravelLocInitWaitTimerID = 1 Const ;Timer for cleaning TravelLocs array after Init.
 
 
 ;Temp Variables
 ;---------------
 
 Bool bInit ;Security check to make sure Init events/functions don't fire again while running
-;NOTE - Random events are currently not fully implemented on the Regional level.
 
+;NOTE - Random events are currently not fully implemented on the Regional level.
 Bool bEventThreadLockEngaged ;Used to skip/block spawn event checker
 ObjectReference kEventPoint ;When an event fires, this will set with the intercepted calling point
 
 
-;------------------------------------------------------------------------------------------------
-;INITIALISATION & SETTINGS EVENTS
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+;INITIALISATION FUNCTIONS & EVENTS
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ;DEV NOTE: Init events/functions now handled by Masters creating the instances.
 
@@ -174,14 +170,16 @@ Formlist akEzEasyList, Formlist akEzHardList, Formlist akEzEasyNBList, Formlist 
 		iWorldID = aiWorldID
 		iRegionID = aiRegionID
 		iCurrentPreset = aiPresetToSet
+		SetPresetVars()
 		aWorldManager.Regions[iRegionID] = Self ;Only needs to access it once
 		
 		RegisterForCustomEvent(MasterScript, "PresetUpdate")
 		RegisterForCustomEvent(MasterScript, "ForceResetAllSps")
 		RegisterForCustomEvent(MasterScript, "MasterSingleSettingUpdate")
-		RegisterForCustomEvent(MasterScript, "InitTravelMarkers") 
+		RegisterForCustomEvent(MasterScript, "InitTravelLocs") 
 		
-		;Create tracker first
+		;This timer attempots to stagger the start of Cleanup timers, in attempt to have each Region perform
+		;Cleanup a different times (trying to avoid all at once)
 		fTrackerWaitClock = (ThreadController.IncrementActiveRegionsCount(1)) * 1.2 as float
 		
 		;Create local EncounterZone lists
@@ -207,7 +205,7 @@ Formlist akEzEasyList, Formlist akEzHardList, Formlist akEzEasyNBList, Formlist 
 		
 			kNewInstance = akMasterMarker.PlaceAtMe(kSpawnTypeObject, 1 , false, false, false)
 			(kNewInstance as SOTC:SpawnTypeRegionalScript).PerformFirstTimeSetup(Self, iRegionID, iWorldID, \
-			ThreadController, iCounter, iCurrentPreset, kSpawnTypeRegLootLists[iCounter], kSpawnTypeBossLootLists[iCounter])
+			ThreadController, iCounter, iCurrentPreset)
 			
 			iCounter += 1
 			
@@ -218,8 +216,7 @@ Formlist akEzEasyList, Formlist akEzHardList, Formlist akEzEasyNBList, Formlist 
 		Debug.Trace("Region creation complete")
 		
 	endif
-	
-	
+
 EndFunction
 
 
@@ -248,29 +245,21 @@ Event SOTC:MasterQuestScript.PresetUpdate(SOTC:MasterQuestScript akSender, Var[]
 	
 	if (akArgs[0] as string) == "Full"
 	
-		if (!bCustomSettingsActive) || (akArgs[1] as Bool) ;If not Custom or Override = true
+		if (!bCustomSettingsActive) || (akArgs[1] as Bool) ;If not Custom or Override (akArgs[1]) = true
 		
-			if bRegionEnabled == true
-				bRegionEnabled = false ;Turn off this Region temporarily (denies Spawnpoints)
-				bEnabled = true
-			endif
-			;This shouldn't take so long as to affect SPs but we do this to be sure.
-	
 			iCurrentPreset = akArgs[3] as Int
+			SetPresetVars()
 			ReshuffleActorLists(akArgs[2] as Bool) ;(akArgs[2]) - bool to reset custom spawntype settings
 			;DEV NOTE: Calling this function will safely reinitialise the arrays, no work need be done here.
 			
-			bRegionEnabled = bEnabled ;Leave off or turn back on
 		else
 		;Do Nothing
 		endif
 	
 	elseif (akArgs[0] as string) == "SpawnTypes"
 		
-		if bRegionEnabled == true
-			bRegionEnabled = false ;Turn off this Region temporarily (denies Spawnpoints)
-			bEnabled = true
-		endif
+		Int iChance = iRegionSpawnChance ;Store this value til done
+		iRegionSpawnChance = 0 ;Stops all Spawns for now
 		;This shouldn't take so long as to affect SPs but we do this to be sure.
 	
 		Int iActualPreset = iCurrentPreset ;Store the actual preset for now as a workaround/kludge.
@@ -278,7 +267,7 @@ Event SOTC:MasterQuestScript.PresetUpdate(SOTC:MasterQuestScript akSender, Var[]
 		ReshuffleActorLists(akArgs[1] as Bool) ;(akArgs[2]) - bool to reset custom spawntype settings.
 		iCurrentPreset = iActualPreset ;Restore the Region's preset.
 			
-		bRegionEnabled = bEnabled ;Leave off or turn back on
+		iRegionSpawnChance = iChance ;return to original value
 		
 	elseif (akArgs[0] as string) == "SingleSpawntype"
 
@@ -315,19 +304,18 @@ Event SOTC:MasterQuestScript.MasterSingleSettingUpdate(SOTC:MasterQuestScript ak
 	elseif (akArgs[0] as string) == "RegionSwarmChance"
 	
 		iRandomSwarmChance = akArgs[1] as Int
+		bCustomSettingsActive = true
 		
-	elseif (akArgs[0] as string) == "RegionStampedeChance"
+	elseif (akArgs[0] as string) == "RegionRampageChance"
 	
-		iRandomStampedeChance = akArgs[1] as Int
+		iRandomRampageChance = akArgs[1] as Int
+		bCustomSettingsActive = true
 		
 	elseif (akArgs[0] as string) == "RegionAmbushChance"
 	
 		iRandomAmbushChance = akArgs[1] as Int
-		
-	elseif (akArgs[0] as string) == "SpawnTypesLootEnableDisable"
+		bCustomSettingsActive = true
 	
-		EnableDisableSpawnTypesLoot(akArgs[1] as Bool)
-		
 	endif
 	
 	;No need for iEventFlagCount for these events.
@@ -344,13 +332,13 @@ Event SOTC:MasterQuestScript.ForceResetAllSps(SOTC:MasterQuestScript akSender, V
 EndEvent
 
 
-;This script receives this Event as it waits some time, enough for MArkers to finish adding
-;Themselves everywhere, and then cleans up the first Member of None on the TM array.
-Event SOTC:MasterQuestScript.InitTravelMarkers(SOTC:MasterQuestScript akSender, Var[] akArgs)
+;This script receives this Event as it waits some time, enough for Markers to finish adding
+;themselves everywhere, and then cleans up the first Member of None on that array.
+Event SOTC:MasterQuestScript.InitTravelLocs(SOTC:MasterQuestScript akSender, Var[] akArgs)
 
 	if (akArgs as Bool) == True ;Initialise, add to RegionManager
 	
-		StartTimer(10, iTravelMarkerInitWaitTimerID)
+		StartTimer(10, iTravelLocInitWaitTimerID)
 		
 	endif
 	
@@ -359,12 +347,12 @@ EndEvent
 
 Event OnTimer(Int aiTimerID)
 
-	if aiTimerID == iTravelMarkerInitWaitTimerID
+	if aiTimerID == iTravelLocInitWaitTimerID
 	
 		if kTravelLocs[0] == None
 			kTravelLocs.Remove(0)
 			;Clean off the remianing None member on first index
-			Debug.Trace("A Region cleaned up its kTavelLocs array")
+			Debug.Trace("A Region initialised its kTavelLocs array")
 		endif
 		
 	endif
@@ -384,12 +372,8 @@ EndFunction
 ;This function SERIALIZES reshuffle of Spawntype Actor Lists. Should be safe to run in Menu mode.
 Function ReshuffleActorLists(Bool abForceReset) ;All Spawntypes attached.
 
-	Bool bEnabled
-	
-	if bRegionEnabled == true ;Just like the event block, we'll shut off if needed.
-		bRegionEnabled = false 
-		bEnabled = true
-	endif
+	Int iChance = iRegionSpawnChance ;Store this value til done
+	iRegionSpawnChance = 0 ;Stops all Spawns for now
 	;This shouldn't take so long as to affect SPs but we do this to be sure.
 
 	int iCounter = 0
@@ -402,46 +386,154 @@ Function ReshuffleActorLists(Bool abForceReset) ;All Spawntypes attached.
 		
 	endwhile
 	
-	bRegionEnabled = bEnabled ;And turn back on if necessary
+	iRegionSpawnChance = iChance ;return to original value
 	
 EndFunction
 
 
-;Enable or disable the Loot systems for all attached Spawntypes
-Function EnableDisableSpawnTypesLoot(Bool abEnable)
-
+;Fully cleans up all dynamically produced data in preparation for destruction of this instance.
+Function MasterFactoryReset()
+	
 	Int iCounter
 	Int iSize = SpawnTypes.Length
 	
-	while iCounter < iSize
+	;First we will cleanup all SPs and kill the tracker instance
+	CleanupManager.MasterFactoryReset()
+	CleanupManager.Disable()
+	CleanupManager.Delete()
+	CleanupManager = None ;De-persist
 	
-		SpawnTypes[iCounter].bLootSystemEnabled = abEnable
+	;Clear TravelLocs array
+	kTravelLocs.Clear()
+	
+	;Now we will destroy all the SPawnTypeRegional instances
+	while iCounter < iSize
+		SpawnTypes[iCounter].MasterFactoryReset()
+		SpawnTypes[iCounter].Disable()
+		SpawnTypes[iCounter].Delete()
+		SpawnTypes[iCounter] = None ;De-persist
 		iCounter += 1
-		
+		Debug.Trace("SpawnTypeRegional instance destroyed")
 	endwhile
 	
+	ThreadController = None
+	
+	Debug.Trace("Region instance ready for destruction")
+	;WorldManager will destory this script instance once returned.
+
 EndFunction
 
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+;MENU FUNCTIONS
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
-;Set a preset directly from Menu. This does not start any timers and is safe to set without exiting Menu.
-Function MenuSetPreset(Int aiPreset, Bool abForceResetSpawnTypes)
+;As of version 0.13.01, this sets preset values for various settings instead of using the old struct
+;method (previously stored struct of settings in an array with the index matching presets ID's). This
+;is used for both Master Events and Menu direct setting of presets. iCurrentPreset must be set first.
+;Setting from Menu will flag bCustomSettingsActive as true. Presets are hard coded.
+Function SetPresetVars(Bool abSetCustomFlag = false) ;Parameter value used when custom setting from Menu.
 
-	;NOTE: Menu will warn if Region is running custom settings and ask before Overwriting so no check here.
+	bCustomSettingsActive = abSetCustomFlag
 	
-	iCurrentPreset = aiPreset ;Set the Preset Int
-	if aiPreset == 4 ;Check if it was set as Custom now.
-		bCustomSettingsActive = true ;4th preset is the custom user defined.
-	else
-		bCustomSettingsActive = false ;Overridden with normal Preset now.
+	if iCurrentPreset == 1 ;SOTC Preset
+		iRegionSpawnChance = 75
+		iRandomSwarmChance = 5
+		iRandomRampageChance = 5
+		iRandomAmbushChance = 5
+	
+	elseif iCurrentPreset == 2 ;WOTC Preset
+		iRegionSpawnChance = 85
+		iRandomSwarmChance = 10
+		iRandomRampageChance = 15
+		iRandomAmbushChance = 10
+	
+	elseif iCurrentPreset == 3 ;COTC Preset
+		iRegionSpawnChance = 100
+		iRandomSwarmChance = 20
+		iRandomRampageChance = 25
+		iRandomAmbushChance = 15
+
+	;else - WTF value was set?
 	endif
-	
-	ReshuffleActorLists(abForceResetSpawnTypes) ;Optionally forcing reset despite any custom settings.
+
+	;Reshuffle Actor lists needs to be called from the calling function.
 	
 EndFunction
 
 
-;Force Reset SPs in this Region from Menu
-Function MenuForceResetRegion()
+;This function either sets Menu Globals to current values before viewing a Menu option, or it sets
+;the new value selected from said Menu. 
+Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 = 0)
+
+	if asSetting == "RegionPreset"
+	
+		if abSetValues
+			iCurrentPreset = aiValue01
+			SetPresetVars(true)
+			ReshuffleActorLists(true) ;Force reset, user would have been warned in Menu.
+		endif
+		SOTC_Global01.SetValue(iCurrentPreset as Float)
+	
+	elseif asSetting == "RegionDifficulty"
+		
+		if abSetValues
+			iCurrentDifficulty = aiValue01
+			;This is not a setting affected by Presets, so custom settings flag not enabled
+		endif
+		SOTC_Global01.SetValue(iCurrentDifficulty as Float)
+		
+	elseif asSetting == "RegionChance"
+		
+		if abSetValues
+			iRegionSpawnChance = aiValue01
+			bCustomSettingsActive = true
+		endif
+		SOTC_Global01.SetValue(iRegionSpawnChance as Float)
+		
+	elseif asSetting == "RegionSwarmChance"
+	
+		if abSetValues
+			iRandomSwarmChance = aiValue01
+			bCustomSettingsActive = true
+		endif
+		SOTC_Global01.SetValue(iRandomSwarmChance as Float)
+		
+	elseif asSetting == "RegionRampageChance"
+	
+		if abSetValues
+			iRandomRampageChance = aiValue01
+			bCustomSettingsActive = true
+		endif
+		SOTC_Global01.SetValue(iRandomRampageChance as Float)
+		
+	elseif asSetting == "RegionAmbushChance"
+	
+		if abSetValues
+			iRandomAmbushChance = aiValue01
+			bCustomSettingsActive = true
+		endif
+		SOTC_Global01.SetValue(iRandomAmbushChance as Float)
+		
+	elseif asSetting == "EzApplyMode"
+	
+		if abSetValues
+			iEzApplyMode = aiValue01
+		endif
+		SOTC_Global01.SetValue(iEzApplyMode as Float)
+	
+	elseif asSetting == "EzBorderMode"
+		
+		if abSetValues
+			iEzBorderMode = aiValue01
+		endif
+		SOTC_Global01.SetValue(iEzBorderMode as Float)
+		
+	endif
+
+EndFunction
+
+
+Function MenuForceResetRegionSPs()
 	
 	;NOTE: This function will not restart the Cleanup timer, therefore it is safe to use from Menu.
 	CleanupManager.ResetSpentPoints()
@@ -449,9 +541,9 @@ Function MenuForceResetRegion()
 EndFunction
 
 
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;SPAWNPOINT FUNCTIONS
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ;Check for a pending event, check preset restriction of calling point.
 Bool Function RegionSpawnCheck(ObjectReference akCallingPoint, Int aiPresetRestriction)
@@ -459,11 +551,11 @@ Bool Function RegionSpawnCheck(ObjectReference akCallingPoint, Int aiPresetRestr
 	;NOTE - Random events are currently not fully implemented on the Regional level. No code iSize
 	;included here for them yet. 
 	
-	if !bRegionEnabled && ((Utility.RandomInt(1,100)) <= iRegionSpawnChance)
-		return true ;Red light.
+	if ((Utility.RandomInt(1,100)) <= iRegionSpawnChance)
+		return true ;Green light.
 	endif
 	
-	return false ;Green light.
+	return false ;Red light.
 
 EndFunction
 
@@ -614,14 +706,14 @@ EncounterZone[] Function GetRegionCurrentEzList()
 EndFunction
 
 
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;FEATURE FUNCTIONS
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ;Random roll for Infestation/Swarm
-Bool Function RollForSwarm()
+Bool Function RollForSwarm(Int aiBonus = 1) ;Parameter added in version 0.13.01 for SP bonuses
 
-	if (Utility.RandomInt(1,100)) < iRandomSwarmChance
+	if (Utility.RandomInt(aiBonus,100)) <= iRandomSwarmChance
 		return true
 	else
 		return false
@@ -630,9 +722,9 @@ Bool Function RollForSwarm()
 EndFunction
 
 ;Random roll for Stampede, following a successful roll for Swarm
-Bool Function RollForStampede()
+Bool Function RollForRampage(Int aiBonus = 1) ;Parameter added in version 0.13.01 for SP bonuses
 
-	if (Utility.RandomInt(1,100)) < iRandomStampedeChance
+	if (Utility.RandomInt(aiBonus,100)) <= iRandomRampageChance
 		return true
 	else
 		return false
@@ -641,9 +733,9 @@ Bool Function RollForStampede()
 EndFunction
 
 ;Random roll for Ambush - not the same as an AmbushPoint.
-Bool Function RollForAmbush()
+Bool Function RollForAmbush(Int aiBonus = 1) ;Parameter added in version 0.13.01 for SP bonuses
 
-	if (Utility.RandomInt(1,100)) < iRandomAmbushChance
+	if (Utility.RandomInt(aiBonus,100)) <= iRandomAmbushChance
 		return true
 	else
 		return false

@@ -5,16 +5,16 @@ Scriptname SOTC:Fragments:Terminals:TERM_SOTC_SettingsMenu_Difficulty Extends Te
 Function Fragment_Terminal_01(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC:MasterQuestScript MasterScript = MasterQuest as SOTC:MasterQuestScript
-;Cast first, cannot set custom type property on terminal fragment
+;Cast first, cannot set custom type property on terminal fragment without hassle
 
 If MasterScript.iMenuSettingsMode == 0 ;Master Mode, apply to all
 
-	MasterScript.iCurrentDifficulty = 0
+	MasterScript.SetMenuVars("MasterDifficulty", true, 0)
 	MasterScript.SendMasterSingleSettingUpdateEvent("Difficulty", false, 0, 0.0)
 
 elseif MasterScript.iMenuSettingsMode == 1 ;Regional Mode, apply to Region only
 
-	MasterScript.MenuCurrentRegionScript.iCurrentDifficulty = 0
+	MasterScript.SetMenuVars("RegionDifficulty", true, 0)
 
 endif
 ;END CODE
@@ -25,16 +25,16 @@ EndFunction
 Function Fragment_Terminal_02(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC:MasterQuestScript MasterScript = MasterQuest as SOTC:MasterQuestScript
-;Cast first, cannot set custom type property on terminal fragment
+;Cast first, cannot set custom type property on terminal fragment without hassle
 
 If MasterScript.iMenuSettingsMode == 0 ;Master Mode, apply to all
 
-	MasterScript.iCurrentDifficulty = 1
+	MasterScript.SetMenuVars("MasterDifficulty", true, 1)
 	MasterScript.SendMasterSingleSettingUpdateEvent("Difficulty", false, 0, 0.0)
 
 elseif MasterScript.iMenuSettingsMode == 1 ;Regional Mode, apply to Region only
 
-	MasterScript.MenuCurrentRegionScript.iCurrentDifficulty = 1
+	MasterScript.SetMenuVars("RegionDifficulty", true, 1)
 
 endif
 ;END CODE
@@ -45,16 +45,16 @@ EndFunction
 Function Fragment_Terminal_03(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC:MasterQuestScript MasterScript = MasterQuest as SOTC:MasterQuestScript
-;Cast first, cannot set custom type property on terminal fragment
+;Cast first, cannot set custom type property on terminal fragment without hassle
 
 If MasterScript.iMenuSettingsMode == 0 ;Master Mode, apply to all
 
-	MasterScript.iCurrentDifficulty = 2
+	MasterScript.SetMenuVars("MasterDifficulty", true, 2)
 	MasterScript.SendMasterSingleSettingUpdateEvent("Difficulty", false, 0, 0.0)
 
 elseif MasterScript.iMenuSettingsMode == 1 ;Regional Mode, apply to Region only
 
-	MasterScript.MenuCurrentRegionScript.iCurrentDifficulty = 2
+	MasterScript.SetMenuVars("RegionDifficulty", true, 2)
 
 endif
 ;END CODE
@@ -65,16 +65,16 @@ EndFunction
 Function Fragment_Terminal_04(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC:MasterQuestScript MasterScript = MasterQuest as SOTC:MasterQuestScript
-;Cast first, cannot set custom type property on terminal fragment
+;Cast first, cannot set custom type property on terminal fragment without hassle
 
 If MasterScript.iMenuSettingsMode == 0 ;Master Mode, apply to all
 
-	MasterScript.iCurrentDifficulty = 3
+	MasterScript.SetMenuVars("MasterDifficulty", true, 3)
 	MasterScript.SendMasterSingleSettingUpdateEvent("Difficulty", false, 0, 0.0)
 
 elseif MasterScript.iMenuSettingsMode == 1 ;Regional Mode, apply to Region only
 
-	MasterScript.MenuCurrentRegionScript.iCurrentDifficulty = 3
+	MasterScript.SetMenuVars("RegionDifficulty", true, 3)
 
 endif
 ;END CODE
@@ -85,16 +85,16 @@ EndFunction
 Function Fragment_Terminal_05(ObjectReference akTerminalRef)
 ;BEGIN CODE
 SOTC:MasterQuestScript MasterScript = MasterQuest as SOTC:MasterQuestScript
-;Cast first, cannot set custom type property on terminal fragment
+;Cast first, cannot set custom type property on terminal fragment without hassle
 
 If MasterScript.iMenuSettingsMode == 0 ;Master Mode, apply to all
 
-	MasterScript.iCurrentDifficulty = 4 ;YES 4 = NONE IN BETHESDA LAND :D
+	MasterScript.SetMenuVars("MasterDifficulty", true, 4)
 	MasterScript.SendMasterSingleSettingUpdateEvent("Difficulty", false, 0, 0.0)
 
 elseif MasterScript.iMenuSettingsMode == 1 ;Regional Mode, apply to Region only
 
-	MasterScript.MenuCurrentRegionScript.iCurrentDifficulty = 4
+	MasterScript.SetMenuVars("RegionDifficulty", true, 4)
 
 endif
 ;END CODE

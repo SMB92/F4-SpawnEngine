@@ -17,40 +17,46 @@ Scriptname SOTC:ThreadControllerScript extends ObjectReference
 ;PROPERTIES & IMPORTS
 ;------------------------------------------------------------------------------------------------
 
+;DEV NOTE: This script does not need a link back to the MasterScript. 
+
 Group Dynamic
 	
 	SOTC:SettingsEventMonitorScript Property EventMonitor Auto
 	{ Init None, fills at runtime. }
+	
+	GlobalVariable Property SOTC_Global01 Auto Const Mandatory
+	{ Auto-fill }
+	GlobalVariable Property SOTC_Global02 Auto Const Mandatory
+	{ Auto-fill }
+	GlobalVariable Property SOTC_Global03 Auto Const Mandatory
+	{ Auto-fill }
 	
 EndGroup
 
 
 Group Settings
 
-	Int Property iMaxAllowedThreads Auto
-	{ Initialise 0. Set in Menu. Max no of Spawnpoints allowed to be working simultaneously. }
+	Int Property iMaxAllowedThreads = 8 Auto
+	{ Initialise 8 (Default). Set in Menu. Max no of Spawnpoints allowed to be working simultaneously. }
 
-	Int Property iMaxNumActiveSps Auto
-	{ Initialise 0. Set in Menu. Max no of Spawnpoints allowed to be active at any one time. }
+	Int Property iMaxNumActiveSps = 1000 Auto
+	{ Initialise 1000 (Default). Set in Menu. Max no of Spawnpoints allowed to be active at any one time. }
 
-	Int Property iMaxNumActiveNPCs Auto
-	{ Initialise 0. Set in Menu. Max no of spawned NPCs allowed to be active at any one time. }
+	Int Property iMaxNumActiveNPCs = 5000 Auto
+	{ Initialise 5000 (Default). Set in Menu. Max no of spawned NPCs allowed to be active at any one time. }
 
-	Bool Property bMasterSpCooldownTimerEnabled Auto
-	{ Init false. Set in Menu. Toggle for the time limit between SPs being allowed to fire }
+	Float Property fNextSpCooldownTimerClock = 0.0 Auto
+	{ Init 0 by default (Disabled). Set in Menu. Limit before another SP can fire. Has major effect on balance. }
 
-	Int Property iMasterSpCooldownTimerClock Auto
-	{ Init 0. Set in Menu. Limit before another SP can fire. Has major effect on balance }
-
-	Int Property iSpCooldownTimerClock Auto ;Moved to ThreadController
-	{ Initialise 60 (one minute), can be set in Menu. Time to cooldown before failed point retry }
+	Float Property fFailedSpCooldownTimerClock = 300.0 Auto ;Moved to ThreadController
+	{ Initialise 300.0 (5 Mins), can be set in Menu. Time to cooldown before failed point retry }
 	
 EndGroup
 
 
 ;Suppose the following could become properties as well.
 Int iActiveRegionsCount ;Incremented when a Region Quest starts for the first time.
-Int iActiveThreadCount ;Current Active Spawnpoints spawning (not actually active)
+Int iActiveThreadCount ;Current Active Spawnpoints spawning right now if any
 Int iActiveSPCount ;Number of active SpawnPoints
 Int iActiveNpcCount ;Number of currently managed NPCs.
 
@@ -71,13 +77,62 @@ Bool bCooldownActive ;Flag to deny SPs because cooldown state is active.
 
 Bool bThreadKillerActive ;Emergency brake. Could reuse for bCooldownActive, but that is not as absolute as this.
 
-Int iMasterSpCooldownTimerID = 5 Const ;Performance/balance helper. Time limit before another point can fire.
+Int iNextSpCooldownTimerID = 5 Const ;Performance/balance helper. Time limit before another point can fire.
 
 Bool bInit ;Security check to make sure Init events/functions don't fire again while running
 
 
 ;------------------------------------------------------------------------------------------------
-;RETURN FUNCTIONS
+;MENU FUNCTIONS
+;------------------------------------------------------------------------------------------------
+
+;This function either sets Menu Globals to current values before viewing a Menu option, or it sets
+;the new value selected from said Menu. 
+Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 = 0)
+
+	if asSetting == "MaxThreads"
+	
+		if abSetValues
+			iMaxAllowedThreads = aiValue01
+		endif
+		SOTC_Global01.SetValue(iMaxAllowedThreads as Float)
+		
+	elseif asSetting == "MaxNPCs"
+		
+		if abSetValues
+			iMaxNumActiveNPCs = aiValue01
+		endif
+		SOTC_Global01.SetValue(iMaxNumActiveNPCs as Float)
+		
+	elseif asSetting == "MaxSPs"
+	
+		if abSetValues
+			iMaxNumActiveSPs = aiValue01
+		endif
+		SOTC_Global01.SetValue(iMaxNumActiveSPs as Float)
+		
+	elseif asSetting == "FailedSpCdTimer"
+	
+		if abSetValues
+			fFailedSpCooldownTimerClock = aiValue01 as Float
+		endif
+		
+		SOTC_Global01.SetValue(fFailedSpCooldownTimerClock)
+	
+	elseif asSetting == "NextSpCdTimer"
+	
+		if abSetValues
+			fNextSpCooldownTimerClock = aiValue01 as Float
+		endif
+		
+		SOTC_Global01.SetValue(fNextSpCooldownTimerClock)
+		
+	endif
+	
+EndFunction
+
+;------------------------------------------------------------------------------------------------
+;RUNTIME FUNCTIONS
 ;------------------------------------------------------------------------------------------------
 
 ;DEV NOTE: As this is intended to be a uniquely instanced script, no Init function is present.
@@ -86,27 +141,14 @@ Bool bInit ;Security check to make sure Init events/functions don't fire again w
 ;Check if enough Thread available to continue functioning
 Bool Function GetThread(int aiMinThreadsRequired)
 	
-	if iMaxNumActiveNPCs > 0 ;Likely setting will not be active so this will short circuit.
-		if iActiveNpcCount > iMaxNumActiveNPCs
-			return false ;Nip it in the bud
-		;else continue
-		endif
-	endif
-	
-	if iMaxNumActiveSps > 0 ;Likely setting will not be active so this will short circuit.
-		if iActiveSpCount > iMaxNumActiveSPs
-			return false ;Nip it in the bud
-		;else continue
-		endif
-	endif
-	
-	if (iActiveThreadCount > iMaxAllowedThreads) || (bThreadKillerActive) || (bCooldownActive)
+	if (iActiveThreadCount > iMaxAllowedThreads) || iActiveNpcCount > iMaxNumActiveNPCs || iActiveSpCount > iMaxNumActiveSPs \
+	|| (bThreadKillerActive) || (bCooldownActive)
 		return false ;Nip it in the bud
 	endif
 	
 	;If we got this far SP can proceed
-	if bMasterSpCooldownTimerEnabled
-		StartTimer(iMasterSpCooldownTimerClock, iMasterSpCooldownTimerID)
+	if fNextSpCooldownTimerClock > 0
+		StartTimer(fNextSpCooldownTimerClock, iNextSpCooldownTimerID)
 		bCooldownActive = true
 	endif
 	
@@ -119,7 +161,7 @@ EndFunction
 
 Event OnTimer(Int aiTimerID)
 
-	if aiTimerID == iMasterSpCooldownTimerID
+	if aiTimerID == iNextSpCooldownTimerID
 	
 		bCooldownActive = false
 		
@@ -187,7 +229,19 @@ Function PrepareToMonitorEvent(string asType)
 		
 	endif
 	
-	;Currently only Region events defined here. Will be extended in future.
+	;Currently only Region events defined here. May be extended in future.
+	
+EndFunction
+
+
+;Prepares this instance for deletion, simply deletes EventMonitor.
+Function MasterFactoryReset()
+
+	EventMonitor.Disable()
+	EventMonitor.Delete()
+	EventMonitor = None ;De-persist
+	
+	;Master will proceed to delete this instance once this returns.
 	
 EndFunction
 
@@ -197,12 +251,13 @@ EndFunction
 ;------------------------------------------------------------------------------------------------
 
 ;This function is used anytime User needs to be informed of active spawnpoint threads.
-Function ActiveThreadCheck()
+Bool Function ActiveThreadCheck()
 	
 	if iActiveThreadCount > 0
 		Debug.MessageBox("WARNING: Spawn Threads are currently active, it is recommended you exit this menu now and wait for them to finish before continuing (about 10 seconds should be fine). Current Active Thread Count is" +iActiveThreadCount)
+		return true
 	else
-		;Nothing, continue.
+		return false
 	endif
 
 EndFunction

@@ -28,7 +28,13 @@ GlobalVariable Property SOTC_MasterGlobal Auto Const Mandatory
 { Auto-fill. IO status of mod. }
 
 GlobalVariable Property SOTC_Global_MenuSettingsMode Auto Const Mandatory
-{ Auto-fill }
+{ Auto-fill. }
+
+ObjectReference Property kMasterCellMarker Auto Const Mandatory
+{ Fill with the Master Marker in the SOTC Master Persistent Cell. }
+
+MiscObject Property SOTC_PointPersistStore Auto Const
+{ Auto-fill. Creates an instance of the Master Point Persisting class, for iteration upon uninstall. }
 
 ;Variables
 ;----------
@@ -38,6 +44,9 @@ Int iPresetToSet ;Will be sent to MasterScript for Init.
 Bool bInit ;Security measure to ensure OnInit() etc events never fire twice
 
 Bool bSpawnEngineStarting ;Security measure to be sure we want to start
+
+SOTC:PointPersistScript PointPersistStore ;Filled at runtime, contains all SpawnPoints and TravelLocs
+;which we can attempt to disable all if we want to uninstall. 
 
 ;Unlike the MasterQuestScript, we won't have a permanent link to player here. 
 
@@ -52,6 +61,7 @@ Event OnQuestInit()
 		
 		Debug.MessageBox("Thank you for installing SpawnEngine. Please complete setup from the Auxillery Holotape Menu that's been added to your inventory when you are ready.")
 		Game.GetPlayer().AddItem(SOTC_AuxMenuTape, 1, false) ;We want to know it's been added
+		PointPersistStore = (kMasterCellMarker.PlaceAtme(SOTC_PointPersistStore, 1 , false, false, false)) as SOTC:PointPersistScript
 		bInit == true ;Never want to receive this event again.
 		
 	endif
@@ -105,10 +115,24 @@ Function InitSpawnEngine()
 EndFunction
 
 
-Function ShutdownSpawnEngine()
+;Received from MasterQuest after MasterFactoryReset() has been called and data cleaned upon
+Function FinaliseMasterFactoryReset()
+
+	SOTC_MasterQuest.Stop()
+	Game.GetPlayer().AddItem(SOTC_AuxMenuTape, 1, false) ;We want to know it's been added
+	Debug.MessageBox("SpawnEngine has been returned to the pre-activated state. Uninstall option has opened on the Auxillery Menu. To restart the mod, follow the same procedure as first-install.")
+
+EndFunction
+
+
+;Function Uninstall()
 
 	;Currently incomplete, placeholder
+	;PointPersistStore.DisableAllPersistentRefs()
+	;SOTC_MasterGlobal.SetValue(3.0) ;Uninstalled state)
+	;Disables all Persistent travel locations and SpawnPoints and their ChildPoints.
 	
-EndFunction
+;EndFunction
+
 
 ;------------------------------------------------------------------------------------------------

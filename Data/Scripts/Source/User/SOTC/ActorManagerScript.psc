@@ -74,8 +74,8 @@ Group Config
 	Bool Property bSupportsSwarm Auto Mandatory
 	{ Set true if this Actor can cause an Infestation/Swarm. }
 	
-	Bool Property bSupportsStampede Auto Mandatory
-	{ Set true if this Actor can cause a Stampede. }
+	Bool Property bSupportsRampage Auto Mandatory
+	{ Set true if this Actor can cause a Rampage/Stampede. }
 
 	;NOTE: Could have used a struct here for Swarm properties
 
@@ -116,23 +116,23 @@ Group LootConfig
 	
 EndGroup
 
-;LEGEND - LOOT SYSTEM
-;There are 2 ways to provide random spawns with a random loot item (or more if using an "Use All" 
-;flagged Leveled List) - through the SpawnTypeRegionalScript or the ActorQuestScript. Both systems
-;are identical in function and setup, but can operate independantly. The system works by storing
-;formlists on each of the scripts, 1 for regular Actors and 1 for Boss Actors. Spawnpoints will
-;check both scripts after spawntime (after all actors are placed in game and packages applied,
-;preventing unnecessary slowdown in the spawnloops themselves), and if this system is enabled, it
-;will send in the GroupList for that Spawnpoint and do a loop to add a single item from the list to
-;each Actors inventory, based on a configurable chance value. The single item can be a Leveled List, 
-;and if it is marked to Use All, will add every item from that list.
+;LEGEND - LOOT SYSTEM - UPDATED FOR 0.13.01
+;Spawns may have random loot item(s) given to them at spawn time, based on a configurable chance value.
+;The system works by storing formlists on each of the ActorManagers, 1 for regular Actors and 1 for 
+;Boss Actors. Spawnpoints will check the ActorManager after spawntime (after all actors are placed in 
+;game and packages applied, preventing unnecessary slowdown in the spawnloops themselves), and if this
+;system is enabled, it will send in the GroupList of that Actor type and do a loop to potentially add a
+;single item from the list to each Actors inventory, based on a configurable chance value. This item can 
+;be a Leveled List, and if it is marked to Use All, will add every item from that list.
 
-;Loot on the Spawntype script should be applicable to all Actors in that Spawntype, this is intended
-;to be a generalised loot table. The reason why this system is included on the Region Spawntype 
-;script, and not the Master Spawntype, is so we can specify different loot per Region if we wish.
-;Loot on the ActorQuestScript is obviously so we can supply highly specific loot for each Actor type. 
-;As mentioned above, either can be enabled/disabled, they are independant from each other. Chance of
-;loot values can be defined for both Regular and Boss Actors independantly on each script as well. 
+;SpawnType loot system has been removed as of version 0.13.01 as new instancing methods introduced
+;in version 0.10.01 made it much more difficult to setup, and it is simply not worth the effort to
+;rebuild it. The main reason for extending this system to SpawnTypes was to be able to provide unique
+;loot per Region, I.E having "Wildlife" in a certain area have a unique item not found elsewhere.
+;On the whole however, this system would have been a bit too confusing, finicky and under-utilised
+;so the decision was made to remove it entirely. It is still supported for individual Actor types
+;via the ActorManager, and is useful here as we don't have to edit the Actors themselves to add any
+;new loot items, or vanilla Levelled lists of any sort.
 
 ;Fun fact: It was originally an idea to provide loot by using a RefCollectionAlias with specified
 ;Leveled Lists, and then add Actors to this collection so they'd automatically get the loot without
@@ -348,12 +348,69 @@ Function AddRemovePowerArmorGroups(Bool abRemove)
 EndFunction
 
 
+;Destroys all dynamically produced data, ready to destroy this instance.
+Function MasterFactoryReset()
+
+	Int iCounter
+	Int iSize
+	
+	;Start with WorldPresets
+	iSize = WorldPresets.Length
+	while iCounter < iSize
+		WorldPresets[iCounter].MasterFactoryReset()
+		WorldPresets[iCounter].Disable()
+		WorldPresets[iCounter].Delete()
+		WorldPresets[iCounter] = None ;De-persist
+		iCounter += 1
+		Debug.Trace("ActorWorldPresets instance destroyed")
+	endwhile
+	Debug.Trace("All ActorWorldPresets instances destroyed")
+	
+	
+	;Now do ClassPresets
+	iCounter = 0
+	iSize = ClassPresets.Length
+	while iCounter < iSize
+		if ClassPresets[iCounter] != None ;Skip empty indexes.
+			
+			ClassPresets[iCounter].MasterFactoryReset()
+			ClassPresets[iCounter].Disable()
+			ClassPresets[iCounter].Delete()
+			ClassPresets[iCounter] = None ;De-persist
+			Debug.Trace("ActorClassPreset instance destroyed")
+		endif
+		iCounter += 1
+	endwhile
+	Debug.Trace("All ActorClassPreset instances destroyed")
+
+	
+	;Now do GroupLoadouts
+	iCounter = 0
+	iSize = GroupLoadouts.Length
+	while iCounter < iSize
+		GroupLoadouts[iCounter].MasterFactoryReset()
+		GroupLoadouts[iCounter].Disable()
+		GroupLoadouts[iCounter].Delete()
+		GroupLoadouts[iCounter] = None ;De-persist
+		iCounter += 1
+		Debug.Trace("ActorGroupLoadout instance destroyed")
+	endwhile
+	Debug.Trace("All ActorGroupLoadouts instances destroyed")
+	
+	
+	Debug.Trace("ActorManager instance ready for destruction")
+	
+	;SpawnTypeMasters[0] will destroy this instance once returned. 
+
+EndFunction
+
+
 ;------------------------------------------------------------------------------------------------
 ;RETURN FUNCTIONS
 ;------------------------------------------------------------------------------------------------
 
-;Used for various Spawn function that might want random set of parameters, using the first 3 Classes
-;(the ones based on Rarity levels 1-3, Common, Uncommon and Rare)
+;Used for various Spawn functions that might want random set of parameters, using the Rarity-based 
+;Classes (1-3, Common, Uncommon and Rare).
 SOTC:ActorClassPresetScript Function GetRandomRarityBasedClass()
 
 	Int iClass = Utility.RandomInt(1,3) ;Class to use from ClassPresets
@@ -362,6 +419,21 @@ SOTC:ActorClassPresetScript Function GetRandomRarityBasedClass()
 	
 EndFunction
 
+;returns the requested ClassPreset if it exists, otherwise returns Debug Preset (0)
+SOTC:ActorClassPresetScript Function GetClassPreset(Int aiClass)
+
+	if aiClass == 777 ;Random Rarity-based
+		return GetRandomRarityBasedClass()
+	elseif ClassPresets[aiClass] != None ;Ensure requested Class is defined
+		return ClassPresets[aiClass]
+	else ;return debug Preset, print debug trace
+		return ClassPresets[0]
+		Debug.Trace("Requested Class not defined, returning debug preset")
+	endif
+	
+	;DEV NOTE - All Actors should have all 3 Rarity-based Classes defined as well as Debug Preset.
+	
+EndFunction
 
 ;------------------------------------------------------------------------------------------------
 ;LOOT FUNCTIONS

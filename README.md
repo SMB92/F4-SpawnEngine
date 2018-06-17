@@ -4,6 +4,10 @@ NOTE THAT THIS REPO DOES NOT CURRENTLY CONTAIN A PLAYABLE PLUGIN/RELEASE CANDIDA
 
 ## NEWS
 
+### Update 0.13.01 brings monumental changes to the SpawnPoint, implements full runtime reset functionality, permanent SpawnPoint persistence, more Menus and more fixes.
+
+[17/06/2018] I have been hard at work over the last few weeks since the 0.12.01 Alpha, with one of the main focuses of this update being the SpawnPoint and working in new methods for use with different Package styles. All code has been converged into one single class now, the SpawnPointScript. Suffice to say this update presents a huge update to the spawn code, beyond which I intended even. I am currently working on documentation that explain how the new SpawnPoint works, and how to use it yourself in add-ons, and will advise when ready. I have also added in the ability to fully reset/cleanup all dynamically produced data from the mod in this update, returning it to "factory fresh" state (yes I feel like a factory, lmao). The other big news is, as of this update, all SpawnPoints placed in the World will become permanently persistent. The biggest reason behind this decision was cell conflicts, but with respect to uninstallation factor of the mod, it was going to be impossible to remove CK placed objects completely anyway. Now that they are persistent via a single script that stores them (SOTC:PointPersistScript), we will be able to at least iterate each one of them and disable them, with hope F4 will clean them up later. Not sure why anyone would want to uninstall this mod though :D. A new alpha file is being worked on, and this will be a proper test file with a full featured Region in the Commonwealth (Region 1). Following this, if all is well, this test file will be released tothe public on the Discord dev server. Stay tuned for more updates! 
+
 ### SpawnEngine updated to version 0.12.01, Alpha proves solid
 
 [27/05/2018] This version was released as the second Alpha RC for private testing and has proven to be working optimally. This update kills off a number of gremlins in the code, mostly oversights in Init procedures which led to errors in SpawnPoints. The next update will likely be a public alpha demo, however I am also working on some new methods for the Random Events Framework.
@@ -64,11 +68,94 @@ Please be patient while work continues on both a working test file and official 
 
 ## UPDATE LOG
 
+------
+##### [03/06/2018] SpawnEngine updated to version 0.13.01.180617
+
+###### HOUSEKEEPING:
+- Update NPP Lang file to include new/remove old functions.
+- Add/fix some commentary.
+- Changed/fixed some Property descriptions
+- Removed obsolete, commented-out function from SpGroupScript MultiPoint section.
+- Fix property description indentation on SpGroupScript and SpMiniPointScript so it displays properly in CK.
+- Added "Note on Dynamic Array Initialisation" at top of MasterScript.
+- Chnaged some function and script names for better effect. 
+
+###### MAJOR/MINOR FEATURE UPDATES/CHANGES/ADDITIONS:
+- [MINOR] (MENU) Performance Menu, World/Region Selection and Region Settings Menu added/completed (fragments). Added, consolidated and optimized functions to deal with setting of vars on all relevant scripts, mainly via new SetMenuVars() function that now appears in relevant scripts, as mentioned above.
+- [MINOR] (MENU) Debug Menu and options (Properties) were removed. Mod will feature Traces where necessary and won't be controllable by the user. "Spawn Warning" moved to Performance Menu.
+- [MINOR] REMOVED Loot system support for SpawnTypes entirely. New instancing methods introduced in version 0.10.01 made this a lot more difficult to deal with, and it is simply not worth the hassle to redo. Supporting loot for SpawnTypes was always a bit iffy, the only reason it was potentially worth doing was to have special loots on a per Region basis (I.E imagine if some wildlife in a certain area were able to have a unique item on them not found elsewhere). I may revist this in future and reimplement a dumbed down version for that purpose. System remains untouched for individual Actor types.
+- [MAJOR] Consolidated all SpawnPoint code into one script, now renamed as "SpawnPointScript". This class will now assume all the roles required, which have also been added. Initially the concern with this was speed, but most of the extra checks that have to be done now are local and speed is not adversely affected as such. A good chunk of this script has been modified to suit, particularly its Properties. SpawnPoint capabilities/roles have been expanded, and now includes all the intended modes (Sandbox/Hold, Travel, Patrol, Amush (distance-to-player based), Interior, Ambush (Static/Hidden)) and MultiPoint mode support has been added for many of these new modes. Many functions have been refactored for this change (SpawnPoint script is nearly doubled in size), I have added notes thoughout the script on how/what to use/expect.
+- [MINOR] Added new iForceGroupsToSpawnCount Property to SpawnPoint. This can be used to force the number of Groups at a MultiPoint. While mainly introduced for use with Interior and Patrol Points, can be used for other means (with caution).
+- [MINOR] Added new "ForceClassPreset" parameter to SpawnTypeRegionalScript's GetRandomActor() functions and added Property to Spawnpoints. Can now force grab a Rarity-Based Class Preset regardless of the Rarity of Actor rolled by dice, in addition to being able to force the Rarity.
+- [MINOR] Added ability to randomise ClassPreset on SpawnPoints in "Specific Actor Mode" by entering 777 as the value. This will pull a random Rarity based preset between 1-3.
+- [MAJOR] Decided to make all SpawnPoints permanently persistent. A few reasons for this: 1. No longer have to deal with cell conflicts (major influence on this decision). 2. SPs can have "Child Points" (which are required to be persistent properties on those SPs) and Travel Markers are also required to be persistent by nature, and 3. Calling Delete from script on CK placed objects does not work. This change is in major contrast to the initial scope of the mod to not have permanently persistent data, however there is simply no avoiding it when considering the level of quality this mod needs to provide. Uninstallation factor was never going to be perfect for other reasons, but in the case of persistent/ck-placed objects in cells, one would need to wait for/do a cell reset on affected cells regardless.
+- [MINOR] Random "Rampage" feature was seggregated from the "Swarm" feature and now works on it's own (not just when rolling a "Swarm").
+- [MINOR] "Random Ambush" and "Rampage" (formerly "Stampede") features for Sandbox/Travel mode SpawnPoints now supported together (now uses same package, the "Rush" package). Now you can have "Swarm" (when/if rolled) rush at the Player. Masochists need only enable.
+- [MINOR] Added ability to use to use "ChildPoints" to randomise the initial spawn point of groups. New Property bRandomiseStartLoc added to SpawnPoint. When used and also defining "ChildPoints" around the main SpawnPoint, the SP will elect a random point to start spawning at. This can be useful for a variety of things, but likely not standard practice. Parameters have been added to Spawn loops to deal with this. 
+- [MINOR] Added ability to "spread" spawns to ChildPoints via new Property on SpawnPoint. Dedicated new SpawnLoops with the "RandonChild" type in them will spawn actors at random, defined, ChildPoints around the main SpawnPoint, which gives the effect of spread out spawns of course. Saves doing heavy math and navmesh checks at the cost of memory. Using this will cause the above new feature to be ignored, and is only supported for Package Mode 0 and 1 (Sandbox/Travel). This is technically a refactor of the previous "Interior" spawn functions (replaces this). 
+- [MINOR] Added ability to define "Bonuses" for local events on SpawnPoints (Swarm, Rampage and Random Ambush). Added new parameters to RegionManager local event dice-roll functions to handle this. 
+- [MAJOR] Implemented full reset functionality, MasterFactoryReset(). The mod can now cleanup all dynamic instances, returning it to the first-installed state. This starts on the MasterScript, and serialises down through other class instances in the appropriate order. Uninstall options will open up on the Auxillery Menu after the first time this reset is run (not yet implemented). 
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Renamed MenuForceResetRegion() function on RegionManager to MenuForceResetRegionSPs(), for better clarity as that is all it does.
+- Made optional "Spawn warnings" a bit more ambigous and reduced to only 2 messages instead of 3.
+- Removed bMasterCooldownTimerEnabled Property removed from ThreadController (check value of clock is more than 0 instead, saving a tiny bit of memory). 
+- iMasterSPCooldownTimerClock on ThreadController converted to Float and renamed to fNextSpCooldownTimerClock for better clarity.
+- Changed iSpCooldownTimerClock Property to fFailedSpCooldownTimerClock (converted to Float) for extra clarity.
+- Updated SpawnPoint scripts to reflect changes to timers above.
+- Removed SPs being "spent" when denied by Master or Region dice rolls and instead use ThreadController Cooldown timer if enabled. If not enabled, will try to spawn again every OnCellAttach().
+- Fix "Spawn Warning" only firing after Master Check, instead of when SP actually was successful. This was something I had been meaning to change for a while but forgot. 
+- Removed bRegionEnabled setting/Property from RegionManagerScript. Use RegionMasterChance value check instead , more memory efficient.
+- Added security measures to SpawnTypeRegionalScript GetRandomActor() function in the event there are no Actors defined on a Rarity-based list. If this happens, will revert to the list above the requested (the more "common" option). This resulted in encapsulting the Actor return functions into their own functions.
+- Somewhat removed the hard coded limitation that if a SpawnType was based on a certain Class, it would only return that ClassPreset for the Actor. This can now work with the new ForceClassPreset setting. Will still pull base ClassPreset for the Spawntype if ForceClassPreset is not used.
+- Extended/refactored same functionality to GetRandomActors() (return multiple actors) function on SpawnTypeRegionalScript.
+- Added failsafe to SpawnPoint, if ClassToSpawn entered is not available or expected value, will use debug preset instead (0). Added function GetClassPreset() to ActorManager to deal with/return this (no longer calls the ClassPreset direct)
+- Added security check to SpHelperScript, if kPackageLocs array is None will default to Self as location. Package may still produce errors if not setup correctly.
+- Fix SP kActiveHelpers local array never being initialised at all.
+- Fix SP kActiveChildren local arrays likely/maybe not initialising properly due to being empty (Papyrus/Creation seems to like trashing arrays that are initialised as empty on occasion).
+- Added SetMenuVars() function to a number of scripts, this is the new standard method when setting something from Menu. This function takes a string and an Int parameter, used to set the correct setting to the new value and update Globals for the current Menu page conditions.
+- Changed function MenuSetPreset() on RegionManagerScript to SetMenuVars(), inline with other scripts.
+- Fix RegionManager dice rolls for included events (Ambush, Swarm, Stampede) being denied on a roll of 100 (was only checking < instead of <=).
+- Fix same dice roll bug on SpawnPoint final dice roll on itself.
+- Gave RegisterMasterForPipBoyCloseEvent() function parameters default values so they do not have to be declared.
+- Added new struct to Master for presetting "Rarity Chances" (the values for CommonActorChance/UncommonActorChance). Added an array of this struct to store these presets. User can only select presets for this option in Menu for ease of use as it could become confusing/unbalanced easily. Also added a local variable to store the last selected preset.
+- Struct_RegionPresetDetails script was completely removed in this version (was obsoleted a few version ago). Preset settings values are hard coded, and new function "SetPresetVars()" has been added to MasterScript and RegionManager. Was simply no need to use the struct apart from making the function look pretty/overly sophisticated.
+- Renamed "ChildMarker" to "ChildPoint" on SpawnPoint, not only for better clarity, but it sounds better too. 
+- Renamed TravelMarkerInitScript to TravelLocationInitScript for the thrill of it. 
+- Inline with the above changes to "Marker" names and persisting SPs, TravelMarkerStoreScript was renamed to PointPersistentScript. This also had 2 arrays for TravelMarkers, I had forgot editor filled arrays are not limited to 128 members. Second array converted to use for SPs.
+- Removed instancing of PointPersistScript from Master and moved to AuxilleryQuestScript. Also added Master Marker Property to AuxQuestScript. Upon on uninstall, the PointPersistScript will be called to iterate and disable all persistent refs stored on it. This is the best that can be done if the user is serious about an uninstall, in regard to these persistent objects.
+- Fix TravelLocationInitScript not setting security bool flag bInit after receiving OnInit().
+- Renamed Var array variable in Master event function from "PresetParams" to just "Params" for better clarity (can be used for stuff other than Preset setting).
+- Removed an obsolete debug notif from Spawnpoint script.
+- SpawnPoints now do applying of Travel and Patrol Package data AFTER spawn loops (after ALL Actors in the group spawning are placed) and not during the loop. This seems to keep them closer together when spawned. Sandbox remains during the loop as this fits that better in terms of AI evaluation. 
+- Slightly optimized SpawnActorRandomEzInteriorLoop() on SpawnPoint, moved randomising of EZ inside of chance block. This function remains mostly unchanged despite the overhaul of of the SP script. 
+- Fix Swarm bonus numbers being applied the wrong way around (boss to regular and vice versa).
+- Fix comparison operators in SpawnLoops() not checking <= (was doing != for MaxCount while check and just < for chance comparison, which causes rolls of 100 to fail as mentioned previously).
+- Reduced SpHelperScript Init ("Fire") timer from 0.5 seconds to 0.2 seconds.
+- Reduced StaggerStartup Timer random range on SpawnPointScript from 0.2-0.5 to 0.15-0.35.
+- RegionTrackerScript updated for new SpawnPoint changes, removed many now unnecessary Properties and checks.
+- Removed obsolete Debug.Notification from RegionTracker. 
+- Fix MasterQuestScript not actually sending Settings Event 10 (Full preset change) due to bad check (> instead of >=). 
+- ThreadController ActiveThreadCheck() was changed to be a Bool function, as it should have been. 
+- Changed Master Property iEventCooldownTimerClock from Int to Float. 
+- kEventPoint on Master is now of SOTC:SpawnPointScript type (no longer ObjectReference only). Event scripts can now directly access the instance. Master script now checks "bEventSafe" Property on SP before assigning as EventPoint. 
+- Removed "iActorCount" variable from Cleanup functions in SpawnPointScript/SpHelperScript. Realised that it wasn't needed, can just use "iSize" variable set beforehand. 
+- Added disable call before calling delete on SpHelpers in SpawnPointScript. More proper way to do it. 
+- ShutdownSpawnEngine() function removed from AuxQuestScript. Will be replaced with Uninstall() in near future. 
+
+###### MISC NOTES:
+- I am currently considering removing the RegionTrackerScript. The purpose of this script is to deal with resetting SpawnPoints after the RegionResetTimer expires, rather than having each individual point having its own timer. However it may be better to do just that. Currently when these RegionTrackers are first instanced, I attempt to stagger the startup of their timers so that not all Regions will try to cleanup at the same time (potentially causing script lag). While I can implement some extra security measures on the ThreadController to further deal with this problem, I might just so away with it entirely and let the SPs deal with themselves. Also considering adding a new timer system, where the user can specify a "minimum" and "maximum" time for reset to occur, which might help with the "randomisation" factor. 
+- Not all fixes and changes are listed above as changes to SpawnPoint code as mentioned are fairly large. Had tried to list what I thought was important when I could. Just so you are all aware of that fact.
+- I have every intention of writing a proper debug/user logging feature in the near future. As that is a pretty big job of it's own, for now Traces remain where needed. 
+- MasterFactoryReset options have not been extended to Event Quests, as Random Events Framework methods are being looked at again.
+- The two included Random Events, Ghoul Apocalypse and Seven Days to Die mode have not had their spawn code completed yet. 
+
+------
 ##### [27/05/2018] SpawnEngine updated to version 0.12.01.180527
 
 ###### HOUSEKEEPING:
-- Update NPP Lang file to include new function on ActorClassPresetsScript
-- Add some commentary.
+- Update NPP Lang file to include new functions
+- Add/fix some commentary.
 
 ###### SCRIPT OPTIMIZATION/REVISION/FIXES:
 - Fixed MasterScript AddActorToMasterSpawnTypes() function not calling from Master Spawntype from index (how this was allowed to compile, I am not sure, guess it's one of those obscurities).

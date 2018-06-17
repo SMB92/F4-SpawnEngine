@@ -1,4 +1,4 @@
-Scriptname SOTC:TravelMarkerInitScript extends ObjectReference
+Scriptname SOTC:TravelLocationInitScript extends ObjectReference
 { Quick and drity script that adds a Travel Location Marker to Regions dynamically on first setup. }
 ;Written by SMB92
 ;Special thanks to J. Ostrus [BigandFlabby] for code contributions that made this mod possible.
@@ -40,14 +40,15 @@ Event OnInit()
 
 	if !bInit
 		
-		RegisterForCustomEvent(MasterScript, "InitTravelMarkers") 
+		RegisterForCustomEvent(MasterScript, "InitTravelLocs")
+		bInit = true
 
 	endif
 	
 EndEvent
 
 
-Event SOTC:MasterQuestScript.InitTravelMarkers(SOTC:MasterQuestScript akSender, Var[] akArgs)
+Event SOTC:MasterQuestScript.InitTravelLocs(SOTC:MasterQuestScript akSender, Var[] akArgs)
 
 	if (akArgs as Bool) == True ;Initialise, add to RegionManager
 	
@@ -55,6 +56,7 @@ Event SOTC:MasterQuestScript.InitTravelMarkers(SOTC:MasterQuestScript akSender, 
 		Debug.Trace("Travel Marker Added to Region")
 	
 	else ;Assume false, shutdown stage, try to delete instances. Only use in absolute shutdown stage
+	;DEV NOTE: This is not currently used at all.
 	
 		(Self as ObjectReference).Delete()
 		Self.Delete()

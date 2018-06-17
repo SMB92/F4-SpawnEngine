@@ -1,5 +1,5 @@
 Scriptname SOTC:SpawnTypeMasterScript extends ObjectReference
-{ This script holds the Master Actor lists for a SpawnType.  }
+{ This script holds the Master Actor lists for a SpawnType. }
 ;Written by SMB92.
 ;Special thanks to J. Ostrus [BigandFlabby] for code contributions that made this mod possible.
 
@@ -149,6 +149,41 @@ Function SafelyClearActorList()
 
 	ActorList.Clear()
 	ActorList = new SOTC:ActorManagerScript[1]
+	
+EndFunction
+
+
+;Prepares this instance for destruction by Master
+Function MasterFactoryReset()
+
+	if iSpawnTypeID == 0 ;Master List Mode
+	
+		Int iCounter
+		Int iSize = ActorList.Length
+		
+		while iCounter < iSize
+			
+			if ActorList[iCounter] != None ;Check for empty indexes.
+				ActorList[iCounter].MasterFactoryReset()
+				ActorList[iCounter].Disable()
+				ActorList[iCounter].Delete()
+				ActorList[iCounter] = None ;De-persist
+				Debug.Trace("ActorManager instance destroyed")
+			endif
+			iCounter += 1
+
+		endwhile
+		
+		Debug.Trace("All ActorManager instances destroyed, STM ready for destruction")
+	
+	else ;Non-Master mode
+	
+		ActorList.Clear()
+		Debug.trace("SpawnTypeMaster ready for destruction")
+		
+	endif
+	
+	;Master will destroy this instance once this returns
 	
 EndFunction
 

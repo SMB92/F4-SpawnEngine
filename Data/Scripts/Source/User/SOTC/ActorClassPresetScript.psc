@@ -137,7 +137,19 @@ Function SafelyClearGroupLoadouts()
 	
 EndFunction
 
+
+;Clears all dynamic data ready for destruction of this instance.
+Function MasterFactoryReset()
+
+	ActorManager = None ;De-persist.
+	GroupLoadouts.Clear() ;De-persist.
 	
+	Debug.Trace("ActorClassPreset instance ready for destruction")
+	
+	;ActorManager will destroy this instance once returned.
+	
+EndFunction
+
 
 ;------------------------------------------------------------------------------------------------
 ;RETURN FUNCTIONS

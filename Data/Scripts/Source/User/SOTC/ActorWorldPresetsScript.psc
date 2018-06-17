@@ -86,6 +86,18 @@ Function PerformFirstTimeSetup(SOTC:ActorManagerScript aActorManager)
 	
 EndFunction
 
+
+;Clears dynamic data ready to destory this instance.
+Function MasterFactoryReset()
+
+	ActorManager = None ;De-persist.
+	Debug.Trace("ActorWorldPresets instance ready for destruction")
+
+	;ActorManager will destroy this instance when returned.
+	;Not really necessary from here really, but may serve in future. 
+	
+EndFunction
+
 ;------------------------------------------------------------------------------------------------
 ;RETURN FUNCTIONS
 ;------------------------------------------------------------------------------------------------

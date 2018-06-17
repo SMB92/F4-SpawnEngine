@@ -45,7 +45,7 @@ Group Dynamic
 	; [2] - NUKA WORLD
 	
 	Bool Property bSpawnTypeEnabled Auto
-	{ Init True. Change in Menu. }
+	{ Init True. Change in Menu. Enables or Disables this ST in this Region. }
 	
 	Int Property iCurrentPreset Auto
 	{ Initialise 0. Set by Menu/Preset. Determines each Actors Rarity in this Spawntype/Region }
@@ -114,64 +114,18 @@ Group Dynamic
 EndGroup
 
 
-Group LootSystemProperties
-
-	Bool Property bLootSystemEnabled Auto
-	{ Init False. Set in Menu. When on, spawned Actors of this type may possibly 
-receive a loot item from one of the Formlists below }
-	
-	Formlist Property kRegularLootList Auto
-	{ Fill with Formlist made for this Actor Type's regular loot }
-	
-	Formlist Property kBossLootList Auto
-	{ Fill with Formlist made for this Actor Type's boss loot }
-	
-	Int Property iRegularLootChance = 20 Auto
-	{ Init 20. Change in Menu. Chance an Actor will receive a loot item. }
-	
-	Int Property iBossLootChance = 10 Auto
-	{ Init 10. Change in Menu. Chance an Actor will receive a loot item. }
-
-EndGroup
-
-;LEGEND - LOOT SYSTEM
-;There are 2 ways to provide random spawns with a random loot item (or more if using an "Use All" 
-;flagged Leveled List) - through the SpawnTypeRegionalScript or the ActorManagerScript. Both systems
-;are identical in function and setup, but can operate independantly. The system works by storing
-;formlists on each of the scripts, 1 for regular Actors and 1 for Boss Actors. Spawnpoints will
-;check both scripts after spawntime (after all actors are placed in game and packages applied,
-;preventing unnecessary slowdown in the spawnloops themselves), and if this system is enabled, it
-;will send in the GroupList for that Spawnpoint and do a loop to add a single item from the list to
-;each Actors inventory, based on a configurable chance value. The single item can be a Leveled List, 
-;and if it is marked to Use All, will add every item from that list.
-
-;Loot on the Spawntype script should be applicable to all Actors in that Spawntype, this is intended
-;to be a generalised loot table. The reason why this system is included on the Region Spawntype 
-;script, and not the Master Spawntype, is so we can specify different loot per Region if we wish.
-;Loot on the ActorManagerScript is obviously so we can supply highly specific loot for each Actor type. 
-;As mentioned above, either can be enabled/disabled, they are independant from each other. Chance of
-;loot values can be defined for both Regular and Boss Actors independantly on each script as well. 
-
-;Fun fact: It was originally an idea to provide loot by using a RefCollectionAlias with specified
-;Leveled Lists, and then add Actors to this collection so they'd automatically get the loot without
-;any coding necessary. However, this posed some complications for third-party addons as far as using
-;scripts to add loot, and thus I developed the formlist approach, so that now addons can both safely
-;add and remove loot items from the list via script. It is also useful in the same sense for adding
-;temporary loot to the lists, in case we want to do so for some event such as a quest etc. 
-
-
 Bool bInit ;Security check to make sure Init events/functions don't fire again while running
 
 
 ;------------------------------------------------------------------------------------------------
-;INITIALISATION & SETTINGS EVENTS
+;INITIALISATION FUNCTIONS & EVENTS
 ;------------------------------------------------------------------------------------------------
 
 ;DEV NOTE: Init events/functions now handled by Masters creating the instances.
 
 ;Manager passes self in to set instance when calling this
 Function PerformFirstTimeSetup(SOTC: RegionManagerScript aRegionManager, Int aiRegionID, Int aiWorldID, \
-SOTC:ThreadControllerScript aThreadController, Int aiSpawntypeID, Int aiPresetToSet, Formlist akRegLoot, Formlist akBossLoot)
+SOTC:ThreadControllerScript aThreadController, Int aiSpawntypeID, Int aiPresetToSet)
 
 	if !bInit
 		
@@ -181,8 +135,6 @@ SOTC:ThreadControllerScript aThreadController, Int aiSpawntypeID, Int aiPresetTo
 		iRegionID = aiRegionID
 		iWorldID = aiWorldID
 		iSpawnTypeID = aiSpawntypeID
-		kRegularLootList = akRegLoot
-		kBossLootList = akBossLoot
 		
 		iCurrentPreset = aiPresetToSet
 		
@@ -302,6 +254,22 @@ Function SafelyClearDynActorLists()
 EndFunction
 
 
+;Nullifies all dynamic data variables ready for destruction of this instance
+Function MasterFactoryReset()
+
+	ActorListScript = None
+	CommonActorList.Clear()
+	UncommonActorList.Clear()
+	RareActorList.Clear()
+	ThreadController = None
+	RegionManager = None
+	
+	Debug.Trace("SpawnTypeRegional instance ready for destruction")
+	;RegionManager will destroy this instance once returned. 
+	
+EndFunction
+	
+
 ;------------------------------------------------------------------------------------------------
 ;RETURN FUNCTIONS
 ;------------------------------------------------------------------------------------------------
@@ -309,48 +277,81 @@ EndFunction
 ;Return single instance of ActorClassPresetScript (single Actor).
 ;NOTE - This returns class presets directly, as this saves storing/determining "rarity" elsewhere.
 ;We can still access the ActorManagerScript in the calling script from here.
-SOTC:ActorClassPresetScript Function GetRandomActor(int aiForcedRarity)
+SOTC:ActorClassPresetScript Function GetRandomActor(Int aiForcedRarity, Bool abForceClassPreset, Int aiForcedClassPreset)
 ;WARNING - Using "forced" params can only be used to get "Rarity" based Classes from here as it has
 ;no way to know if an Actor supports other classes without having to perform slow checks and rerolls.
+;It can however force use of a different rarity-based Class Preset (will revert if trying to force a
+;Class other than a Rarity-based one however).
+;NOTE: If this Spawntype is based on a specific Class, I.E Sniper or Ambush, and we are not forcing
+;the use of a specific ClassPreset, then this function will always pull that ClassPreset.
 
 	int iRarity ;which list to use
-	int iSize ;size of list to use
+	Int iClass ;Which ClassPreset to pull, if not Forced will use iRarity value.
 		
 	if aiForcedRarity > 0 ;Check if we are forcing a specific rarity list to be used
 		iRarity = aiForcedRarity
 	else
 		iRarity = MasterScript.RollForRarity() ;Roll if not
+		;This remains on MasterScript as the Chance settings are defined and stored there (Can only be set on Master level)
+	endif
+	
+	
+	if !abForceClassPreset ;Short circuit for speed, as this is the most likely setting.
+		iClass = iRarity
+	elseif abForceClassPreset && aiForcedClassPreset <= 3 ;Security check, if user entered more than 3, revert to iRarity value.
+		iClass = aiForcedClassPreset
+	elseif iBaseClassID > 0 ;If SpawnType based on Class, use that Class, if not forced above.
+		iClass = iBaseClassID
+	else ;Absolute failsafe, same as first check, in the event everything fails.
+		iClass = iRarity
 	endif
 	
 	
 	if iRarity == 1
-		
-		iSize = CommonActorList.Length - 1
-		if iBaseClassID == 0 ;More likely to be 0 so check this first for speed. 
-			return CommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[iRarity]
-		else ;Shouldn't need to check, will fail/return wrong Class if Int not set correctly
-			return CommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[iBaseClassID]
-		endif
-			
-		
+		return GetCommonActor(iClass)
 	elseif iRarity == 2
-		
-		iSize = UncommonActorList.Length - 1
-		if iBaseClassID == 0 ;More likely to be 0 so check this first for speed. 
-			return UncommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[iRarity]
-		else ;Shouldn't need to check, will fail/return wrong Class if Int not set correctly
-			return UncommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[iBaseClassID]
-		endif
-		
-	else ;Not going to bother checking for 3, if somehow its not 1, 2 or 3, Rare will be selected
-		
-		iSize = RareActorList.Length - 1
-		if iBaseClassID == 0 ;More likely to be 0 so check this first for speed. 
-			return RareActorList[(Utility.RandomInt(0,iSize))].ClassPresets[3]
-		else ;Shouldn't need to check, will fail/return wrong Class if Int not set correctly
-			return RareActorList[(Utility.RandomInt(0,iSize))].ClassPresets[iBaseClassID]
-		endif
-		
+		return GetUncommonActor(iClass)
+	else ;Not going to bother checking for 3, if somehow its not 1, 2 or 3, Rare will be selected.
+		GetRareActor(iClass)
+	endif
+	
+EndFunction
+
+;The following functions were encapsulated as of version 0.13.01. If the requested list is empty
+;it will default to the next, more common, list. Common list should ALWAYS have something in it. 
+
+;Gets a Common Actor type for this Region
+SOTC:ActorClassPresetScript Function GetCommonActor(Int aiClass)
+	
+	;Common list should ALWAYS have something in it.
+	
+	Int iSize = CommonActorList.Length - 1
+	return CommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[aiClass]
+
+EndFunction
+
+;Gets a Uncommon Actor type for this Region
+SOTC:ActorClassPresetScript Function GetUncommonActor(Int aiClass)
+	
+	Int iSize = UncommonActorList.Length - 1
+	
+	if  (iSize >= 0) && (UncommonActorList[0] != None) ;Check the list is initialised and has something on it. 
+		return UncommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[aiClass]
+	else ;Otherwise default to Common list
+		return GetCommonActor(aiClass)
+	endif
+	
+EndFunction
+
+;Gets a Rare Actor type for this Region
+SOTC:ActorClassPresetScript Function GetRareActor(Int aiClass)
+	
+	Int iSize = RareActorList.Length - 1
+	
+	if  (iSize >= 0) && (RareActorList[0] != None) ;Check the list is initialised and has something on it. 
+		return UncommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[aiClass]
+	else ;Otherwise default to Uncommon list
+		return GetUncommonActor(aiClass)
 	endif
 	
 EndFunction
@@ -359,51 +360,46 @@ EndFunction
 ;Return array of ActorClassPresetScript (multiple Actors).
 ;NOTE - This returns class presets directly, as this saves storing/determining "rarity" elsewhere.
 ;We can still access the ActorManagerScript in the calling script from here.
-SOTC:ActorClassPresetScript[] Function GetRandomActors(int aiForcedRarity, int aiNumActorsRequired)
-;WARNING - Using "forced" params can only be used to get "Rarity" based Classes from here as it has
-;no way to know if an Actor supports other classes without having to perform slow checks and rerolls.
+SOTC:ActorClassPresetScript[] Function GetRandomActors(int aiForcedRarity, Bool abForceClassPreset, Int aiForcedClassPreset, int aiNumActorsRequired)
+;WARNING - Using "forced" params to get ClassPresets not based on Rarity (1-3) should be used with caution
+;(if only from the SpMiniPointScript) as this 
+;It can however force use of a different rarity-based Class Preset (will revert if trying to force a
+;Class other than a Rarity-based one however).
+;NOTE: If this Spawntype is based on a specific Class, I.E Sniper or Ambush, and we are not forcing
+;the use of a specific ClassPreset, then this function will always pull that ClassPreset.
 	
 	ActorClassPresetScript[] ActorListToReturn = new ActorClassPresetScript[1] ;Temp array used to send back
-	int iRarity ;which list to use
-	int iSize ;size of list to use
-	int iCounter = 0 ;Count up to required amount
+	Int iRarity ;which list to use
+	Int iClass ;Which ClassPreset to pull, if not Forced will use iRarity value.
+	Int iCounter = 0 ;Count up to required amount
+		
+	if aiForcedRarity > 0 ;Check if we are forcing a specific rarity list to be used
+		iRarity = aiForcedRarity 
+	else
+		iRarity = MasterScript.RollForRarity() ;Roll if not
+		;This remains on MasterScript as the Chance settings are defined and stored there (Can only be set on Master level)
+	endif
 	
-	;if RegionScript.bRandomInfestEnabled ETC ETC
+	
+	if !abForceClassPreset ;Short circuit for speed, as this is the most likely setting.
+		iClass = iRarity
+	elseif abForceClassPreset && aiForcedClassPreset <= 3 ;Security check, if user entered more than 3, revert to iRarity value.
+		iClass = aiForcedClassPreset
+	elseif iBaseClassID > 0 ;If SpawnType based on Class, use that Class, if not forced above.
+		iClass = iBaseClassID
+	else ;Absolute failsafe, same as first check, in the event everything fails.
+		iClass = iRarity
+	endif
+	
 	
 	while iCounter < aiNumActorsRequired ;Maximum of 5 in default mod. Modders may use more.
 		
-		if aiForcedRarity > 0 ;;Check if we are forcing a specific rarity list to be used
-			iRarity = aiForcedRarity
-		else
-			iRarity = MasterScript.RollForRarity() ;Roll each time
-		endif
-		
 		if iRarity == 1
-			
-			iSize = CommonActorList.Length - 1
-			if iBaseClassID == 0 ;More likely to be 0 so check this first for speed. 
-				ActorListToReturn.Add((CommonActorList[(Utility.RandomInt(0,iSize))]).ClassPresets[iRarity])
-			else ;Shouldn't need to check, will fail/return wrong Class if Int not set correctly
-				ActorListToReturn.Add((CommonActorList[(Utility.RandomInt(0,iSize))]).ClassPresets[iBaseClassID])
-			endif
-				
+			ActorListToReturn.Add((GetCommonActor(iClass)))
 		elseif iRarity == 2
-			
-			iSize = UncommonActorList.Length - 1
-			if iBaseClassID == 0 ;More likely to be 0 so check this first for speed. 
-				ActorListToReturn.Add((UncommonActorList[(Utility.RandomInt(0,iSize))]).ClassPresets[iRarity])
-			else ;Shouldn't need to check, will fail/return wrong Class if Int not set correctly
-				ActorListToReturn.Add((UncommonActorList[(Utility.RandomInt(0,iSize))]).ClassPresets[iBaseClassID])
-			endif
-			
-		else ;Not going to bother checking for 3, if somehow its not 1,2 or 3, Rare will be selected
-			iSize = RareActorList.Length - 1
-			if iBaseClassID == 0 ;More likely to be 0 so check this first for speed. 
-				ActorListToReturn.Add((RareActorList[(Utility.RandomInt(0,iSize))]).ClassPresets[3])
-			else ;Shouldn't need to check, will fail/return wrong Class if Int not set correctly
-				ActorListToReturn.Add((RareActorList[(Utility.RandomInt(0,iSize))]).ClassPresets[iBaseClassID])
-			endif
-			
+			ActorListToReturn.Add((GetUncommonActor(iClass)))
+		else ;Not going to bother checking for 3, if somehow its not 1,2 or 3, Rare will be selected.
+			ActorListToReturn.Add((GetRareActor(iClass)))
 		endif
 		
 	endwhile
@@ -414,55 +410,6 @@ SOTC:ActorClassPresetScript[] Function GetRandomActors(int aiForcedRarity, int a
 	
 EndFunction
 
-;NOTE - All functionality for random swarms and ambushes is moved to SpawnPoint scripts. It remains
-;possible the code could be moved back to here if a nicer method is found or it becomes necessary for
-;at least some types of SpawnPoints.
-
-
-;------------------------------------------------------------------------------------------------
-;LOOT FUNCTIONS
-;------------------------------------------------------------------------------------------------
-
-;Run a chance loop on a Spawnpoints Grouplist, potentially adding a loot item to each Actor in the list.
-Function DoLootPass(Actor[] akGroupList, Int aiBossCount)
-	
-	Int iCounter 
-	Int iGroupSize = akGroupList.Length
-	Int iLootListSize = (kRegularLootList.GetSize()) -1 ;Actual index count
-	Form kLootItem
-	
-	;Regular Actors including Bosses if present
-	
-	while iCounter < iGroupSize
-		
-		if (Utility.RandomInt(1,100)) < iRegularLootChance
-			kLootItem = kRegularLootList.GetAt((Utility.RandomInt(0, iLootListSize))) ;Select random item
-			akGroupList[iCounter].AddItem(kLootItem, 1, true) ;Add to this Actor
-		endif
-			
-		iCounter += 1
-			
-	endwhile
-		
-	if aiBossCount > 0 ;Check if any Bosses and do their loot pass
-	
-		iLootListSize = (kBossLootList.GetSize()) -1 ;Actual index count
-		iCounter = (iGroupSize) - (aiBossCount) ;Start Counter where Bosses start on the list
-		
-		while iCounter < iGroupSize
-		
-			if (Utility.RandomInt(1,100)) < iBossLootChance
-				kLootItem = kBossLootList.GetAt((Utility.RandomInt(0, iLootListSize))) ;Select random item
-				akGroupList[iCounter].AddItem(kLootItem, 1, true) ;Add to this Actor
-			endif
-			
-			iCounter += 1
-			
-		endwhile
-		
-	endif
-
-EndFunction
-
+;DEV NOTE - All functionality for random swarms and ambushes is moved to SpawnPoint/RegionManager scripts.
 
 ;------------------------------------------------------------------------------------------------
