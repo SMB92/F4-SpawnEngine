@@ -103,12 +103,15 @@ See Package legend in script for details. }
 	
 	
 	Bool Property bIsMultiPoint Auto Const
-	{ Set true if using child markers to randomise placement of groups. DO NOT USE IN CONFINED SPACES. }
+	{ Set true if using child markers to randomise placement of groups. USE WISELY, AND DO NOT USE IN CONFINED SPACES. }
 	;WARNING: DO NOT USE MULTIPOINTS IN CONFINED SPACES WITH SPAWNTYPES THAT HAVE OVERSIZED ACTORS - USE MULTIPLE SINGLE POINTS INSTEAD.
 	
 	Bool Property bIsConfinedSpace Auto Const
 	{ If the SP is placed in a confined area, set True so Oversized Actors will not spawn here.
 And yes, this is required for interiors as not all interiors are confined. }
+
+	Bool Property bIsInteriorPoint Auto Const ;Re-added in version 0.13.02, to be sued in conjuction with Player distance check.
+	{ Set true if this Point is inside of an Interior. Interior Points should not be placed near entry points to the cell, for best effect. }
 
 	ReferenceAlias Property kPackage Auto Const Mandatory
 	{ Fill with the Alias holding the Package, according to Package Mode selected. Not required for Mode 3 (uses Rush Package). }
@@ -133,7 +136,7 @@ iForceGroupsToSpawn override, must have that many ChildPoints. Length of this ar
 ChildPoints should be placed in same cell as this SP, use at own risk otherwise. Causes bRandomiseStartLoc override and iNumPackageLocs
 for Package Mode 0 (Sandbox/Hold) to be ignored. This setting is ignored for Packages Modes 2 and 5, and MultiPoint mode. }
 
-	Int Property iChanceToSpawn = 100 Auto Mandatory ;AUTO so can be modified at runtime.
+	Int Property iChanceToSpawn = 100 Auto Mandatory ;AUTO so can be modified at runtime, particularly if made a Property of a Menu. 
 	{ Use this define an extra chance/dice roll for this SP or set 100 for always. Default is 100
 in case user forgets to se this. Property is non-const as can be changed, particularly if the
 point is configurable from Menu (i.e Interior Points.) }
@@ -165,6 +168,9 @@ Group Overrides
 ChildPoints around this SP in order for this to work. ChildPoints should be placed in same cell as this SP, use at own risk 
 otherwise. Supported Package Modes are 0, 1 and 2. For Mode 0 (Sandbox/Hold), this overrides the use of iNumPackageLocs if set.
 This is somehwat the equivalent of Interior Mode's spawn method for Modes 0-2. Ignored in MultiPoint Mode. }
+
+	Float Property fSafeDistanceFromPlayer = 8192.0 Auto Const
+	{ Default value of 8192.0 (2 exterior cell lengths), safe distance to spawn from Player. Change if desired. }
 
 	Float Property fAmbushDistance = 800.0 Auto Const
 	{ Default of 800.0 units, distance target from Player before Ambush (Mode 3) activates. Enter override value if desired. }
@@ -258,7 +264,7 @@ Bool bApplyRushPackage ;If flagged, will Apply the Rush package, used for Rampag
 
 Event OnCellAttach()
 	
-	if (!bSpawnpointActive)
+	if (!bSpawnpointActive) && (iChanceToSpawn as Bool) ;Inital check, is not active, and chance is not None.
 		;Staggering the startup might help to randomise SPs in an area when Threads are scarce
 		StartTimer((Utility.RandomFloat(0.15,0.35)), iStaggerStartupTimerID)
 	endif
@@ -270,9 +276,9 @@ Event OnTimer(int aiTimerID)
 
 	if aiTimerID == iStaggerStartupTimerID
 
-		;Initial checks
-		if (!bSpawnpointActive) && (iChanceToSpawn as Bool) ;Inital check, is not active, and chance is not None.
-		;Check if we are enabled, currently running
+		;Initial checks - If Interior continue, else check distance from Player is greater than bSafeDistance Property.  
+		if (bIsInteriorPoint) || ((GetDistance(MasterScript.PlayerRef)) > fSafeDistanceFromPlayer)
+		;DEV NOTE: GetDistance check is only safe when comparing Object (namely this self in this case) to Actor as parameter (namely Player in this case). 
 		
 			;NOTE: Master and Regional checks are done before GetThread, so it is possible for an event to intercept before ThreadController can deny
 			;Events are usually exempt from ThreadController checks, although they do count towards any of the limits.
@@ -591,7 +597,7 @@ Function PrepareSingleGroupSpawn()
 	Int iPreset
 	if bForceMasterPreset
 	
-		if iForcedMasterPreset == 4 ;Check if wanting to randomise
+		if iForcedMasterPreset == 777 ;Check if wanting to randomise
 			iPreset = Utility.RandomInt(1,3)
 		else
 			iPreset = iForcedMasterPreset
@@ -1057,7 +1063,7 @@ Function PrepareSingleGroupNoEventSpawn()
 	Int iPreset
 	if bForceMasterPreset
 	
-		if iForcedMasterPreset == 4 ;Check if wanting to randomise
+		if iForcedMasterPreset == 777 ;Check if wanting to randomise
 			iPreset = Utility.RandomInt(1,3)
 		else
 			iPreset = iForcedMasterPreset

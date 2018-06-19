@@ -5,6 +5,10 @@
 
 ## NEWS
 
+### Patch 0.13.02 to fix fast travel pop in issues.
+
+[19/06/2018] Thanks to alpha testers (namely KKTheBeast) for pointing out that spawns were popping in on fast travel as no distance checks were in place in exterior cells (as I do not fast travel personally, I completely overlooked that fact). Added distance check and new Property to define safe distance on a per SP basis. 
+
 ### Update 0.13.01 brings monumental changes to the SpawnPoint, implements full runtime reset functionality, permanent SpawnPoint persistence, more Menus and more fixes.
 
 [17/06/2018] I have been hard at work over the last few weeks since the 0.12.01 Alpha, with one of the main focuses of this update being the SpawnPoint and working in new methods for use with different Package styles. All code has been converged into one single class now, the SpawnPointScript. Suffice to say this update presents a huge update to the spawn code, beyond which I intended even. I am currently working on documentation that explain how the new SpawnPoint works, and how to use it yourself in add-ons, and will advise when ready. I have also added in the ability to fully reset/cleanup all dynamically produced data from the mod in this update, returning it to "factory fresh" state (yes I feel like a factory, lmao). The other big news is, as of this update, all SpawnPoints placed in the World will become permanently persistent. The biggest reason behind this decision was cell conflicts, but with respect to uninstallation factor of the mod, it was going to be impossible to remove CK placed objects completely anyway. Now that they are persistent via a single script that stores them (SOTC:PointPersistScript), we will be able to at least iterate each one of them and disable them, with hope F4 will clean them up later. Not sure why anyone would want to uninstall this mod though :D. A new alpha file is being worked on, and this will be a proper test file with a full featured Region in the Commonwealth (Region 1). Following this, if all is well, this test file will be released tothe public on the Discord dev server. Stay tuned for more updates! 
@@ -70,7 +74,18 @@ Please be patient while work continues on both a working test file and official 
 ## UPDATE LOG
 
 ------
-##### [03/06/2018] SpawnEngine updated to version 0.13.01.180617
+##### [19/06/2018] SpawnEngine updated to version 0.13.02.180619
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Added GetDistance checks to Player to prevent SpawnPoints from firing when to close to the player, namely in the event of fast travel and only when bIsInteriorPoint is not flagged. Readded bIsInteriorPoint property to SPs for this purpose (was removed last update due to new "Package Modes"). This is used instead of IsInterior() as that is too explicit and we may want to use this elsewhere. 
+- Moved/optimized SP initial chance check (check if local chance is above 0) to the OnCellAttach() block from the OnTimer block.
+- Fix SP PrepareSpawn functions not checking value of 777 for random preset ( was still using old value of 4, had forgot to change them). 
+
+###### MISC NOTES:
+- Looking at potential Line-of-Sight issues in tests and methods to mitigate if issues arise. In general should not be too bad of an issue, especially now above patch was added to check player distance. 
+
+------
+##### [17/06/2018] SpawnEngine updated to version 0.13.01.180617
 
 ###### HOUSEKEEPING:
 - Update NPP Lang file to include new/remove old functions.
