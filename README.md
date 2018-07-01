@@ -124,7 +124,7 @@ Please be patient while work continues on both a working test file and official 
 - Gave Random Event chances (Bypass and Static Events) a default chance value of 20%. 
 
 ###### MISC NOTES:
-- It should be noted that RandomRoaches feautres relies on finding an object (namley a static) in a formlist in the nearby area. While there are 10 of these aliases implemented in the ESM, most statics are part of precombined meshes. Further testing needs to be done as to how viable this feature will be. This feature is currently not turned in the the 0.14.01 Alpha anyway. 
+- It should be noted that RandomRoaches features relies on finding an object (namely a static) in a formlist in the nearby area. While there are 10 of these aliases implemented in the ESM, most statics are part of precombined meshes. Further testing needs to be done as to how viable this feature will be. This feature is currently not turned in the the 0.14.01 Alpha anyway. 
  
 ------
 ##### [19/06/2018] SpawnEngine updated to version 0.13.02.180619
@@ -147,7 +147,7 @@ Please be patient while work continues on both a working test file and official 
 - Removed obsolete, commented-out function from SpGroupScript MultiPoint section.
 - Fix property description indentation on SpGroupScript and SpMiniPointScript so it displays properly in CK.
 - Added "Note on Dynamic Array Initialisation" at top of MasterScript.
-- Chnaged some function and script names for better effect. 
+- Changed some function and script names for better effect. 
 
 ###### MAJOR/MINOR FEATURE UPDATES/CHANGES/ADDITIONS:
 - [MINOR] (MENU) Performance Menu, World/Region Selection and Region Settings Menu added/completed (fragments). Added, consolidated and optimized functions to deal with setting of vars on all relevant scripts, mainly via new SetMenuVars() function that now appears in relevant scripts, as mentioned above.
