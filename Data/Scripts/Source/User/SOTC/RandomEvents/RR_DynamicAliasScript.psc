@@ -1,5 +1,5 @@
-Scriptname SOTC:RR_DynamicAliasScript extends ReferenceAlias
-{Dynamic Alias delegate. Can assume role of Workshop checker or Spawner}
+Scriptname SOTC:RandomEvents:RR_DynamicAliasScript extends ReferenceAlias
+{ Dynamic Alias delegate. Can assume role of Workshop checker or Spawner. }
 ;Written by SMB92
 ;Designed by request of Keith [KKTheBeast]
 ;Special Thanks to Dylan [Cancerous1] for example code
@@ -16,17 +16,20 @@ Scriptname SOTC:RR_DynamicAliasScript extends ReferenceAlias
 ;PROPERTIES & IMPORTS
 ;------------------------------------------------------------------------------------------------
 
-SOTC:RR_ControllerQuestScript Property Controller Auto Const
-{Link to Controller Quest, really only needed for Workshop checker Alias, else Init None}
+SOTC:RandomEvents:RR_ControllerQuestScript Property Controller Auto Const
+{ Link to Controller Quest, really only needed for Workshop checker Alias, else Init None. }
 
 Bool Property bIsWorkshopChecker Auto Const
-{Only initialise as True on the alias looking for Workshops}
+{ Only initialise as True on the alias looking for Workshops. }
 
-ActorBase Property LvlRadroachAmbush Auto Const
-{Fill on Spawn alias only, or Init with None}
+ActorBase Property LvlRadroach Auto Const
+{ Fill on Spawn alias only, or Init with None. }
+
+ReferenceAlias Property kRushPackage Auto Const
+{ Fill with the Rush Package from SOTC_MasterQuest. Roaches will rush the Player when spawned. }
 
 ;Int Property iSpawnChance Auto
-;If you wanted to add a further chance variable to the spawns
+;If we wanted to add a further chance variable to the spawns
 
 ;------------------------------------------------------------------------------------------------
 ;FUNCTIONS & EVENTS
@@ -38,13 +41,15 @@ Event OnAliasInit()
 
 	if bIsWorkshopChecker
 	
-		if Self.GetRef()
+		if Self.GetRef() != None
 			RegisterForDistanceLessThanEvent(Game.GetPlayer(), Self.GetRef(), 4096) ;Full Cell away @ 4096
 		endif
 		
 	else ;Can only assume we are a spawn alias
-	
-		RegisterForDistanceLessThanEvent(Game.GetPlayer(), Self.GetRef(), 256) ;Short distance for Ambush
+		
+		if Self.GetRef() != None
+			RegisterForDistanceLessThanEvent(Game.GetPlayer(), Self.GetRef(), 256) ;Short distance for Ambush
+		endif
 		
 	endif
 
@@ -53,13 +58,27 @@ EndEvent
 
 Event OnDistanceLessThan(ObjectReference akObj1, ObjectReference akObj2, float afDistance)
 
-	if !bIsWorkshopChecker
+	if !bIsWorkshopChecker ;Ensures this instance isn't the workshop checker. 
+		
+		Actor kPlayerRef = Controller.PlayerRef ;Possibly faster than Game.GetPlayer()
+		;Do Line-of-sight check against Player
+		while kPlayerRef.HasDetectionLOS(Self.GetRef())
+			Utility.Wait(0.5)
+			;Just keep waiting until out of sight. 0.5 value should be fair. 
+		endwhile
 	
 		;Dice roll if we want
 		;if Utility.RandomInt(1,100) <= iSpawnChance
-		akObj2.PlaceActorAtMe(LvlRadroachAmbush)
-		;if the above doesn't work, cahnge akObj2 to Self.GetRef()
+		
+		Actor kRoach = akObj2.PlaceActorAtMe(LvlRadroach)
+		;if the above doesn't work, change akObj2 to Self.GetRef()
 		;endif
+		
+		;Now apply the Rush package and evaluate
+		kRushPackage.ApplyToRef(kRoach)
+		kRoach.Evaluatepackage()
+		
+		;Done
 		
 	else ;Assume Workshop detected
 	
@@ -68,5 +87,8 @@ Event OnDistanceLessThan(ObjectReference akObj1, ObjectReference akObj2, float a
 	endif
 	
 EndEvent
+
+
+;DEV NOTE: Cleanup is not required from this script as Actors are never made persistent. 
 
 ;------------------------------------------------------------------------------------------------

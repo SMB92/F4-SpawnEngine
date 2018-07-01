@@ -36,13 +36,16 @@ Set false for Classes not desired. Only add to Classes that exist for this Actor
 	;NOTE: THIRD PARTY MODS can modify this property directly if they want, but it is left Const so
 	;that the value will be updated upon a reshuffle.
 	;REFERENCE LEGEND - CLASSES
-	; [0] - NONE, LEAVE BLANK ALWAYS
+	; [0] - DEBUG (Typically "Common" Class Preset with 100% chance always)
 	; [1] - COMMON, REGULAR SPAWN CLASS
 	; [2] - UNCOMMON, REGULAR SPAWN CLASS
 	; [3] - RARE, REGULAR SPAWN CLASS
 	; [4] - AMBUSH CLASS
 	; [5] - SNIPER CLASS
 	;Note: Not all Actors have to support each Class. Fill accordingly.
+	
+	Int Property iPlayerLevelRestriction Auto ;Can be modified from Menu. 
+	{ If wanting to restrict this group from appearing while Player is below a certain level, set this value accordingly. }
 	
 EndGroup
 

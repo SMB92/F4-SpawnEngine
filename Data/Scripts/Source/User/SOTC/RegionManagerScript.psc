@@ -123,6 +123,10 @@ EndGroup
 Group FeatureSettings
 { Settings for various features supported on the Regional level. }
 
+	Int[] Property iSpPresetChanceBonusList Auto ;Can be modified from Menu
+	{ Members 1-3 (0 ignored) can be set from Menu to apply a bonus "chance to fire" percent value to all SpawnPoints in the Region.
+Init 4 members with default values of 0 = 0, 1 = 0, 2 = 5, 3 = 10.	}
+
 	Int Property iRandomSwarmChance Auto
 	{ Initialise 0, set in Menu. If any value above 0, there is a chance of a random swarm/infestation. }
 	
@@ -526,7 +530,16 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 		if abSetValues
 			iEzBorderMode = aiValue01
 		endif
-		SOTC_Global01.SetValue(iEzBorderMode as Float)
+		SOTC_Global02.SetValue(iEzBorderMode as Float)
+
+	elseif asSetting == "SpPresetChanceBonus"
+	;Global01 is set to selected Preset in Menu. Then here we can play with the real bonus value.
+		
+		Int i = (SOTC_Global01.GetValue()) as Int ;Get the selected Menu Preset stored in Global above.
+		if abSetValues
+			iSpPresetChanceBonusList[i] = aiValue01
+		endif
+		SOTC_Global02.SetValue(iSpPresetChanceBonusList[i] as Float)
 		
 	endif
 
@@ -560,9 +573,27 @@ Bool Function RegionSpawnCheck(ObjectReference akCallingPoint, Int aiPresetRestr
 EndFunction
 
 
+;Returns bonus chance value to apply to SpawnPoints in this Region, based on current Preset.
+Int Function GetRegionSpPresetChanceBonus()
+
+	return iSpPresetChanceBonusList[iCurrentPreset]
+	
+EndFunction
+
+
+;Gets a single Travel loc from this Region.
+ObjectReference Function GetRandomTravelLoc()
+
+	Int iSize = kTravelLocs.Length - 1
+	ObjectReference kLoc = kTravelLocs[(Utility.RandomInt(0,iSize))]
+	
+	return kLoc
+	
+EndFunction
+
+
 ;Gets a list of Travel markers within the Region.
 ObjectReference[] Function GetRandomTravelLocs(int aiNumLocations)
-;Sends 3 random locations in an array to SpawnPoint for Actor group to travel to.
 ;Note: It is possible that this function can return the same location (markers) 2 or all 3 times.
 ;In that event, we don't really care because they'll just sandbox that location, if they get there.
 

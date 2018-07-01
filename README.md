@@ -5,6 +5,10 @@
 
 ## NEWS
 
+### Another major milestone reached, SpawnEngine updated to version 0.14.01. 
+
+[01/07/2018] Intended to be the final update before the next Alpha release (which is looking to be public), this updates brings significant amounts of new terminal Menus, completes the code for the included Random Events (Seven Days to Die, Ghoul Apocalypse and Random Roaches), a few more bug fixes and a few more minor features added here and there for better effect. Now I have started dropping and configuring SpawnPoints across Commonwealth Region 1, and as soon as that is done we'll have our first REAL taste of what this mod will deliver!  
+
 ### Patch 0.13.02 to fix fast travel pop in issues.
 
 [19/06/2018] Thanks to alpha testers (namely KKTheBeast) for pointing out that spawns were popping in on fast travel as no distance checks were in place in exterior cells (as I do not fast travel personally, I completely overlooked that fact). Added distance check and new Property to define safe distance on a per SP basis. 
@@ -73,13 +77,62 @@ Please be patient while work continues on both a working test file and official 
 
 ## UPDATE LOG
 
+##### [01/07/2018] SpawnEngine updated to version 0.14.01.180701
+
+###### HOUSEKEEPING:
+- Add/fix/remove some commentary.
+- Add "CustomEvent" from vanilla to Notepad++ lang file, along with new functions/script/object types.
+- Changed Uninstall() to UninstallSpawnEngine() for extra clarity (mainly because Notepad++ lang file).
+- Expanded Property description for bBlockLocalRandomEvents on SpawnPointScript.
+- Moved RandomRoaches feature scripts to RandomEvents namespace.
+- Changed Property name of LvlRadRoachAmbush to LvlRadRoach on RandomRoaches Dynamic Alias script for extra cliarty (does not use actual ambush system).
+- Removed descriptions from Property groups on Master. Unnecesary.
+- Added "EventHelper" Prefix to Random Event helper SpawnPoint functions. 
+
+###### MAJOR/MINOR FEATURE UPDATES/CHANGES/ADDITIONS:
+- [MAJOR] Significant number of new Menus added to this version, in preparation for next Alpha. New terminal fragments included in source. 
+- [MINOR] Added Int array Property on RegionManager, iSpPresetChanceBonusList. This can be used to apply bonus chance to fire to SpawnPoints based on current preset, with members 1-3 correlating to the current Preset. Int function added to RegionManager to return this correctly. Value is set from Menu, although default values were given in editor (Menu was added as well). Considering adding similar facility to MasterScript, although not needed at this time. 
+- [MINOR] Added optional Player level requirement property and check to SpawnPointScript. 
+- [MINOR] Stripped out Static Ambush related spawns/options across the mod (Package Mode 5/SpawnType 12/Class Preset 5). Been a long time since I last looked into it, forgot about all the furntiure markers and what not involved in making that happen. I will revisit this at a later time, I had started a separate SP/script for this purpose some time ago, however I am leaning towards an addon for this rather than including it in the core, for compatibility reasons.  
+- [MAJOR] Completed SevenDaysToDie Random Event and added Menus as well. 
+- [MAJOR] Completed Ghoul Apocalypse Random Event. Menus added as well.
+- [MINOR] Added Line of Sight to Player checks in all spawn loops on all SpawnPoint scripts. While this will make these loops slightly slower, if this check gets flagged 25 times during an active spawn (there is a 0.1 sec wait each time it returns true, right before an Actor is placed) the SP will stop all spawning. This equates to roughly 3 seconds of time allowed to be wasted on LoS before halting the SP entirely.  
+- [MAJOR] Changed how Random Event Quests are handled, they are now start game enabled and Menu will use the stages provided to configure status. This change means settings can be configured before an Event is started. Previously Menu would have to start these Quests, which meant that Player must exit Menu before being able to configure. 
+- [MINOR] Added Player Level Restriction to ActorGroupLoadoutScript. Can now set a level requirement before a group can be allowed to appear. ActorClassPresetScript functions updated accordingly. 
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Fixed indentation of Property descriptions on ActorManager and MasterScript.
+- Gave default values to LootChance Properties on Actor Manager. 
+- Moved ForceResetAllSPs Master custom event to the MasterSingleSettingsUpdate() function, as it does not require user to exit Menu (timers are not restarted).
+- Fix SetMenuVars() on Master and RegionManager not setting value of iEzBorderMode on correct Global. 
+- Changed SP cleanup functions DeleteWhenAble() call to Delete() so it is no longer latent as such, this was an oversight as I forgot which call was the wrong one when I wrote that. 
+- Changed handling/setting of EventPoint on Master, bEventSafe flag is now passed as parameter to MasterSpawnCheck() instead of casting back to check.
+- Changed order of initial PackageMode checks on SpawnPointScript, moved mode 3 and 4 to lower priority order.
+- Renamed AppendEventQuest() to SafelyAppendEventQuestForStart() and also StartPendingEventQuests() to SafelyStartPendingEventQuests() for extra clarity ("Safely" tag denotes security code exists for arrays). Added commentary at top of Master script about Safely tag.  
+- Removed the two remaining, obsolete debug option Properties on MasterScript. 
+- Added line-of-sight checks to RandomRoaches scripts. Now roaches will only be placed when player isn't looking. 
+- Made checks on RR DynamicAliasScript more specific by comparing GetRef to None, also added the same check to non-workshop-checker mode (previously the script would just assume it was filled, not sure why I did that). 
+- Added Rush Package to RR DynamicAliasScript, roaches will now rush at the Player. Combined with the new LoS checks, this should work to great effect.
+- Changed SevenDaysQuestScript to make use of Master function SafelyRegisterActiveEvent() instead of dealing with Master array Property directly.
+- Removed SpawnPointScript checks from SevenDaysQuestScript, no longer necessary. 
+- Added cleanup code to SevenDaysQuestScript and made some changes to suit. Event will clean itself up after 24 hours. 
+- Added SafelyUnregisterActiveEvent() function to MasterScript. 
+- Fixed majorly glaring issue with SpawnPoints clearing GroupList array when Boss spawns are called/allowed (function was calling "new" on the Grouplist array without checking it had already been in use). 
+- Added code to SpawnPointScript to de-link dynamic script instances, just in case errors arise from not resetting them and instances change later (i.e mod reset). 
+- Added GetRandomTravelLoc() ObjectReference function to RegionManager, simply to grab a single location instead of array. Forgot to add this some time ago and needed it now. 
+- Fix ActorClassPresetScript GetRandomGroupScript() function from checking Boss list when not necessary at all. Function not used anywhere yet anyway.  
+- Gave Random Event chances (Bypass and Static Events) a default chance value of 20%. 
+
+###### MISC NOTES:
+- It should be noted that RandomRoaches feautres relies on finding an object (namley a static) in a formlist in the nearby area. While there are 10 of these aliases implemented in the ESM, most statics are part of precombined meshes. Further testing needs to be done as to how viable this feature will be. This feature is currently not turned in the the 0.14.01 Alpha anyway. 
+ 
 ------
 ##### [19/06/2018] SpawnEngine updated to version 0.13.02.180619
 
 ###### SCRIPT OPTIMIZATION/REVISION/FIXES:
 - Added GetDistance checks to Player to prevent SpawnPoints from firing when to close to the player, namely in the event of fast travel and only when bIsInteriorPoint is not flagged. Readded bIsInteriorPoint property to SPs for this purpose (was removed last update due to new "Package Modes"). This is used instead of IsInterior() as that is too explicit and we may want to use this elsewhere. 
 - Moved/optimized SP initial chance check (check if local chance is above 0) to the OnCellAttach() block from the OnTimer block.
-- Fix SP PrepareSpawn functions not checking value of 777 for random preset ( was still using old value of 4, had forgot to change them). 
+- Fix SP PrepareSpawn functions not checking value of 777 for random preset ( was still using old value of 4, had forgot to change them).
 
 ###### MISC NOTES:
 - Looking at potential Line-of-Sight issues in tests and methods to mitigate if issues arise. In general should not be too bad of an issue, especially now above patch was added to check player distance. 

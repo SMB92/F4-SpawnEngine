@@ -89,11 +89,9 @@ Group Dynamic
 	;might appear in swamp/marsh/waterside etc.
 	; [11] - AMBUSH - RUSH (CLASS-BASED) - Stores all Actors that support rushing the player
 	;style of ambush
-	; [12] - AMBUSH - STATIC (CLASS-BASED) - Stores all Actors that support rushing the player
-	;style of ambush
-	; [13] - SNIPER (CLASS-BASED) - Stores all Actor that support Sniper Class
-	; [14] - SWARM/INFESTATION (CLASS-BASED) - Stores all Actors that support Swarm/Infestation
-	; [15] - STAMPEDE (CLASS-BASED) - Stores all Actors that support extended Swarm feature Stampede.
+	; [12] - SNIPER (CLASS-BASED) - Stores all Actor that support Sniper Class
+	; [13] - SWARM/INFESTATION (CLASS-BASED) - Stores all Actors that support Swarm/Infestation
+	; [14] - STAMPEDE (CLASS-BASED) - Stores all Actors that support extended Swarm feature Stampede.
 	
 	;NOTE: See "CLASSES VS SPAWNTYPES" commentary of the SpawnTypeMasterScript for more in-depth info
 	
@@ -106,8 +104,7 @@ Group Dynamic
 	; [2] - UNCOMMON RARITY
 	; [3] - RARE RARITY
 	; [4] - AMBUSH - RUSH (Wait for and rush the player)
-	; [5] - AMBUSH - STATIC (for "hidden" ambushes such as Mirelurks and Molerats)
-	; [6] - SNIPER
+	; [5] - SNIPER
 	; [X] - SWARM/INFESTATION (no need to actually define a Class!)
 	; [X] - STAMPEDE (no need to actually define a Class!)
 
@@ -154,16 +151,15 @@ SOTC:ThreadControllerScript aThreadController, Int aiSpawntypeID, Int aiPresetTo
 EndFunction
 
 
-;Associates the Class of this Spawntype of it is based on one, on first time setup.
+;Associates the Class Preset of Actor with this Spawntype of it is based on one, on first time setup.
 Function SetBaseClassIfRequired()
 
 	if iSpawnTypeID == 11 ;Ambush(Rush)
 		iBaseClassID = 4
-	elseif iSpawnTypeID == 12 ;Ambush(Static)
-		iBaseClassID = 5
-	elseif iSpawnTypeID == 13 ;Snipers
-		iBaseClassID == 6
+	elseif iSpawnTypeID == 12 ;Snipers
+		iBaseClassID == 5
 	endif
+	;SpawnTypes 13 & 14 (Swarm/Rampage) do not have Class Presets, so they do not get defined. 
 	
 EndFunction
 
@@ -398,7 +394,7 @@ SOTC:ActorClassPresetScript[] Function GetRandomActors(int aiForcedRarity, Bool 
 			ActorListToReturn.Add((GetCommonActor(iClass)))
 		elseif iRarity == 2
 			ActorListToReturn.Add((GetUncommonActor(iClass)))
-		else ;Not going to bother checking for 3, if somehow its not 1,2 or 3, Rare will be selected.
+		else ;Not going to bother checking for 3, if somehow its not 1, 2 or 3, Rare will be selected.
 			ActorListToReturn.Add((GetRareActor(iClass)))
 		endif
 		

@@ -19,7 +19,7 @@ Scriptname SOTC:AuxilleryQuestScript extends Quest
 ;------------------------------------------------------------------------------------------------
 
 Quest Property SOTC_MasterQuest Auto Const Mandatory
-{ Auto-fill. }
+{ Auto-fill. Will be cast to script type when necessary. }
 
 Holotape Property SOTC_AuxMenuTape Auto Const Mandatory
 { Auto-Fills with AuxMenuTape. }
@@ -120,12 +120,12 @@ Function FinaliseMasterFactoryReset()
 
 	SOTC_MasterQuest.Stop()
 	Game.GetPlayer().AddItem(SOTC_AuxMenuTape, 1, false) ;We want to know it's been added
-	Debug.MessageBox("SpawnEngine has been returned to the pre-activated state. Uninstall option has opened on the Auxillery Menu. To restart the mod, follow the same procedure as first-install.")
+	Debug.MessageBox("SpawnEngine has been factory reset. Uninstall option has opened on the Auxillery Menu. To restart the mod, follow the same procedure as first-installI. Should you decide to uninstall, please note that there is no guarantee your save will not be damaged.")
 
 EndFunction
 
 
-;Function Uninstall()
+;Function UninstallSpawnEngine()
 
 	;Currently incomplete, placeholder
 	;PointPersistStore.DisableAllPersistentRefs()

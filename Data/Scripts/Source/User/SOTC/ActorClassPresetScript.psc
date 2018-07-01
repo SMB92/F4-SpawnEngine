@@ -35,8 +35,7 @@ Group Primary
 	; [2] - UNCOMMON RARITY
 	; [3] - RARE RARITY
 	; [4] - AMBUSH - RUSH (Wait for and rush the player)
-	; [5] - AMBUSH - STATIC (for "hidden" ambushes such as Mirelurks and Molerats)
-	; [6] - SNIPER
+	; [5] - SNIPER
 	; [X] - SWARM/INFESTATION (no need to actually define a Class!)
 	; [X] - STAMPEDE (no need to actually define a Class!)
 
@@ -159,16 +158,32 @@ EndFunction
 ActorBase[] Function GetRandomGroupLoadout(bool abGetBossList)
 
 	Int iSize
+	SOTC:ActorGroupLoadoutScript ElectedGroup
+	Actor kPlayerRef = Game.GetPlayer() ;No access to Master for PlayerRef Property currently. 
 
 	if !abGetBossList
 	
 		iSize = GroupLoadouts.Length - 1 ;Get actual index count
-		return GroupLoadouts[(Utility.RandomInt(0,iSize))].kGroupUnits
+		ElectedGroup = GroupLoadouts[(Utility.RandomInt(0,iSize))]
+		
+		;Now check if Elected group has Level restriction vs Players level
+		while (ElectedGroup.iPlayerLevelRestriction) > (kPlayerRef.GetLevel())
+			ElectedGroup = GroupLoadouts[(Utility.RandomInt(0,iSize))]
+		endwhile
+		
+		return ElectedGroup.kGroupUnits
 		
 	else
 		
 		iSize = GroupLoadouts.Length - 1 ;Get actual index count
-		return GroupLoadouts[(Utility.RandomInt(0,iSize))].kBossGroupUnits
+		ElectedGroup = GroupLoadouts[(Utility.RandomInt(0,iSize))]
+		
+		;Now check if Elected group has Level restriction vs Players level
+		while (ElectedGroup.iPlayerLevelRestriction) > (kPlayerRef.GetLevel())
+			ElectedGroup = GroupLoadouts[(Utility.RandomInt(0,iSize))]
+		endwhile
+		
+		return ElectedGroup.kBossGroupUnits
 		
 	endif
 	
@@ -177,21 +192,22 @@ EndFunction
 
 ;This function return a single group loadout for spawning (Script Instance version)
 ;Mostly unused, but exists if needed
-ActorGroupLoadoutScript Function GetRandomGroupScript(bool abGetBossList)
+ActorGroupLoadoutScript Function GetRandomGroupScript()
 
 	Int iSize
+	SOTC:ActorGroupLoadoutScript ElectedGroup
+	Actor kPlayerRef = Game.GetPlayer() ;No access to Master for PlayerRef Property currently. 
 
-	if !abGetBossList
 	
-		iSize = GroupLoadouts.Length - 1
-		return GroupLoadouts[(Utility.RandomInt(0,iSize))]
+	iSize = GroupLoadouts.Length - 1 ;Get actual index count
+	ElectedGroup = GroupLoadouts[(Utility.RandomInt(0,iSize))]
+	
+	;Now check if Elected group has Level restriction vs Players level
+	while (ElectedGroup.iPlayerLevelRestriction) > (kPlayerRef.GetLevel())
+		ElectedGroup = GroupLoadouts[(Utility.RandomInt(0,iSize))]
+	endwhile
 		
-	else
-		
-		iSize = GroupLoadouts.Length - 1
-		return GroupLoadouts[(Utility.RandomInt(0,iSize))]
-		
-	endif
+	return ElectedGroup
 	
 EndFunction
 

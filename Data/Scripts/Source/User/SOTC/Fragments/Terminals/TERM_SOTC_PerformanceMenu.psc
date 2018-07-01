@@ -25,14 +25,6 @@ Function Fragment_Terminal_03(ObjectReference akTerminalRef)
 EndFunction
 ;END FRAGMENT
 
-;BEGIN FRAGMENT Fragment_Terminal_04
-Function Fragment_Terminal_04(ObjectReference akTerminalRef)
-;BEGIN CODE
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuVars("MasterChance")
-;END CODE
-EndFunction
-;END FRAGMENT
-
 ;BEGIN FRAGMENT Fragment_Terminal_05
 Function Fragment_Terminal_05(ObjectReference akTerminalRef)
 ;BEGIN CODE

@@ -15,15 +15,15 @@ Scriptname SOTC:MasterQuestScript extends Quest Conditional
 ;Over the course of development, I have found at times when initialising an array with 0 members,
 ;the array seems to get trashed by the engine (maybe after so much time passes?) and this leads to
 ;errors due to working with a "None Array" (i.e, adding/inserting logs an error that array is None).
-;From 0.10.01 forward, all arrays are initialised with 1 member of None, and after work has been
-;done/array initialised, that member is removed. 
+;From 0.10.01 forward, all arrays are initialised with 1 member of None, and either after work has
+; been done/array initialised, that member is removed, or items are set on that index directly. Any
+;Function that has the prefix "Safely" generally means security code for arrays concerning this issue. 
 
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Group Primary
-{Primary Properties Group}
 
 	Quest Property SOTC_MasterQuest Auto Const Mandatory
 	{ Auto-fills. Link to own Quest }
@@ -52,7 +52,7 @@ Group Dynamic
 	{ Init None, fills dynamically. }
 
 	SOTC:SpawnTypeMasterScript[] Property SpawnTypeMasters Auto
-	{ Initialise one member with None, fills dynamically. Member 0 is the Master Actor List. }
+	{ Initialise one member with None, fills dynamically. Member 0 is the Master Actor List. Set Size to initialise in Init function below. }
 	
 	;LEGEND - SPAWNTYPES
 	;Spawntypes are essentially "categories" of spawns and species. These are used to provide
@@ -78,11 +78,9 @@ Group Dynamic
 	;might appear in swamp/marsh/waterside etc.
 	; [11] - AMBUSH - RUSH (CLASS-BASED) - Stores all Actors that support rushing the player
 	;style of ambush
-	; [12] - AMBUSH - STATIC (CLASS-BASED) - Stores all Actors that support rushing the player
-	;style of ambush
-	; [13] - SNIPER (CLASS-BASED) - Stores all Actor that support Sniper Class
-	; [14] - SWARM/INFESTATION (CLASS-BASED) - Stores all Actors that support Swarm/Infestation
-	; [15] - RAMPAGE (CLASS-BASED) - Stores all Actors that support Rampage feature.
+	; [12] - SNIPER (CLASS-BASED) - Stores all Actor that support Sniper Class
+	; [13] - SWARM/INFESTATION (CLASS-BASED) - Stores all Actors that support Swarm/Infestation
+	; [14] - RAMPAGE (CLASS-BASED) - Stores all Actors that support Rampage feature.
 	
 	;NOTE: See "CLASSES VS SPAWNTYPES" commentary of the SpawnTypeMasterScript for more in-depth info
 	
@@ -112,7 +110,6 @@ EndGroup
 
 
 Group InstanceBaseObjects
-{Fill all accordingly}
 
 	ObjectReference Property kMasterCellMarker Auto Const Mandatory
 	{ Fill with the Master Marker in the SOTC Master Persistent Cell. }
@@ -141,7 +138,6 @@ EndGroup
 
 
 Group ModSettings
-{ Settings properties. Initialise 0/None/False, set by menu }
 
 	Int Property iMasterSpawnChance = 100 Auto
 	{ Default 100, change in Menu. Chance SpawnPoints firing, has massive effect on balance. }
@@ -180,7 +176,6 @@ EndGroup
 
 
 Group MenuStuff
-{ Menu specific things }
 
 	Int Property iMenuSettingsMode Auto ;Local version of the Global of the same purpose
 	{ Init 0. Set by Menu when needed. }
@@ -190,10 +185,9 @@ Group MenuStuff
 	;Use this to determine if menu is in Master mode, Region mode or has pending settings event
 	; 0 - MASTER MODE
 	; 1 - REGION MODE
-	; 5 - FIRST TIME STARTUP MODE
 	; 10 - MASTER PRESET/RESET PENDING
 	; 11 - MASTER ALL SPAWNTYPES PRESET PENDING
-	; 12 - FORCE RESET ALL SPs.
+	; 12 - FORCE RESET ALL SPs AND TIMERS. Currently not implemented as of version 0.13.01
 	; 13 - MASTER SINGLE SPAWNTYPE PRESET UPDATE
 	; Direct Region + Spawntype Preset are handled from Menu.
 	;Pending Events are all designated above a value of 10. Menu will detects this and lock Menu if above 10.
@@ -247,16 +241,17 @@ Group SettingsGlobals
 	{ Auto-fill }
 	GlobalVariable Property SOTC_Global05 Auto Const Mandatory
 	{ Auto-fill }
-	GlobalVariable Property SOTC_Global06 Auto Const Mandatory
-	{ Auto-fill }
-	GlobalVariable Property SOTC_Global07 Auto Const Mandatory
-	{ Auto-fill }
-	GlobalVariable Property SOTC_Global08 Auto Const Mandatory
-	{ Auto-fill }
-	GlobalVariable Property SOTC_Global09 Auto Const Mandatory
-	{ Auto-fill }
-	GlobalVariable Property SOTC_Global10 Auto Const Mandatory
-	{ Auto-fill }
+	;Below is not needed at this time, and may never be. 
+	;GlobalVariable Property SOTC_Global06 Auto Const Mandatory
+	;{ Auto-fill }
+	;GlobalVariable Property SOTC_Global07 Auto Const Mandatory
+	;{ Auto-fill }
+	;GlobalVariable Property SOTC_Global08 Auto Const Mandatory
+	;{ Auto-fill }
+	;GlobalVariable Property SOTC_Global09 Auto Const Mandatory
+	;{ Auto-fill }
+	;GlobalVariable Property SOTC_Global10 Auto Const Mandatory
+	;{ Auto-fill }
 
 
 EndGroup
@@ -277,7 +272,6 @@ EndStruct
 
 
 Group SpawnSettings
-{ Settings used in spawn code. Initialise all 0/None/False, set in menu. }
 
 	Int Property iRerollChance Auto
 	{ Initialise with 0, set by Menu. Chance of a MultiPoint rolling out another group. }
@@ -340,16 +334,16 @@ Group FeatureSettings
 	;-----------------------------
 
 	Int Property iRandomSwarmChance Auto
-	{ Initialise 0, set in Menu. If any value above 0, there is a chance of a random Swarm/Infestation }
+	{ Initialise 0, set in Menu. If any value above 0, there is a chance of a random Swarm/Infestation, if the spawning Actor supports this. }
 	;This setting is also defined on a Regional level
 	
 	Int Property iRandomRampageChance Auto
-	{ Initialise 0, set in Menu. If any value above 0, there is a chance of a random 
-	Stampede upon successful Swarm, if the Actor supports this. }
+	{ Initialise 0, set in Menu. If any value above 0, there is a chance of a random Rampage/Stampede, if the spawning Actor supports this. }
 	;This setting is also defined on a Regional level
 	
 	Int Property iRandomAmbushChance Auto
-	{ Initialise 0, set in Menu. If any value above 0, there is a chance of a random infestation }
+	{ Initialise 0, set in Menu. If any value above 0, there is a chance of a random Ambush, 
+where all spawned Actors in a group will immediately rush for the Player. }
 	;This setting is also defined on a Regional level
 	
 	;RANDOM EVENTS FRAMEWORK PROPERTIES
@@ -370,11 +364,13 @@ Group FeatureSettings
 	Quest[] Property kRE_StaticEvents Auto Mandatory ;Type 3
 	{ Init one member of None. Dynamically fills. }
 	
-	Int Property iRE_BypassEventChance Auto
-	{ Init 20 by default. Change in Menu. Chance of "Bypass" Random Events firing. }
+	Int Property iRE_BypassEventChance = 20 Auto
+	{ Default value of 20. Change in Menu. Chance of "Bypass" Random Events firing. }
 	
-	Int Property iRE_StaticEventChance Auto
-	{ Init 20 by default. Change in Menu. Chance of "Static" Random Events firing. }
+	;Timed events do not have chance to occur values. 
+	
+	Int Property iRE_StaticEventChance = 20 Auto
+	{ Default value of 20. Change in Menu. Chance of "Static" Random Events firing. }
 	
 EndGroup
 
@@ -422,18 +418,13 @@ Int iEventCooldownTimerID = 8 Const ;Cooldown timer between allowing Random Even
 
 Int iEventFireTimerID = 9 Const ;If CheckforEvents = true, starts Event code in own thread.
 
+;Int iEventCleanupTimerID = 10 Const ; Despawn timer for Random Events Framework SpawnPoints. 
+
 
 Group DebugOptions
-{Options for displaying debug messages/traces. Initialise 0/None/False, set in menu}
-
-	Bool Property bDebugMessagesEnabled Auto
-	{ Initialise false. Set in Menu. }
-	
-	Bool Property bDebugMessagesEnabledSPsOnly Auto
-	{ Initialise false. Set in Menu. }
 	
 	Bool Property bSpawnWarningEnabled Auto
-	{ This one enabled messages to display when a SP fires }
+	{ This one enable a random, ambiguous, message to display when an SP fires. }
 	
 EndGroup
 
@@ -444,6 +435,7 @@ EndGroup
 
 CustomEvent PresetUpdate ;Update sent to Regions and/or Spawntypes for Preset change.
 CustomEvent MasterSingleSettingUpdate ;Event to send single settings updates to scripts.
+CustomEvent ForceResetAllSpsAndTimers ;Reset all Regions SPs AND Timers. Not menu safe, currently not implemented (version 0.13.03). 
 CustomEvent ForceResetAllSps ;Reset all Regions SPs. Does not (re)start timer, safe from Menu, but
 ;we will force the user to exit menu anyway as it may take some time to complete.
 CustomEvent InitTravelLocs
@@ -471,7 +463,7 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 
 		iCurrentPreset = aiPresetToSet
 		
-		;Start creating instances
+		;Start creating instances, starting with ThreadController. 
 		
 		ThreadController = (kMasterCellMarker.PlaceAtMe(kThreadControllerObject, 1 , false, false, false)) as SOTC:ThreadControllerScript
 		
@@ -484,14 +476,10 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		
 		Debug.Trace("EventMonitor created on ThreadController")
 		
-		;No longer instanced as of version 0.13.01. Left for reference.
-		;kNewInstance = kMasterCellMarker.PlaceAtMe(kPointPersistBaseObject, 1 , false, false, false)
-		;PointPersistStore = (kNewInstance as SOTC:PointPersistScript)
-		;Debug.Trace("TravelMarkerStore created on Master")
 		
-		;Start SpawnTypeMaster first
+		;Start SpawnTypeMasters first
 		Int iCounter 
-		Int iSize = 16
+		Int iSize = 15 ;Set to number of SpawnTypes supported. Currently 15 as of version 0.14.01
 		
 		while iCounter < iSize
 			
@@ -546,8 +534,11 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		endwhile
 		
 		
-		Debug.Trace("Events starting")
-		StartPendingEventQuests() ;Will return immediately if no events
+		;DEV NOTE: As of version 0.14.01, Event Quests are now Start Enabled and stages used to send work
+		;Events to this script.
+		;Debug.Trace("Events starting")
+		;SafelyStartPendingEventQuests() ;Will return immediately if no events
+		
 		
 		;Instancing done, mod is ready.
 		
@@ -787,11 +778,12 @@ Function SendMasterMassEvent()
 		SendCustomEvent("PresetUpdate", Params)
 		
 	elseif iMenuSettingsMode == 12 ;FORCE RESET ALL SPAWNPOINTS
+	;This event does not require user to exit Menu as timers are not restarted. Possibly should move to Single settings event for clarity. 
 		
 		ThreadController.PrepareToMonitorEvent("Regions") 
 		;String parameter to tell what script type will be receiving the event
 		
-		SendCustomEvent("ForceResetAllSps")
+		SendCustomEvent("ForceResetAllSpsAndTimers")
 		
 	elseif iMenuSettingsMode == 13 ;SINGLE SPAWNTYPE ONLY
 	
@@ -864,6 +856,11 @@ Function SendMasterSingleSettingUpdateEvent(string asSetting, Bool abBool01 = fa
 		SettingParams[1] = iRandomAmbushChance
 		SendCustomEvent("MasterSingleSettingUpdate", SettingParams)
 		
+	elseif asSetting == "ForceResetSps"
+	
+		SendCustomEvent("ForceResetAllSps")
+		;Menu safe as it does not reset Timers.
+		
 	endif
 	
 EndFunction
@@ -878,11 +875,13 @@ Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
 		
 			SendMasterMassEvent() ;This will "lock" the menu and require player to exit Menu Mode.
 			
+			;DEV NOTE: As of version 0.14.01, Event Quests are now Start Enabled and stages used to send work
+			;Events to this script.
 			;Check if Random Events pending start.
-			if kEventQuestsPendingStart[0] != None 
+			;if kEventQuestsPendingStart[0] != None 
 			;Array is initialized with one memmer of None for security purposes, if first member is not none, invoke start.
-				StartPendingEventQuests()
-			endif
+			;	SafelyStartPendingEventQuests()
+			;endif
 			
 			
 		elseif iMenuSettingsMode == 100 ;Factory Reset
@@ -938,7 +937,7 @@ EndFunction
 ; 5 - FIRST TIME SETUP MODE
 ; 10 - MASTER PRESET/RESET PENDING
 ; 11 - MASTER ALL SPAWNTYPES PRESET PENDING
-; 12 - FORCE RESET ALL SPs.
+; 12 - FORCE RESET ALL SPs AND TIMERS (Currently unimplemented as of version 0.13.03)
 ; 13 - MASTER SINGLE SPAWNTYPE PRESET UPDATE
 ; Direct Region + Spawntype Preset are handled from Menu.
 ;Pending Events are all designated above a value of 10. Menu will detect this and lock if so.
@@ -961,8 +960,7 @@ Function SetMenuCurrentRegion(Int aiRegionID)
 EndFunction
 
 
-;This function either sets Menu Globals to current values before viewing a Menu option, or it sets
-;the new value selected from said Menu. 
+;This function either sets Menu Globals to current values before viewing a Menu option, or it sets the new value selected from said Menu. 
 Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 = 0)
 
 	if asSetting == "MasterPreset"
@@ -1039,7 +1037,7 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 			iEzBorderMode = aiValue01
 			SendMasterSingleSettingUpdateEvent("EzBorderMode")
 		endif
-		SOTC_Global01.SetValue(iEzBorderMode as Float)
+		SOTC_Global02.SetValue(iEzBorderMode as Float)
 		
 	elseif asSetting == "RarityChances"
 	;DEV NOTE - Rarity chances are a bit different from other settings, only presets are given
@@ -1048,6 +1046,7 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 		
 		if abSetValues
 			SetRarityChancesPreset(aiValue01)
+			;Encapsulated to function for external use. 
 		endif
 		SOTC_Global01.SetValue(iCurrentRarityChancePreset as Float)
 		
@@ -1064,6 +1063,27 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 			iRerollMaxCount = aiValue01
 		endif
 		SOTC_Global01.SetValue(iRerollMaxCount as Float)
+		
+	elseif asSetting == "BypassEventChance"
+		
+		if abSetValues
+			iRE_BypassEventChance = aiValue01
+		endif
+		SOTC_Global01.SetValue(iRE_BypassEventChance as Float)
+		
+	elseif asSetting == "StaticEventChance"
+		
+		if abSetValues
+			iRE_StaticEventChance = aiValue01
+		endif
+		SOTC_Global01.SetValue(iRE_StaticEventChance as Float)
+	
+	elseif asSetting == "EventCooldownTimer"
+		
+		if abSetValues
+			fEventCooldownTimerClock = aiValue01 as Float
+		endif
+		SOTC_Global01.SetValue(fEventCooldownTimerClock)
 		
 	endif
 	
@@ -1150,14 +1170,14 @@ EndFunction
 ;SPAWN UTILITY FUNCTIONS & EVENTS
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Bool Function MasterSpawnCheck(ObjectReference akCallingPoint, Bool abAllowVanilla)
+Bool Function MasterSpawnCheck(ObjectReference akCallingPoint, Bool abAllowVanilla, Bool abEventSafe)
 
 	if CheckForBypassEvents() ;Check for any events not subject to EventLock
 		return true ;deny the calling point
 	endif
 	
 	;Check all pending events if they have been flagged. This is done in priority order
-	if (!bEventLockEngaged) && ((akCallingPoint as SOTC:SpawnPointScript).bEventSafe) ;Point must be marked as safe. 
+	if (!bEventLockEngaged) && (abEventSafe) ;Point must be marked as safe. 
 		
 		akCallingPoint = kEventPoint ;Set the Point for the Event Quest to remotely access
 		if CheckForEvents()
@@ -1273,57 +1293,6 @@ Function BeginStaticEvent()
 EndFunction
 
 
-;Append a new custom event to be started and added. Event Quests will be started when Menu mode is exited.
-Function AppendEventQuest(Quest akEventQuest)
-	
-	if kEventQuestsPendingStart == None ;Ensure the array is actually initialised
-		kEventQuestsPendingStart = new Quest[1] ;Ensure one member to avoid erroneous size return etc
-	endif
-
-	if kEventQuestsPendingStart[0] != None ;Security measure to avoid errors.
-		kEventQuestsPendingStart.Add(akEventQuest)
-	else ;First member is still none due to list empty
-		kEventQuestsPendingStart[0] = akEventQuest
-	endif
-	
-	;Will start the Event Quest safely out of Menu Mode
-	if !bRegisteredForPipboyClose
-		RegisterForMenuOpenCloseEvent("PipboyMenu")
-		bRegisteredForPipboyClose = true ;Prevent unnecessary re-registration. 
-	endif
-	
-EndFunction
-
-
-Function StartPendingEventQuests()
-
-	if kEventQuestsPendingStart == None ;Security measure ensures array is initialised (will do if not and return immediately)
-		kEventQuestsPendingStart = new Quest[1]
-		Debug.Trace("Pending new Events array was uninitialised and reset. Function returned, new array size is now: " +kEventQuestsPendingStart.Length)
-		return
-	endif
-
-	if kEventQuestsPendingStart[0] != None ;Security measure, if there is items in here this should not be None.
-
-		Int iSize = kEventQuestsPendingStart.Length
-		Int iCounter
-		
-		while iCounter < iSize
-		
-			kEventQuestsPendingStart[iCounter].Start()
-			iCounter += 1
-			
-		endwhile
-		
-	endif
-	
-	kEventQuestsPendingStart.Clear()
-	kEventQuestsPendingStart = new Quest[1] ;Ensure one member to avoid erroneous size return etc
-	Debug.Trace("New Events started successfully. Array reset, size now: " +kEventQuestsPendingStart.Length)
-	
-EndFunction
-
-
 ;New Event Quests being added for the first time or timed events firing/appending should use this function.
 Function SafelyRegisterActiveEvent(string asEventType, Quest akEventQuest)
 
@@ -1364,4 +1333,112 @@ Function SafelyRegisterActiveEvent(string asEventType, Quest akEventQuest)
 EndFunction
 
 
-;------------------------------------------------------------------------------------------------
+;The opposite of the above function. Remvoes from active list. 
+Function SafelyUnregisterActiveEvent(string asEventType, Quest akEventQuest)
+
+	;DEV NOTE: Event Arrays should always be kept initialised, with at least one member of None.
+	
+	Int i ;Used to set member to remove, if necessary. 
+	
+	if asEventType == "Bypass" ;Add a new Bypass Event active Event list
+
+		if kRE_BypassEvents.Length == 1 ;Only one member left in array!
+		;Shouldn't need to run find function if only one member, as it should be the expected. 
+		;Caution should be taken when coding Events and calling this however.
+			kRE_BypassEvents[0] = None 
+			
+		else 
+			i = kRE_BypassEvents.Find(akEventQuest)
+			kRE_BypassEvents.Remove(i)
+		endif
+		
+	endif
+	
+	
+	if asEventType == "Timed" ;Add a new Bypass Event active Event list
+
+		if kRE_TimedEvents.Length == 1 ;Only one member left in array!
+		;Shouldn't need to run find function if only one member, as it should be the expected. 
+		;Caution should be taken when coding Events and calling this however.
+			kRE_TimedEvents[0] = None 
+			
+		else 
+			i = kRE_TimedEvents.Find(akEventQuest)
+			kRE_TimedEvents.Remove(i)
+		endif
+		
+	endif
+	
+	
+	if asEventType == "Static" ;Add a new Bypass Event active Event list
+
+		if kRE_StaticEvents.Length == 1 ;Only one member left in array!
+		;Shouldn't need to run find function if only one member, as it should be the expected. 
+		;Caution should be taken when coding Events and calling this however.
+			kRE_StaticEvents[0] = None 
+			
+		else 
+			i = kRE_StaticEvents.Find(akEventQuest)
+			kRE_StaticEvents.Remove(i)
+		endif
+		
+	endif
+
+EndFunction
+
+
+;DEV NOTE: As of version 0.14.01, Event Quests are now Start Enabled and stages used to send work
+;Events to this script. These functions may be removed in future. 
+
+;Append a new custom event Quest to be started and added. Event Quests will be started when Menu mode is exited.
+Function SafelyAppendEventQuestForStart(Quest akEventQuest)
+	
+	if kEventQuestsPendingStart == None ;Ensure the array is actually initialised. Should always have one member after first init, even if that member is None. 
+		kEventQuestsPendingStart = new Quest[1] ;Ensure one member to avoid erroneous size return etc
+	endif
+
+	if kEventQuestsPendingStart[0] != None ;Security measure to avoid errors.
+		kEventQuestsPendingStart.Add(akEventQuest)
+	else ;First member is still none due to list empty
+		kEventQuestsPendingStart[0] = akEventQuest
+	endif
+	
+	;Will start the Event Quest safely out of Menu Mode
+	if !bRegisteredForPipboyClose
+		RegisterForMenuOpenCloseEvent("PipboyMenu")
+		bRegisteredForPipboyClose = true ;Prevent unnecessary re-registration. 
+	endif
+	
+EndFunction
+
+
+;Safely starts any pending Event Quests from the array after Menu is exited. 
+Function SafelyStartPendingEventQuests()
+
+	if kEventQuestsPendingStart == None ;Security measure ensures array is initialised (will do if not and return immediately)
+		kEventQuestsPendingStart = new Quest[1]
+		Debug.Trace("Pending new Events array was uninitialised and reset. Function returned, new array size is now: " +kEventQuestsPendingStart.Length)
+		return
+	endif
+
+	if kEventQuestsPendingStart[0] != None ;Security measure, if there is items in here this should not be None.
+
+		Int iSize = kEventQuestsPendingStart.Length
+		Int iCounter
+		
+		while iCounter < iSize
+		
+			kEventQuestsPendingStart[iCounter].Start()
+			iCounter += 1
+			
+		endwhile
+		
+	endif
+	
+	kEventQuestsPendingStart.Clear()
+	kEventQuestsPendingStart = new Quest[1] ;Ensure one member to avoid erroneous size return etc
+	Debug.Trace("New Events started successfully. Array reset, size now: " +kEventQuestsPendingStart.Length)
+	
+EndFunction
+
+;-------------------------------------------------------------------------------------------------------------------------------------------------------

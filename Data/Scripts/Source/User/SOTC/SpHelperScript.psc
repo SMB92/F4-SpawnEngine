@@ -23,6 +23,7 @@ Scriptname SOTC:SpHelperScript extends ObjectReference
 
 import SOTC:Struct_ClassDetails ;Struct definition needs to be present
 
+SOTC:MasterQuestScript MasterScript ;Pretty much only used here to get PlayerRef, assuming faster than Game.GetPlayer(). May see expanded use in future.
 SOTC:ThreadControllerScript ThreadController
 
 Keyword[] kPackageKeywords
@@ -43,6 +44,8 @@ Int iStartLoc ;Pretty much only used for Patrol mode from this script, to set th
 
 ;Local variables
 Actor[] kGroupList
+Int iLosCounter ;This will be incremented whenever a Line of sight check to Player fails. If reaches 25, spawning aborts. As we at least spawn 1 actor
+;to start with, this remains safe to use (however Player may see that one actor being spawned. its just easier to live with). 
 Int iHelperFireTimerID = 3 Const
 
 ;DEV NOTE: The Helper does have the ability to "expend" ChildPoints, however this should be seldom used.
@@ -62,6 +65,7 @@ ReferenceAlias akPackage, Keyword[] akPackageKeywords, ObjectReference[] akPacka
 	
 	
 	RegionManager = aRegionManager
+	MasterScript = RegionManager.MasterScript
 	ThreadController = RegionManager.ThreadController ;Done this way to free up a parameter slot. 
 	ActorParamsScript = aActorParamsScript
 	iPackageMode = aiPackageMode
@@ -112,7 +116,7 @@ Function HelperCleanupActorRefs()
 
 		kPackage.RemoveFromRef(kGroupList[iCounter]) ;Remove package data. Perhaps not necessary either?
 		;NOTE: Removed code that removes linked refs. Unnecesary.
-		kGroupList[iCounter].DeleteWhenAble()
+		kGroupList[iCounter].Delete()
 		iCounter += 1
 	
 	endwhile
@@ -211,7 +215,7 @@ Function HelperPrepareSingleGroupSpawn()
 		
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
 					
-				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
+				if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
 					HelperSpawnActorSingleLocLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
 					kBossUnits, kEz, bApplySwarmBonus, true, iDifficulty)
 				endif
@@ -223,7 +227,7 @@ Function HelperPrepareSingleGroupSpawn()
 				
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
 					
-				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
+				if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
 					HelperSpawnActorRandomEzSingleLocLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
 					kBossUnits, kEzList, bApplySwarmBonus, true, iDifficulty)
 				endif
@@ -240,7 +244,7 @@ Function HelperPrepareSingleGroupSpawn()
 				
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
 					
-				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
+				if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
 					HelperSpawnActorSingleLocRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
 					kBossUnits, kEz, bApplySwarmBonus, true, iDifficulty, false)
 				endif
@@ -252,7 +256,7 @@ Function HelperPrepareSingleGroupSpawn()
 				
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
 					
-				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
+				if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
 					HelperSpawnActorRandomEzSingleLocRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
 					kBossUnits, kEzList, bApplySwarmBonus, true, iDifficulty, false)
 				endif
@@ -275,7 +279,7 @@ Function HelperPrepareSingleGroupSpawn()
 				
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
 					
-				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
+				if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
 					HelperSpawnActorNoPackageLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
 					kBossUnits, kEz, bApplySwarmBonus, true, iDifficulty)
 				endif
@@ -287,7 +291,7 @@ Function HelperPrepareSingleGroupSpawn()
 				
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
 					
-				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
+				if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
 					HelperSpawnActorRandomEzNoPackageLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
 					kBossUnits, kEzList, bApplySwarmBonus, true, iDifficulty)
 				endif
@@ -304,7 +308,7 @@ Function HelperPrepareSingleGroupSpawn()
 				
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
 					
-				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
+				if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
 					HelperSpawnActorNoPackageRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
 					kBossUnits, kEz, bApplySwarmBonus, true, iDifficulty, false)
 				endif
@@ -316,7 +320,7 @@ Function HelperPrepareSingleGroupSpawn()
 				
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
 					
-				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
+				if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
 					HelperSpawnActorRandomEzNoPackageRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
 					kBossUnits, kEzList, bApplySwarmBonus, true, iDifficulty, false)
 				endif
@@ -364,7 +368,7 @@ Function HelperPrepareSingleGroupSpawn()
 			
 			iRegularActorCount = (kGroupList.Length) ;Required for loot system
 				
-			if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
+			if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
 				HelperSpawnActorSingleLocRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
 				kBossUnits, kEz, bApplySwarmBonus, true, iDifficulty, false)
 			endif
@@ -376,7 +380,7 @@ Function HelperPrepareSingleGroupSpawn()
 			
 			iRegularActorCount = (kGroupList.Length) ;Required for loot system
 	
-			if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
+			if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
 				HelperSpawnActorRandomEzSingleLocRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
 				kBossUnits, kEzList, bApplySwarmBonus, true, iDifficulty, false)
 			endif
@@ -416,15 +420,14 @@ Event OnDistanceLessThan(ObjectReference akObj1, ObjectReference akObj2, float a
 	
 	Int iCounter
 	Int iSize = kGroupList.Length
-	ObjectReference kPlayer = (Game.GetPlayer()) as ObjectReference ;No access to MasterScript DX
+	ObjectReference kPlayerRef = MasterScript.PlayerRef ;Possibly faster than Game.GetPlayer()
 	
 	while iCounter < iSize
-		HelperApplyPackageSingleLocData(kGroupList[iCounter], kPlayer) ;Parameter should have been set above.
+		HelperApplyPackageSingleLocData(kGroupList[iCounter], kPlayerRef) ;Parameter should have been set above.
 		iCounter += 1
 	endwhile
 	
 EndEvent
-
 
 
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -457,14 +460,16 @@ EncounterZone akEz, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty
 		
 	endif
 	
-	;Start placing Actors
-	;---------------------
+	;Start placing Actors.
 	
-	kGroupList = new Actor[0]
+	if !abIsBossSpawn ;As SPs are designed to only spawn one group each, only init this list the first time. 
+		kGroupList = new Actor[0] ;Needs to be watched for errors with arrays getting trashed when init'ed 0 members.
+	endif
 	
 	Int iCounter = 1 ;Guarantee the first Actor
 	Int iActorListSize = (akActorList.Length) - 1 ;Need actual size
 	Actor kSpawned
+	Actor kPlayerRef = MasterScript.PlayerRef ;Grab for LoS checks.
 	
 	;Spawn the first guaranteed Actor
 	kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
@@ -472,7 +477,17 @@ EncounterZone akEz, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty
 	
 	;Begin chance based placement loop for the rest of the Group
 	while iCounter <= aiMaxCount
-	
+		
+		;Check Line of sight to Player. 
+		while kPlayerRef.HasDetectionLos(Self as ObjectReference)
+			iLosCounter += 1 ;Line of sight fail counter will return this function if hits 25 (2.5 seconds wasted).
+			if iLosCounter >= 25 ;Better to check now.
+				return ;Stop spawning and kill the function. Player is looking too frequently.
+			endif
+			Utility.Wait(0.1)
+		endwhile
+		
+		;Else continue to place Actor.	
 		if (Utility.RandomInt(1,100)) <= aiChance
 			kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
 			kGroupList.Add(kSpawned) ;Add to Group tracker
@@ -502,16 +517,18 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty) ;aiStartLoc defaul
 		
 	endif
 	
-	;Start placing Actors
-	;---------------------
+	;Start placing Actors.
 	
-	kGroupList = new Actor[0]
+	if !abIsBossSpawn ;As SPs are designed to only spawn one group each, only init this list the first time. 
+		kGroupList = new Actor[0] ;Needs to be watched for errors with arrays getting trashed when init'ed 0 members.
+	endif
 	
 	Int iCounter = 1 ;Guarantee the first Actor
 	Int iEzListSize = (akEzList.Length) - 1 ;Need actual size
 	Int iActorListSize = (akActorList.Length) - 1 ;Need actual size
 	EncounterZone kEz
 	Actor kSpawned
+	Actor kPlayerRef = MasterScript.PlayerRef ;Grab for LoS checks.
 	
 	;Spawn the first guaranteed Actor
 	kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;akEz can be None
@@ -519,7 +536,17 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty) ;aiStartLoc defaul
 	
 	;Begin chance based placement loop for the rest of the Group
 	while iCounter <= aiMaxCount
-	
+		
+		;Check Line of sight to Player. 
+		while kPlayerRef.HasDetectionLos(Self as ObjectReference)
+			iLosCounter += 1 ;Line of sight fail counter will return this function if hits 25 (2.5 seconds wasted).
+			if iLosCounter >= 25 ;Better to check now.
+				return ;Stop spawning and kill the function. Player is looking too frequently.
+			endif
+			Utility.Wait(0.1)
+		endwhile
+		
+		;Else continue to place Actor.	
 		if (Utility.RandomInt(1,100)) <= aiChance
 			kEz = akEzList[(Utility.RandomInt(0,iEzListSize))] ;Randomise EZ each loop
 			kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;akEz can be None
@@ -555,13 +582,18 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint
 		
 	endif
 	
-	kGroupList = new Actor[0]
+	;Start placing Actors.
+	
+	if !abIsBossSpawn ;As SPs are designed to only spawn one group each, only init this list the first time. 
+		kGroupList = new Actor[0] ;Needs to be watched for errors with arrays getting trashed when init'ed 0 members.
+	endif
 	
 	Int iCounter = 1 ;Guarantee the first Actor
 	Int iActorListSize = (akActorList.Length) - 1 ;Need actual size
 	Int iSpawnLocListSize = (kPackageLocs.Length) - 1 ;Need actual size
 	Actor kSpawned
 	ObjectReference kSpawnLoc
+	Actor kPlayerRef = MasterScript.PlayerRef ;Grab for LoS checks.
 	
 	;First we must ensure the MaxCount received does not exceed number of ChildPoints, if we expending Points each Spawn.
 	if abExpendPoint
@@ -579,10 +611,21 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint
 	
 	;Begin chance based placement loop for the rest of the Group
 	while iCounter <= aiMaxCount
-	
+		
+		kSpawnLoc = HelperGetChildPoint(abExpendPoint) ;Place at a random marker in the cell/child cell (if exists)
+		
+		;Check Line of sight to Player. 
+		while kPlayerRef.HasDetectionLos(kSpawnLoc)
+			iLosCounter += 1 ;Line of sight fail counter will return this function if hits 25 (2.5 seconds wasted).
+			if iLosCounter >= 25 ;Better to check now.
+				return ;Stop spawning and kill the function. Player is looking too frequently.
+			endif
+			Utility.Wait(0.1)
+		endwhile
+		
+		;Else continue to place Actor.	
 		if (Utility.RandomInt(1,100)) <= aiChance
 			
-			kSpawnLoc = HelperGetChildPoint(abExpendPoint) ;Place at a random marker in the cell/child cell (if exists)
 			kSpawned = kSpawnLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
 			kGroupList.Add(kSpawned) ;Add to Group tracker
 			HelperApplyPackageSingleLocData(kSpawned, kSpawnLoc)
@@ -612,7 +655,11 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint
 		
 	endif
 	
-	kGroupList = new Actor[0]
+	;Start placing Actors.
+	
+	if !abIsBossSpawn ;As SPs are designed to only spawn one group each, only init this list the first time. 
+		kGroupList = new Actor[0] ;Needs to be watched for errors with arrays getting trashed when init'ed 0 members.
+	endif
 	
 	Int iCounter = 1 ;Guarantee the first Actor
 	Int iEzListSize = (akEzList.Length) - 1 ;Need actual size
@@ -621,6 +668,7 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint
 	EncounterZone kEz
 	Actor kSpawned
 	ObjectReference kSpawnLoc
+	Actor kPlayerRef = MasterScript.PlayerRef ;Grab for LoS checks.
 	
 	;First we must ensure the MaxCount received does not exceed number of ChildPoints, if we expending Points each Spawn.
 	if abExpendPoint
@@ -639,11 +687,22 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint
 	
 	;Begin chance based placement loop for the rest of the Group
 	while iCounter <= aiMaxCount
-
+	
+		kSpawnLoc = HelperGetChildPoint(abExpendPoint) ;Place at a random marker in the cell/child cell (if exists)
+		
+		;Check Line of sight to Player. 
+		while kPlayerRef.HasDetectionLos(kSpawnLoc)
+			iLosCounter += 1 ;Line of sight fail counter will return this function if hits 25 (2.5 seconds wasted).
+			if iLosCounter >= 25 ;Better to check now.
+				return ;Stop spawning and kill the function. Player is looking too frequently.
+			endif
+			Utility.Wait(0.1)
+		endwhile
+		
+		;Else continue to place Actor.
 		if (Utility.RandomInt(1,100)) <= aiChance
 			
 			kEz = akEzList[(Utility.RandomInt(0,iEzListSize))] ;Randomise each loop
-			kSpawnLoc = HelperGetChildPoint(abExpendPoint) ;Place at a random marker in the cell/child cell (if exists)
 			kSpawned = kSpawnLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;kEz can be None
 			kGroupList.Add(kSpawned) ;Add to Group tracker
 			HelperApplyPackageSingleLocData(kSpawned, kSpawnLoc)
@@ -678,14 +737,15 @@ EncounterZone akEz, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty
 	endif
 	
 	;Start placing Actors
-	;---------------------
-	;DEV NOTE: As of version 0.13.01, ApplyPackage loops are done after spawn placement as this seems to allow groups to travel closer together. 
 	
-	kGroupList = new Actor[0]
+	if !abIsBossSpawn ;As SPs are designed to only spawn one group each, only init this list the first time. 
+		kGroupList = new Actor[0] ;Needs to be watched for errors with arrays getting trashed when init'ed 0 members.
+	endif
 	
 	Int iCounter = 1 ;Guarantee the first Actor
 	Int iActorListSize = (akActorList.Length) - 1 ;Need actual size
 	Actor kSpawned
+	Actor kPlayerRef = MasterScript.PlayerRef ;Grab for LoS checks.
 	
 	;Spawn the first guaranteed Actor
 	kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
@@ -693,7 +753,17 @@ EncounterZone akEz, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty
 	
 	;Begin chance based placement loop for the rest of the Group
 	while iCounter <= aiMaxCount
-	
+		
+		;Check Line of sight to Player. 
+		while kPlayerRef.HasDetectionLos(Self as ObjectReference)
+			iLosCounter += 1 ;Line of sight fail counter will return this function if hits 25 (2.5 seconds wasted).
+			if iLosCounter >= 25 ;Better to check now.
+				return ;Stop spawning and kill the function. Player is looking too frequently.
+			endif
+			Utility.Wait(0.1)
+		endwhile
+		
+		;Else continue to place Actor.	
 		if (Utility.RandomInt(1,100)) <= aiChance
 			kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
 			kGroupList.Add(kSpawned) ;Add to Group tracker
@@ -723,16 +793,17 @@ EncounterZone[] akEzList, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDiff
 	endif
 	
 	;Start placing Actors
-	;---------------------
-	;DEV NOTE: As of version 0.13.01, ApplyPackage loops are done after spawn placement as this seems to allow groups to travel closer together. 
 	
-	kGroupList = new Actor[0]
+	if !abIsBossSpawn ;As SPs are designed to only spawn one group each, only init this list the first time. 
+		kGroupList = new Actor[0] ;Needs to be watched for errors with arrays getting trashed when init'ed 0 members.
+	endif
 	
 	Int iCounter = 1 ;Guarantee the first Actor
 	Int iEzListSize = (akEzList.Length) - 1 ;Need actual size
 	Int iActorListSize = (akActorList.Length) - 1 ;Need actual size
 	EncounterZone kEz
 	Actor kSpawned
+	Actor kPlayerRef = MasterScript.PlayerRef ;Grab for LoS checks.
 	
 	;Spawn the first guaranteed Actor
 	kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;akEz can be None
@@ -740,7 +811,17 @@ EncounterZone[] akEzList, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDiff
 	
 	;Begin chance based placement loop for the rest of the Group
 	while iCounter <= aiMaxCount
-	
+		
+		;Check Line of sight to Player. 
+		while kPlayerRef.HasDetectionLos(Self as ObjectReference)
+			iLosCounter += 1 ;Line of sight fail counter will return this function if hits 25 (2.5 seconds wasted).
+			if iLosCounter >= 25 ;Better to check now.
+				return ;Stop spawning and kill the function. Player is looking too frequently.
+			endif
+			Utility.Wait(0.1)
+		endwhile
+		
+		;Else continue to place Actor.	
 		if (Utility.RandomInt(1,100)) <= aiChance
 			kEz = akEzList[(Utility.RandomInt(0,iEzListSize))] ;Randomise EZ each loop
 			kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;akEz can be None
@@ -774,12 +855,17 @@ EncounterZone akEz, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty
 		
 	endif
 
-	kGroupList = new Actor[0]
+	;Start placing Actors.
+	
+	if !abIsBossSpawn ;As SPs are designed to only spawn one group each, only init this list the first time. 
+		kGroupList = new Actor[0] ;Needs to be watched for errors with arrays getting trashed when init'ed 0 members.
+	endif
 	
 	Int iCounter = 1 ;Guarantee the first Actor
 	Int iActorListSize = (akActorList.Length) - 1 ;Need actual size
 	Actor kSpawned
 	ObjectReference kSpawnLoc
+	Actor kPlayerRef = MasterScript.PlayerRef ;Grab for LoS checks.
 	
 	;First we must ensure the MaxCount received does not exceed number of ChildPoints, if we expending Points each Spawn.
 	if abExpendPoint
@@ -796,9 +882,20 @@ EncounterZone akEz, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty
 	
 	;Begin chance based placement loop for the rest of the Group
 	while iCounter <= aiMaxCount
-	
+		
+		kSpawnLoc = HelperGetChildPoint(abExpendPoint) ;Place at a random marker in the cell/child cell (if exists)
+		
+		;Check Line of sight to Player. 
+		while kPlayerRef.HasDetectionLos(kSpawnLoc)
+			iLosCounter += 1 ;Line of sight fail counter will return this function if hits 25 (2.5 seconds wasted).
+			if iLosCounter >= 25 ;Better to check now.
+				return ;Stop spawning and kill the function. Player is looking too frequently.
+			endif
+			Utility.Wait(0.1)
+		endwhile
+		
+		;Else continue to place Actor.	
 		if (Utility.RandomInt(1,100)) <= aiChance
-			kSpawnLoc = HelperGetChildPoint(abExpendPoint) ;Place at a random marker in the cell/child cell (if exists)
 			kSpawned = kSpawnLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
 			kGroupList.Add(kSpawned) ;Add to Group tracker
 		endif
@@ -826,7 +923,11 @@ EncounterZone[] akEzList, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDiff
 		
 	endif
 
-	kGroupList = new Actor[0]
+	;Start placing Actors.
+	
+	if !abIsBossSpawn ;As SPs are designed to only spawn one group each, only init this list the first time. 
+		kGroupList = new Actor[0] ;Needs to be watched for errors with arrays getting trashed when init'ed 0 members.
+	endif
 	
 	Int iCounter = 1 ;Guarantee the first Actor
 	Int iEzListSize = (akEzList.Length) - 1 ;Need actual size
@@ -834,6 +935,7 @@ EncounterZone[] akEzList, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDiff
 	Actor kSpawned
 	ObjectReference kSpawnLoc
 	EncounterZone kEz
+	Actor kPlayerRef = MasterScript.PlayerRef ;Grab for LoS checks.
 	
 	;First we must ensure the MaxCount received does not exceed number of ChildPoints, if we expending Points each Spawn.
 	if abExpendPoint
@@ -850,11 +952,22 @@ EncounterZone[] akEzList, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDiff
 	
 	;Begin chance based placement loop for the rest of the Group
 	while iCounter <= aiMaxCount
-	
+		
+		kSpawnLoc = HelperGetChildPoint(abExpendPoint) ;Place at a random marker in the cell/child cell (if exists)
+		
+		;Check Line of sight to Player. 
+		while kPlayerRef.HasDetectionLos(kSpawnLoc)
+			iLosCounter += 1 ;Line of sight fail counter will return this function if hits 25 (2.5 seconds wasted).
+			if iLosCounter >= 25 ;Better to check now.
+				return ;Stop spawning and kill the function. Player is looking too frequently.
+			endif
+			Utility.Wait(0.1)
+		endwhile
+		
+		;Else continue to place Actor.	
 		if (Utility.RandomInt(1,100)) <= aiChance
 		
 			kEz = akEzList[(Utility.RandomInt(0,iEzListSize))] ;Randomise each loop
-			kSpawnLoc = HelperGetChildPoint(abExpendPoint) ;Place at a random marker in the cell/child cell (if exists)
 			kSpawned = kSpawnLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;akEz can be None
 			kGroupList.Add(kSpawned) ;Add to Group tracker
 		endif

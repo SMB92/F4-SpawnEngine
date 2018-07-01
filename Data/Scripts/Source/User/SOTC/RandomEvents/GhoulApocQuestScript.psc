@@ -13,12 +13,25 @@ Scriptname SOTC:RandomEvents:GhoulApocQuestScript extends Quest
 
 ;DEV NOTE: This event is included in the core of the F4-SpawnEngine
 
-;LEGEND - EVENTS FRAMEWORK
+;LEGEND - EVENTS FRAMEWORK (UPDATED FOR VERSION 0.14.01)
 ;In order for Random Events to be added on by third parties with ease, this system uses Quests to
 ;instantiate their controller script for the "Event" and the MasterScript simply calls a setstage
-;on the Quest in order to activate it (standard stage ID is 10). This eliminates the need to be
-;reliant on using a template script or single object of any sort. Controller scripts may include
-;a "helper" object which can be used to place in the world to do spawning work for the Event.
+;on the Quest in order to send the script work events via OnStageSet. This eliminates the need to
+;be reliant on using a template script or single object of any sort. 
+
+;So to explain how it works behind the scenes, Events Quests will include a "Helper" object (a custom
+;SpawnPoint) of which will be instanced at any compatible SpawnPoint (which is elected as the "Event
+;Point" on the Master, this is any SOTC:SpawnPointScript with the "bEventSafe" flagged True). Event
+;scripts may pass their "Helper" any number of parameters and then trigger them to start spawning via
+;a timer on that Helper's script, thus starting it in its own thread. The default configuration for
+;staging an Event quest is as follows:
+; - Stage 1 is the "Startup" stage - this will run the Init code for the Event and will be set when the
+;Event is either enabled for the first time, or reset. 
+; - Stage 5 is the idle stage, nothing happens here. Simply waiting for a trigger to set the next stage
+; - Stage 10 is the "work" stage, when triggered any spawn code should run here and the Event fire up.
+; - Stage 100 is the Shutdown stage, the Event will pack up here. 
+;Event Quests as of version 0.14.01 should be Start Game Enabled and never stopped (unless uninstalling).
+;This allows settings to be reliably configured before enabling the Event. 
 
 ;There are currently 4 types of Events supported. They are as follows:
 ; 1. Bypass Events - These Events can be triggered at any time, based on a chance roll. They will
@@ -29,22 +42,7 @@ Scriptname SOTC:RandomEvents:GhoulApocQuestScript extends Quest
 ; 3. Static Events - This type of Event has a chance to occur at any time, based on some conditions
 ;that can be setup for said Event specifically. This type of Event is subject to Event locks however.
 ; 4. Unique Events - This type of Event only fires once, and must be coded accordingly. These events
-;should make use of the timed events system so no extra functions need be developed. 
-
-;So to explain how it works behind the scenes, Events Quests must be started from a Menu (so their 
-;Quest must NOT be start game enabled). Upon doing so the Event will be coded to either add itself
-;to the MasterScript's arrays of Event Quests based on it's type, or in the case of Timed Events,
-;begin their timers/event monitors and add themselves when the timer/event monitor triggers. When
-;a SpawnPoint fires (currently RE system ONLY supports the Main SpawnPoint type, SpGroupPoint), the
-;MasterScript will check for Events in the same order as listed above. Whenever an Event fires the
-;MasterScript will store the SpawnPoint and it will become the Point of the Event. The SP script
-;is not used itself, it is purely a location reference. With the exception of bypass events, after
-;an Event has fired a "cooldown" timer will be started and a "lock" engaged so that no more Events
-;can fire until the cooldown is over. Unique Events will be removed permanently and an accompanying
-;GlobalVar will be set to prevent them from starting again (at least without forcing it).
-;When Events are toggled off from the Menu, their Quest will be shutdown and their entry(s) removed
-;from the Master arrays. Any Events that make use of Helper Points to do spawn work must be coded
-;to clean themselves up after a set amount of time.
+;should make use of the Timed events system so no extra functions need be developed. 
 
 
 ;------------------------------------------------------------------------------------------------
@@ -57,63 +55,87 @@ Scriptname SOTC:RandomEvents:GhoulApocQuestScript extends Quest
 Group PrimaryProperties
 { Primary Properties Group }
 
-	SOTC:MasterQuestScript Property MasterScript Auto Const
+	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
 	{ Fill with MasterQuest }
 	
-	Activator Property kEventHelper Auto Const
+	Activator Property kEventHelper Auto Const Mandatory
 	{ Fill with associated Object containing spawn code for this Event }
 	
-	;Holotape Property kSettingMenuTape Auto Const
-	;{ Fill with settings tape if this is an external/third party addon }
-	;DEV NOTE: This should really be included on an auxillery controlelr provided by the addon.
+	GlobalVariable Property SOTC_Global_EventQuestStatus Auto Const
+	{ Auto-fill. Used to tell Menu about this Quests init status. }
 	
 EndGroup
 
 
-Group Settings
-
-	Bool Property bEventEnabled Auto
-	{ Init false. Set in Menu. }
-	
-EndGroup
-
-Bool bInit ;Security measure to ensure OnInit events don't fire again and again.
+Float fInit ;Used here to tell if we are active, as GetStage is not reliable for repeatable stage Quests.
 
 
 ;------------------------------------------------------------------------------------------------
 ;INIT FUNCTIONS & EVENTS
 ;------------------------------------------------------------------------------------------------
 
-;DEV NOTE: Use MasterQuestScript function to start Event Quests in order to avoid lockups in Menu Mode. 
+;DEV NOTE: As of version 0.14.01, Event Quests are now Start Enabled and stages used to send work
+;Events to this script. 
 
-Event OnQuestInit() 
+
+;DEV NOTE: Use MasterQuestScript function to start Event Quests in order to avoid lockups in Menu Mode. 
+;Event OnQuestInit() 
 	
-	if !bInit
-		MasterScript.kRE_BypassEvents.Add(Self as Quest, 1)
-	endif
+	;if !bInit
+	;	MasterScript.SafelyRegisterActiveEvent("Bypass", Self as Quest)
+	;	MasterScript.SafelyRegisterActiveEvent("Bypass", Self as Quest)
+	;	;This event is pended twice as it has a higher chance to occur than others.
+	;endif
 	
 	;Won't receive while in Menu mode, but will continue when exited. 
 	
-EndEvent
+;EndEvent
 
 
 Event OnStageSet(Int auiStageID, int auiItemID)
 
-	;Stage 1 is idle/startup stage
-
-	if auiStageID == 10 
+	;Stage 1 is startup stage
+	;Stage 5 is idle stage
+	;Stage 10 is do work stage
+	;Stage 100 is shutdown stage
+	
+	if auiStageID == 1
+	
+		MasterScript.SafelyRegisterActiveEvent("Bypass", Self as Quest)
+		MasterScript.SafelyRegisterActiveEvent("Bypass", Self as Quest)
+		;This event is pended twice as it has a higher chance to occur than others.
+		fInit = 1.0
+		SOTC_Global_EventQuestStatus.SetValue(fInit) ;Saves doing it from Menu.
+	
+	elseif auiStageID == 10 
 		
 		BeginEvent()
 	
 	elseif auiStageID == 100 ;Shutdown
 	
-		Int i = MasterScript.kRE_BypassEvents.Find(Self as Quest)
-		MasterScript.kRE_BypassEvents.Remove(i) ;Remove ourselves from Master list
-		(Self as Quest).Stop() ;Shut it down!
+		MasterScript.SafelyUnregisterActiveEvent("Bypass", Self as Quest)
+		MasterScript.SafelyUnregisterActiveEvent("Bypass", Self as Quest) 
+		;This event is pended twice as it has a higher chance to occur than others.
+		fInit = 0.0
+		SOTC_Global_EventQuestStatus.SetValue(fInit) ;Saves doing it from Menu.
 		
 	endif
 	
 EndEvent
+
+;------------------------------------------------------------------------------------------------
+;MENU FUNCTIONS & EVENTS
+;------------------------------------------------------------------------------------------------
+
+Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 = 0)
+
+	if asSetting == "InitStatus"
+	
+		SOTC_Global_EventQuestStatus.SetValue(fInit)
+		
+	endif
+	
+EndFunction
 
 
 ;------------------------------------------------------------------------------------------------
@@ -124,9 +146,10 @@ Function BeginEvent()
 
 	ObjectReference kPoint = MasterScript.kEventPoint
 	ObjectReference kHelper = kPoint.PlaceAtMe(kEventHelper, 1, false, false, false)
-	(kHelper as SOTC:RandomEvents:GhoulApocPointScript).BeginSpawn()
+	Int iRegionID = (kPoint as SOTC:SpawnPointScript).iRegionID ;Helper will require Region data. 
+	(kHelper as SOTC:RandomEvents:GhoulApocPointScript).EventHelperBeginSpawn(iRegionID) ;Helper will set links to Region itself.
 	;Helper will reset and delete itself after some time.
-	(Self as Quest).SetStage(1) ;Reset stage
+	(Self as Quest).SetStage(1) ;Reset stage, wait for next request. 
 
 EndFunction
 	

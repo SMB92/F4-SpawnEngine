@@ -57,38 +57,526 @@ SOTC:RandomEvents:GhoulApocQuestScript Property Controller Auto Const
 { Fill with the Controller Quest for this Event. }
 
 SOTC:MasterQuestScript Property MasterScript Auto Const
-{ Fill with MasterQuest }
-
-Int Property iGhoulID Auto Const
-{ Fill with ID number for Ghouls on the MasterActorList. Pulls from there. }
+{ Fill with MasterQuest. }
 
 ReferenceAlias[] Property kPackages Auto Const
-{ Fill one member with a basic Sandbox package, the other a basic Travel Package.
+{ Fill one member with a basic Sandbox package, the other a basic Travel Package (single loc).
 One of these will be selected and applied to the whole group. }
 
-ActorBase[] kGroupList ; The group of Spawned Actors
+Keyword Property SOTC_PackageKeyword01 Auto Const
+{ Auto-fill. Default keyword used with Single Location Package. }
+
+;Int iGhoulActorID = 10 Const ; This is the ID of Ghouls on the MasterList. 
+
+Actor[] kGroupList ; The group of Spawned Actors
+Int iSelectedPackage ;Set to the chosen Package index, for cleaning up later. 
+
+Int iHelperFireTimerID = 3 Const
+Int iEventCleanupTimerID = 10 Const ;Despawn timer for Random Events Framework SpawnPoints.
+Int iLosCounter ;This will be incremented whenever a Line of sight check to Player fails. If reaches 25, spawning aborts. As we at least spawn 1 actor
+;to start with, this remains safe to use (however Player may see that one actor being spawned. its just easier to live with). 
+
+SOTC:ThreadControllerScript ThreadController ;Fills at runtime
+SOTC:ActorClassPresetScript ActorParamsScript
+SOTC:ActorManagerScript ActorManager ;Fills at runtime
+SOTC:RegionManagerScript RegionManager ;Fills at runtime. 
 
 
-;------------------------------------------------------------------------------------------------
-;SPAWN FUNCTION & EVENTS
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+;PRE-SPAWN FUNCTION & EVENTS - GHOUL APOC
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Function BeginSpawn()
+;Function called by Controller to start the Event Spawn.
+Function EventHelperBeginSpawn(Int aiRegionID) ;This script needs Region data. 
 
-	kGroupList = new ActorBase[0] ;Init the tracker array
-	ReferenceAlias kPackage = kPackages[(Utility.RandomInt(0,1))] ;Pick one of the packages to use this spawn.
+	;SetSpScriptLinks and data
+	ThreadController = MasterScript.ThreadController
+	ActorManager = MasterScript.SpawnTypeMasters[0].ActorList[10] ;10 is main Ghoul ID in SpawnEngine
+	RegionManager = MasterScript.Worlds.Regions[aiRegionID] ;This script requires Region data. 
 	
-	SOTC:ActorManagerScript GhoulActorManager = MasterScript.SpawnTypeMasters[0].ActorList[iGhoulID]
-	;Now we will get Parameters from one of the first 3 Classes at random (Common, Uncommon, Rare)
-	SOTC:ActorClassPresetScript ActorParamsScript = GhoulActorManager.GetRandomRarityBasedClass()
-	Int iDifficulty = Utility.RandomInt(0-4) ;Randomise difficulty level
-	ClassDetailsStruct ActorParams = ActorParamsScript.ClassDetails[iDifficulty] ;Now point to params struct
+	StartTimer(0.2, iHelperFireTimerID) ;Ready to start own thread
 	
+EndFunction
+
+
+Event OnTimer(int aiTimerID)
+
+	if aiTimerID == iHelperFireTimerID
+		
+		ThreadController.ForceAddThreads(1) 
+		EventHelperPrepareSingleGroupSpawn()
+		ThreadController.ReleaseThreads(1) ;Spawning done, threads can be released.
+		
+	elseif aiTimerID == iEventCleanupTimerID ;This script has to clean itself up.
 	
-	;CURRENTLY INCOMPLETE AWAITING UPDATE.
+		EventHelperFactoryReset()
+		
+	endif
 	
+EndEvent
+
+
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+;CLEANUP FUNCTIONS & EVENTS - EVENT HELPER SCRIPT - GHOUL APOC
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+;The owning SpawnPoint will delete this isntance when the following has returned. 
+
+Function EventHelperFactoryReset()
+
+	EventHelperCleanupActorRefs()
 	
+	ActorParamsScript = None
+	ActorManager = None
+	RegionManager = None
+	
+	ThreadController.IncrementActiveSpCount(-1)
+	ThreadController = None
+	
+	(Self as ObjectReference).Disable()
+	(Self as ObjectReference).Delete()
 
 EndFunction
 
-;------------------------------------------------------------------------------------------------
+
+;Cleans up all Actors in GroupList
+Function EventHelperCleanupActorRefs() 
+
+	int iCounter = 0
+	int iSize = kGroupList.Length
+        
+	while iCounter < iSize
+
+		kPackages[iSelectedPackage].RemoveFromRef(kGroupList[iCounter]) ;Remove package data. Perhaps not necessary either?
+		;NOTE: Removed code that removes linked refs. Unnecesary.
+		kGroupList[iCounter].Delete()
+		iCounter += 1
+	
+	endwhile
+	
+	kGroupList.Clear()
+	ThreadController.IncrementActiveNpcCount(-iSize)
+	
+EndFunction
+
+
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+;SPAWN FUNCTION & EVENTS - GHOUL APOC
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Function EventHelperPrepareSingleGroupSpawn()
+	
+	;Get Actor params based on random rairty based Class and Region Preset.
+	
+	Int iRarity = Utility.RandomInt(1,3) ;Randomise rarity based ClassPreset Int. 
+	Int iPreset = RegionManager.iCurrentPreset
+	ActorParamsScript = ActorManager.ClassPresets[iRarity]
+	ClassDetailsStruct ActorParams = ActorParamsScript.ClassDetails[RegionManager.iCurrentPreset]
+	
+	
+	;Organise the ActorBase arrays
+	;------------------------------
+	
+	ActorBase[] kRegularUnits = (ActorParamsScript.GetRandomGroupLoadout(false)) as ActorBase[] ;Cast to copy locally
+	ActorBase[] kBossUnits
+	Bool bBossAllowed = (ActorParams.iChanceBoss) as Bool
+	if bBossAllowed ;Not gonna set this unless it's allowed. Later used as parameter
+		kBossUnits = (ActorParamsScript.GetRandomGroupLoadout(true)) as ActorBase[] ;Cast to copy locally
+	endif
+	
+	
+	;Set difficulty level from Region.
+	Int iDifficulty = RegionManager.iCurrentDifficulty
+	
+	
+	;Check and setup EncounterZone data
+	;-----------------------------------
+	
+	EncounterZone kEz ;iEZMode 1 - Single EZ to use for Group Levels
+	EncounterZone[] kEzList; If iEzApplyMode = 2, this will point to a Region list of EZs. One will be applied to each Actor at random.
+	
+	Int iEzMode = RegionManager.iEzApplyMode ;Store locally for reuse and speed.
+	
+	if iEzMode == 0 ;This exist so we can skip it, seems it is more likely players won't use it.
+		;Do nothing, use NONE EZ (passed parameters will be None)
+	elseif iEZMode == 1
+		kEz = RegionManager.GetRandomEz()
+	elseif iEzMode == 2
+		kEzList = RegionManager.GetRegionCurrentEzList() ;Look directly at the Regions Ez list, based on current mode
+	endif
+	
+	
+	;Check for Swarm Event for Ghouls.
+	;---------------------------------
+	
+	Bool bApplySwarmBonus
+	if RegionManager.RollForSwarm()
+		bApplySwarmBonus = true
+	endif
+	
+	
+	;Elect the Package (Sandbox or Travel)
+	iSelectedPackage = Utility.RandomInt(0,1)
+	
+	ObjectReference kTravelLoc ;If Travelling (Selected Package 1)
+	if iSelectedPackage == 1
+		kTravelLoc = RegionManager.GetRandomTravelLoc()
+	endif
+	
+	
+	;Begin spawning.
+	;---------------
+	
+	Int iRegularActorCount ;Required for loot system
+	Int iCounter
+	Int iSize
+	
+	if iSelectedPackage == 0 ;Sandbox Mode, apply Package during loop. 
+	
+		if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
+
+			EventHelperSpawnActorSingleLocLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
+			kRegularUnits, kEz, bApplySwarmBonus, false, iDifficulty)
+		
+			iRegularActorCount = (kGroupList.Length) ;Required for loot system
+					
+			if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
+				EventHelperSpawnActorSingleLocLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
+				kBossUnits, kEz, bApplySwarmBonus, true, iDifficulty)
+			endif
+
+		else ;Randomise the Ez
+
+			EventHelperSpawnActorRandomEzSingleLocLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
+			kRegularUnits, kEzList, bApplySwarmBonus, false, iDifficulty)
+				
+			iRegularActorCount = (kGroupList.Length) ;Required for loot system
+					
+			if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
+				EventHelperSpawnActorRandomEzSingleLocLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
+				kBossUnits, kEzList, bApplySwarmBonus, true, iDifficulty)
+			endif
+						
+		endif
+		
+	else ;Assume 1, Travel. Apply Package after spawn loops.
+	
+	
+		if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
+					
+			EventHelperSpawnActorNoPackageLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
+			kRegularUnits, kEz, bApplySwarmBonus, false, iDifficulty)
+				
+			iRegularActorCount = (kGroupList.Length) ;Required for loot system
+					
+			if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
+				EventHelperSpawnActorNoPackageLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
+				kBossUnits, kEz, bApplySwarmBonus, true, iDifficulty)
+			endif
+
+		else ;Randomise the Ez
+
+			EventHelperSpawnActorRandomEzNoPackageLoop(ActorParams.iMaxAllowed, ActorParams.iChance, kRegularUnits, \
+			kEzList, bApplySwarmBonus, false, iDifficulty)
+				
+			iRegularActorCount = (kGroupList.Length) ;Required for loot system
+				
+			if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
+				EventHelperSpawnActorRandomEzNoPackageLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
+				kBossUnits, kEzList, bApplySwarmBonus, true, iDifficulty)
+			endif
+
+		endif
+		
+		;Apply Package to whole group now. 
+		iSize = kGroupList.Length
+		while iCounter < iSize
+			EventHelperApplyPackageTravelData(kGroupList[iCounter], kTravelLoc)
+			iCounter += 1
+		endwhile
+		
+		
+	endif
+	
+	
+	;Check for loot pass, inform ThreadController of the spawned numbers.
+	;---------------------------------------------------------------------
+	
+	if ActorManager.bLootSystemEnabled
+		Int iBossCount = (kGroupList.Length) - iRegularActorCount ;Also required for loot system
+		ActorManager.DoLootPass(kGroupList, iBossCount)
+	endif
+	
+	;Lastly, we tell Increment the Active NPC and SP on the Thread Controller
+	ThreadController.IncrementActiveNpcCount(kGroupList.Length)
+	ThreadController.IncrementActiveSpCount(1)
+	
+		
+EndFunction
+
+
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+;SPAWN LOOPS - EVENT HELPER SCRIPT - GHOUL APOC
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Function EventHelperSpawnActorSingleLocLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, \ 
+EncounterZone akEz, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty)
+	
+	if abApplySwarmBonus ;Apply Swarm bonus settings if true, else skip
+	
+		if !abIsBossSpawn
+			aiMaxCount += ActorManager.iSwarmMaxCountBonus
+			aiChance += ActorManager.iSwarmChanceBonus
+		else
+			aiMaxCount += ActorManager.iSwarmMaxCountBossBonus
+			aiChance += ActorManager.iSwarmChanceBossBonus
+		endif
+		
+	endif
+	
+	;Start placing Actors.
+	
+	if !abIsBossSpawn ;As SPs are designed to only spawn one group each, only init this list the first time. 
+		kGroupList = new Actor[0] ;Needs to be watched for errors with arrays getting trashed when init'ed 0 members.
+	endif
+	
+	Int iCounter = 1 ;Guarantee the first Actor
+	Int iActorListSize = (akActorList.Length) - 1 ;Need actual size
+	Actor kSpawned
+	Actor kPlayerRef = MasterScript.PlayerRef ;Grab for LoS checks.
+	
+	;Spawn the first guaranteed Actor
+	kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
+	kGroupList.Add(kSpawned) ;Add to Group tracker
+	
+	;Begin chance based placement loop for the rest of the Group
+	while iCounter <= aiMaxCount
+		
+		;Check Line of sight to Player. 
+		while kPlayerRef.HasDetectionLos(Self as ObjectReference)
+			iLosCounter += 1 ;Line of sight fail counter will return this function if hits 25 (2.5 seconds wasted).
+			if iLosCounter >= 25 ;Better to check now.
+				return ;Stop spawning and kill the function. Player is looking too frequently.
+			endif
+			Utility.Wait(0.1)
+		endwhile
+		
+		;Else continue to place Actor.
+		if (Utility.RandomInt(1,100)) <= aiChance
+			kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
+			kGroupList.Add(kSpawned) ;Add to Group tracker
+			EventHelperApplyPackageSingleLocData(kSpawned)
+		endif
+		
+		iCounter +=1
+	
+	endwhile
+
+EndFunction
+
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Function EventHelperSpawnActorRandomEzSingleLocLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, EncounterZone[] akEzList, \
+Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty) ;aiStartLoc default value = Self
+
+	if abApplySwarmBonus ;Apply Swarm bonus settings if true, else skip
+	
+		if !abIsBossSpawn 
+			aiMaxCount += ActorManager.iSwarmMaxCountBonus
+			aiChance += ActorManager.iSwarmChanceBonus
+		else
+			aiMaxCount += ActorManager.iSwarmMaxCountBossBonus
+			aiChance += ActorManager.iSwarmChanceBossBonus
+		endif
+		
+	endif
+	
+	;Start placing Actors.
+	
+	if !abIsBossSpawn ;As SPs are designed to only spawn one group each, only init this list the first time. 
+		kGroupList = new Actor[0] ;Needs to be watched for errors with arrays getting trashed when init'ed 0 members.
+	endif
+	
+	Int iCounter = 1 ;Guarantee the first Actor
+	Int iEzListSize = (akEzList.Length) - 1 ;Need actual size
+	Int iActorListSize = (akActorList.Length) - 1 ;Need actual size
+	EncounterZone kEz
+	Actor kSpawned
+	Actor kPlayerRef = MasterScript.PlayerRef ;Grab for LoS checks.
+	
+	;Spawn the first guaranteed Actor
+	kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;akEz can be None
+	kGroupList.Add(kSpawned) ;Add to Group tracker
+	
+	;Begin chance based placement loop for the rest of the Group
+	while iCounter <= aiMaxCount
+		
+		;Check Line of sight to Player. 
+		while kPlayerRef.HasDetectionLos(Self as ObjectReference)
+			iLosCounter += 1 ;Line of sight fail counter will return this function if hits 25 (2.5 seconds wasted).
+			if iLosCounter >= 25 ;Better to check now.
+				return ;Stop spawning and kill the function. Player is looking too frequently.
+			endif
+			Utility.Wait(0.1)
+		endwhile
+		
+		;Else continue to place Actor.
+		if (Utility.RandomInt(1,100)) <= aiChance
+			kEz = akEzList[(Utility.RandomInt(0,iEzListSize))] ;Randomise EZ each loop
+			kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;akEz can be None
+			kGroupList.Add(kSpawned) ;Add to Group tracker
+			EventHelperApplyPackageSingleLocData(kSpawned)
+		endif
+		
+		iCounter +=1
+	
+	endwhile
+
+EndFunction
+
+
+;PACKAGELESS LOOPS - USE FOR TRAVEL
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+;DEV NOTE: These loops do not apply any package, they simply drop the Actor. It is expected the calling function will run ApplyPackage loop after this.
+
+Function EventHelperSpawnActorNoPackageLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, \ 
+EncounterZone akEz, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty) ;aiStartLoc default value = Self
+	
+	if abApplySwarmBonus ;Apply Swarm bonus settings if true, else skip
+	
+		if !abIsBossSpawn 
+			aiMaxCount += ActorManager.iSwarmMaxCountBonus
+			aiChance += ActorManager.iSwarmChanceBonus
+		else
+			aiMaxCount += ActorManager.iSwarmMaxCountBossBonus
+			aiChance += ActorManager.iSwarmChanceBossBonus
+		endif
+		
+	endif
+	
+	;Start placing Actors
+	
+	if !abIsBossSpawn ;As SPs are designed to only spawn one group each, only init this list the first time. 
+		kGroupList = new Actor[0] ;Needs to be watched for errors with arrays getting trashed when init'ed 0 members.
+	endif
+	
+	Int iCounter = 1 ;Guarantee the first Actor
+	Int iActorListSize = (akActorList.Length) - 1 ;Need actual size
+	Actor kSpawned
+	Actor kPlayerRef = MasterScript.PlayerRef ;Grab for LoS checks. 
+	
+	;Spawn the first guaranteed Actor
+	kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
+	kGroupList.Add(kSpawned) ;Add to Group tracker
+	
+	;Begin chance based placement loop for the rest of the Group
+	while iCounter <= aiMaxCount
+		
+		;Check Line of sight to Player. 
+		while kPlayerRef.HasDetectionLos(Self as ObjectReference)
+			iLosCounter += 1 ;Line of sight fail counter will return this function if hits 25 (2.5 seconds wasted).
+			if iLosCounter >= 25 ;Better to check now.
+				return ;Stop spawning and kill the function. Player is looking too frequently.
+			endif
+			Utility.Wait(0.1)
+		endwhile
+		
+		;Else continue to place Actor.
+		if (Utility.RandomInt(1,100)) <= aiChance
+			kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
+			kGroupList.Add(kSpawned) ;Add to Group tracker
+		endif
+		
+		iCounter +=1
+	
+	endwhile
+
+EndFunction
+
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Function EventHelperSpawnActorRandomEzNoPackageLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, \ 
+EncounterZone[] akEzList, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty) ;aiStartLoc default value = Self
+
+	if abApplySwarmBonus ;Apply Swarm bonus settings if true, else skip
+	
+		if !abIsBossSpawn
+			aiMaxCount += ActorManager.iSwarmMaxCountBonus
+			aiChance += ActorManager.iSwarmChanceBonus
+		else
+			aiMaxCount += ActorManager.iSwarmMaxCountBossBonus
+			aiChance += ActorManager.iSwarmChanceBossBonus
+		endif
+		
+	endif
+	
+	;Start placing Actors
+	
+	if !abIsBossSpawn ;As SPs are designed to only spawn one group each, only init this list the first time. 
+		kGroupList = new Actor[0] ;Needs to be watched for errors with arrays getting trashed when init'ed 0 members.
+	endif
+	
+	Int iCounter = 1 ;Guarantee the first Actor
+	Int iEzListSize = (akEzList.Length) - 1 ;Need actual size
+	Int iActorListSize = (akActorList.Length) - 1 ;Need actual size
+	EncounterZone kEz
+	Actor kSpawned
+	Actor kPlayerRef = MasterScript.PlayerRef ;Grab for LoS checks.
+	
+	;Spawn the first guaranteed Actor
+	kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;akEz can be None
+	kGroupList.Add(kSpawned) ;Add to Group tracker
+	
+	;Begin chance based placement loop for the rest of the Group
+	while iCounter <= aiMaxCount
+		
+		;Check Line of sight to Player. 
+		while kPlayerRef.HasDetectionLos(Self as ObjectReference)
+			iLosCounter += 1 ;Line of sight fail counter will return this function if hits 25 (2.5 seconds wasted).
+			if iLosCounter >= 25 ;Better to check now.
+				return ;Stop spawning and kill the function. Player is looking too frequently.
+			endif
+			Utility.Wait(0.1)
+		endwhile
+		
+		;Else continue to place Actor.
+		if (Utility.RandomInt(1,100)) <= aiChance
+			kEz = akEzList[(Utility.RandomInt(0,iEzListSize))] ;Randomise EZ each loop
+			kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;akEz can be None
+			kGroupList.Add(kSpawned) ;Add to Group tracker
+		endif
+		
+		iCounter +=1
+	
+	endwhile
+
+EndFunction
+
+
+;PACKAGE APPLICATION LOOPS
+;--------------------------
+;From this script we are either linking to Self Object for Sandbox, or single travel marker from Region. 
+
+Function EventHelperApplyPackageSingleLocData(Actor akActor)
+
+	akActor.SetLinkedRef(Self as ObjectReference, SOTC_PackageKeyword01)
+	kPackages[0].ApplyToRef(akActor) ;Finally apply the data alias with package
+	akActor.EvaluatePackage() ;And evaluate so no delay
+	
+EndFunction
+
+
+;Link Actor to travel locs and send on their merry way
+Function EventHelperApplyPackageTravelData(Actor akActor, ObjectReference akTravelLoc)			
+	
+	;Actors only travel to single loc (then sandbox) from this script. 
+	akActor.SetLinkedRef(akTravelLoc, SOTC_PackageKeyword01)
+	kPackages[1].ApplyToRef(akActor) ;Finally apply the data alias with package
+	akActor.EvaluatePackage() ;And evaluate so no delay
+	
+EndFunction
+
+
+;-------------------------------------------------------------------------------------------------------------------------------------------------------

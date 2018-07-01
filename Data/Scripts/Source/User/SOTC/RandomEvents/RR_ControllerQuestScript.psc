@@ -1,4 +1,4 @@
-Scriptname SOTC:RR_ControllerQuestScript extends Quest
+Scriptname SOTC:RandomEvents:RR_ControllerQuestScript extends Quest
 {Controller Script}
 ;Written by SMB92
 ;Designed by request of Keith [KKTheBeast]
@@ -30,21 +30,51 @@ ObjectReference akWorkshop
 ObjectReference akDistanceTracker
 ;The actual instance of create tracker
 
-Bool bInit ;Security check to make sure Init events don't fire again while running
+Float fInit ;Used here to tell if we are active, as GetStage is not reliable for repeatable stage Quests.
 
 ;------------------------------------------------------------------------------------------------
 ;FUNCTIONS & EVENTS
 ;------------------------------------------------------------------------------------------------
 
-Event OnQuestInit()
+;DEV NOTE: As of version 0.14.01, Event Quests are now Start Enabled and stages used to send work
+;Events to this script. 
+
+;Event OnQuestInit()
 	
-	if !bInit
+	;if !bInit
+		;akDistanceTracker = PlayerRef.PlaceAtMe(akDistanceTracker, 1, true, false, false) ;Create the tracker object
+		;RegisterForDistanceGreaterThanEvent(PlayerRef, akDistanceTracker, 4096) ;Full cell size @4096
+		;bInit = true
+	;endif
+	
+;EndEvent
+
+Event OnStageSet(int auiStageID, Int auiItemID)
+	
+	;This Event does not use Stage 1 or 5, it is either on or off)
+	
+	if auiStageID == 10 ;Work
+	
 		akDistanceTracker = PlayerRef.PlaceAtMe(akDistanceTracker, 1, true, false, false) ;Create the tracker object
-		RegisterForDistanceGreaterThanEvent(PlayerRef, akDistanceTracker, 2048) ;About half a cell @2048
-		bInit = true
+		RegisterForDistanceGreaterThanEvent(PlayerRef, akDistanceTracker, 4096) ;Full cell size @4096
+		fInit = 1.0
+		
+	elseif auiStageID == 100
+		
+		akDistanceTracker.Disable()
+		akDistanceTracker.Delete()
+		
+		if akWorkshop != None ;Must be WS detected
+			UnregisterForDistanceEvents(PlayerRef, akWorkshop)
+		endif
+		SOTC_RandomRoachesDynamicQuest.Stop()
+		fInit = 0.0
+		
 	endif
-	
+		
+		
 EndEvent
+
 
 Event OnDistanceGreaterThan(ObjectReference akObj1, ObjectReference akObj2, float afDistance)
 
@@ -66,6 +96,7 @@ Event OnDistanceGreaterThan(ObjectReference akObj1, ObjectReference akObj2, floa
 	
 EndEvent
 
+
 Function WorkshopDetected(ObjectReference akNearbyWorkshop)
 	
 	akWorkshop = akNearbyWorkshop
@@ -74,12 +105,5 @@ Function WorkshopDetected(ObjectReference akNearbyWorkshop)
 	
 EndFunction
 
-Function Uninstall()
-
-	akDistanceTracker.DeleteWhenAble()
-	SOTC_RandomRoachesDynamicQuest.Stop()
-	(Self as Quest).Stop()
-	
-EndFunction
 
 ;------------------------------------------------------------------------------------------------

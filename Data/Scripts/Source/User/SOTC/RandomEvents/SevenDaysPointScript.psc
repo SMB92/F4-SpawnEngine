@@ -1,5 +1,5 @@
 Scriptname SOTC:RandomEvents:SevenDaysPointScript extends ObjectReference
-{ Seven Days to Die Event Script }
+{ Seven Days to Die Event SpawnPoint Script. }
 ;Written by SMB92.
 ;Special thanks to J. Ostrus [BigandFlabby] for making this mod possible.
 
@@ -47,37 +47,195 @@ Scriptname SOTC:RandomEvents:SevenDaysPointScript extends ObjectReference
 ;to clean themselves up after a set amount of time.
 
 
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;PROPERTIES & IMPORTS
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 import SOTC:Struct_ClassDetails
+
+SOTC:MasterQuestScript Property MasterScript Auto Const
+{ Fill with MasterQuest. }
 
 SOTC:RandomEvents:SevenDaysQuestScript Property Controller Auto Const
 { Fill with the Controller Quest for this Event }
 
-SOTC:MasterQuestScript Property MasterScript Auto Const
-{ Fill with MasterQuest }
+ReferenceAlias Property kRushPackage Auto Const
+{ Fill with the Rush Package Alias From MasterScript. }
 
-ActorBase[] kGroupList ; The group of Spawned Actors
+Keyword Property SOTC_PackageKeyword01 Auto Const
+{ Auto-fill. Default keyword used with Single Location Package. }
+
+EncounterZone Property SOTC_Ez_1_0 Auto Const
+{ Auto-fill. Unleveled EZ ensures spawns scale to Player. }
+
+Actor[] kGroupList ; The group of Spawned Actors
+Int iLosCounter ;This will be incremented whenever a Line of sight check to Player fails. If reaches 25, spawning aborts. As we at least spawn 1 actor
+;to start with, this remains safe to use (however Player may see that one actor being spawned. its just easier to live with). 
+
+Int iHelperFireTimerID = 3 Const
+
+SOTC:ThreadControllerScript ThreadController ;Fills at runtime
+SOTC:ActorClassPresetScript ActorParamsScript
+SOTC:ActorManagerScript ActorManager ;Fills at runtime
 
 
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;SPAWN FUNCTION & EVENTS
-;------------------------------------------------------------------------------------------------
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ;Function called by Controller to start the Event Spawn.
-Function BeginSpawn(SOTC:ActorClassPresetScript aActorParamsScript)
+Function EventHelperBeginSpawn(SOTC:ActorClassPresetScript aActorParamsScript)
 
-	;ThreadController = MasterScript.ThreadController ;Call when needed instead.
-
-	;Set the Params struct. Always use the "None" difficulty level (4)
-	ClassDetailsStruct ActorParams = aActorParamsScript.ClassDetails[4] 
+	;SetSpScriptLinks. This script takes no consideration for Regional properies, Master level only.
+	ThreadController = MasterScript.ThreadController
+	ActorParamsScript = aActorParamsScript
+	ActorManager = aActorParamsScript.ActorManager
 	
-
-	;CURRENTLY INCOMPLETE AWAITING UPDATE.
+	StartTimer(0.2, iHelperFireTimerID) ;Ready to start own thread
 	
+EndFunction
+
+
+Event OnTimer(int aiTimerID)
+
+	if aiTimerID == iHelperFireTimerID
+		
+		ThreadController.ForceAddThreads(1) 
+		EventHelperPrepareSingleGroupSpawn()
+		ThreadController.ReleaseThreads(1) ;Spawning done, threads can be released.
+		
+	endif
+	
+EndEvent
+
+
+Function EventHelperPrepareSingleGroupSpawn()
+
+	;Begin spawn code
+	ClassDetailsStruct ActorParams = ActorParamsScript.ClassDetails[MasterScript.iCurrentPreset]
+	
+	
+	;Organise the ActorBase arrays
+	;------------------------------
+	
+	ActorBase[] kRegularUnits = (ActorParamsScript.GetRandomGroupLoadout(false)) as ActorBase[] ;Cast to copy locally
+	ActorBase[] kBossUnits
+	Bool bBossAllowed = (ActorParams.iChanceBoss) as Bool
+	if bBossAllowed ;Not gonna set this unless it's allowed. Later used as parameter
+		kBossUnits = (ActorParamsScript.GetRandomGroupLoadout(true)) as ActorBase[] ;Cast to copy locally
+	endif
+	
+	;Set difficulty level from Master.
+	Int iDifficulty = MasterScript.iCurrentDifficulty
+	
+	;Begin spawning.
+	;---------------
+	
+	Int iRegularActorCount ;Required for loot system
+	
+	EventHelperSpawnActorSingleLocLoop(ActorParams.iMaxAllowed, ActorParams.iChance, kRegularUnits, false, iDifficulty)
+
+	iRegularActorCount = (kGroupList.Length) ;Required for loot system
+
+	if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
+		EventHelperSpawnActorSingleLocLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, kBossUnits, true, iDifficulty)
+	endif
+	
+	
+	;Check for loot pass, inform ThreadController of the spawned numbers.
+	;---------------------------------------------------------------------
+	
+	if ActorManager.bLootSystemEnabled
+		Int iBossCount = (kGroupList.Length) - iRegularActorCount ;Also required for loot system
+		ActorManager.DoLootPass(kGroupList, iBossCount)
+	endif
+	
+	;Lastly, we tell Increment the Active NPC and SP on the Thread Controller
+	ThreadController.IncrementActiveNpcCount(kGroupList.Length)
+	ThreadController.IncrementActiveSpCount(1)
+	
+		
+EndFunction
+
+
+Function EventHelperSpawnActorSingleLocLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, Bool abIsBossSpawn, Int aiDifficulty)
+	
+	if !abIsBossSpawn ;As SPs are designed to only spawn one group each, only init this list the first time. 
+		kGroupList = new Actor[0] ;Needs to be watched for errors with arrays getting trashed when init'ed 0 members.
+		aiChance += (Controller.GetSpawnChanceBonus())
+		aiMaxCount += (Controller.GetMaxCountBonus())
+	endif
+	
+	Int iCounter = 1 ;Guarantee the first Actor
+	Int iActorListSize = (akActorList.Length) - 1 ;Need actual size
+	Actor kSpawned
+	
+	;Spawn the first guaranteed Actor
+	kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, SOTC_Ez_1_0) ;Ez is unleveled here.
+	kGroupList.Add(kSpawned) ;Add to Group tracker
+	
+	;Begin chance based placement loop for the rest of the Group
+	while iCounter <= aiMaxCount
+	
+		if (Utility.RandomInt(1,100)) <= aiChance
+			kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, SOTC_Ez_1_0) ;Ez is unleveled here. 
+			kGroupList.Add(kSpawned) ;Add to Group tracker
+			EventHelperApplyPackageSingleLocData(kSpawned)
+		endif
+		
+		iCounter +=1
+	
+	endwhile
 
 EndFunction
 
-;------------------------------------------------------------------------------------------------
+
+Function EventHelperApplyPackageSingleLocData(Actor akActor)
+
+	akActor.SetLinkedRef(MasterScript.PlayerRef, SOTC_PackageKeyword01)
+	kRushPackage.ApplyToRef(akActor) ;Finally apply the data alias with package
+	akActor.EvaluatePackage() ;And evaluate so no delay
+	
+EndFunction
+
+
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+;CLEANUP FUNCTIONS & EVENTS - EVENT HELPER SCRIPT
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+;The owning SpawnPoint will delete this isntance when the following has returned. 
+
+Function EventHelperFactoryReset()
+
+	EventHelperCleanupActorRefs()
+	
+	ActorParamsScript = None
+	ActorManager = None
+	
+	ThreadController.IncrementActiveSpCount(-1)
+	ThreadController = None
+
+EndFunction
+
+
+;Cleans up all Actors in GroupList
+Function EventHelperCleanupActorRefs() 
+
+	int iCounter = 0
+	int iSize = kGroupList.Length
+        
+	while iCounter < iSize
+
+		kRushPackage.RemoveFromRef(kGroupList[iCounter]) ;Remove package data. Perhaps not necessary either?
+		;NOTE: Removed code that removes linked refs. Unnecesary.
+		kGroupList[iCounter].Delete()
+		iCounter += 1
+	
+	endwhile
+	
+	kGroupList.Clear()
+	ThreadController.IncrementActiveNpcCount(-iSize)
+	
+EndFunction
+
+;-------------------------------------------------------------------------------------------------------------------------------------------------------

@@ -100,7 +100,7 @@ Group LootConfig
 
 	Bool Property bLootSystemEnabled Auto Mandatory
 	{ Init false. Set in Menu. When on, spawned Actors of this type may possibly 
-	receive a loot item from one of the Formlists below }
+receive a loot item from one of the Formlists below }
 	
 	Formlist Property kRegularLootList Auto Const Mandatory
 	{ Fill with Formlist made for this Actor Type's regular loot }
@@ -108,11 +108,11 @@ Group LootConfig
 	Formlist Property kBossLootList Auto Const Mandatory
 	{ Fill with Formlist made for this Actor Type's boss loot }
 	
-	Int Property iRegularLootChance Auto
-	{ Init 20. Change in Menu. Chance an Actor will receive a loot item }
+	Int Property iRegularLootChance = 20 Auto
+	{ Default value of 20. Change in Menu. Chance an Actor will receive a loot item }
 	
-	Int Property iBossLootChance Auto
-	{ Init 10. Change in Menu. Chance an Actor will receive a loot item }
+	Int Property iBossLootChance = 10 Auto
+	{ Default value of 10. Change in Menu. Chance an Actor will receive a loot item }
 	
 EndGroup
 
