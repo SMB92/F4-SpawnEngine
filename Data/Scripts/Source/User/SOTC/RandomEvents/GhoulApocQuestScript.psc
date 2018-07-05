@@ -105,7 +105,6 @@ Event OnStageSet(Int auiStageID, int auiItemID)
 		MasterScript.SafelyRegisterActiveEvent("Bypass", Self as Quest)
 		;This event is pended twice as it has a higher chance to occur than others.
 		fInit = 1.0
-		SOTC_Global_EventQuestStatus.SetValue(fInit) ;Saves doing it from Menu.
 	
 	elseif auiStageID == 10 
 		
@@ -113,11 +112,14 @@ Event OnStageSet(Int auiStageID, int auiItemID)
 	
 	elseif auiStageID == 100 ;Shutdown
 	
-		MasterScript.SafelyUnregisterActiveEvent("Bypass", Self as Quest)
-		MasterScript.SafelyUnregisterActiveEvent("Bypass", Self as Quest) 
-		;This event is pended twice as it has a higher chance to occur than others.
-		fInit = 0.0
-		SOTC_Global_EventQuestStatus.SetValue(fInit) ;Saves doing it from Menu.
+		if fInit == 1.0 ;Ensure we we're active. Startup stage is also 100. 
+	
+			MasterScript.SafelyUnregisterActiveEvent("Bypass", Self as Quest)
+			MasterScript.SafelyUnregisterActiveEvent("Bypass", Self as Quest) 
+			;This event is pended twice as it has a higher chance to occur than others.
+			fInit = 0.0
+		
+		endif
 		
 	endif
 	

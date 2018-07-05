@@ -142,14 +142,14 @@ Group ModSettings
 	Int Property iMasterSpawnChance = 100 Auto
 	{ Default 100, change in Menu. Chance SpawnPoints firing, has massive effect on balance. }
 
-	Int Property iCurrentPreset Auto ; 3 Major presets + 1 User Custom (1-4)
+	Int Property iCurrentPreset Auto Conditional ; 3 Major presets + 1 User Custom (1-4)
 
 	;LEGEND - PRESETS
 	; [1] SOTC ("Spawns of the Commonwealth" default) - Easiest, suit vanilla/passive player.
 	; [2] WOTC ("War of the Commonwealth") - Higher chances of spawns and group numbers etc.
 	; [3] COTC (Carnage of the Commonwealth") - What it says on the tin. 
 
-	Int Property iCurrentDifficulty Auto ;Same as vanilla (0-4)
+	Int Property iCurrentDifficulty Auto Conditional ;Same as vanilla (0-4)
 	
 	;LEGEND - DIFFICULTY LEVELS
 	;Same as Vanilla. Only in Bethesda games does None = 4 (value 4 is "No" difficulty, scale to player)
@@ -161,7 +161,7 @@ Group ModSettings
 	; 4 - NONE - Scale to player.
 
 	Bool Property bVanillaMode Auto ;Yay or nay 
-	{ Init false. Vanilla mode disables certain SpawnPoints }
+	{ Default value is TRUE. Change in Menu. Vanilla mode disables certain SpawnPoints. }
 
 	Int Property iEzApplyMode Auto
 	{ Initialise with 0. Set in Menu. 0 = None, 1 = 1x Random Ez Per Group, 2 = Per Actor }
@@ -170,7 +170,7 @@ Group ModSettings
 	{ Initialise with 0. Set in Menu. 1 = Disable Borders. }
 	
 	Bool Property bAllowPowerArmorGroups Auto
-	{ Init false. Set in Menu. Enables/Disables groups with Power Armor units } 
+	{ Init false. Set in Menu. Enables/Disables groups with Power Armor units }
 
 EndGroup
 
@@ -210,7 +210,7 @@ Bool bForceResetCustomRegionSettings
 Bool bForceResetCustomSpawnTypeSettings
 Int iValue01 ;A temp variable that can be used for CustomEvents if needed.
 Int iValue02 ;A temp variable that can be used for CustomEvents if needed.
-	
+
 ;-------------------------------------
 
 
@@ -270,27 +270,33 @@ Int iUncommonChance
 
 EndStruct
 
+;----------------------------------------
+
 
 Group SpawnSettings
 
 	Int Property iRerollChance Auto
-	{ Initialise with 0, set by Menu. Chance of a MultiPoint rolling out another group. }
+	{ Default value of 25, change in Menu. Chance of a MultiPoint rolling out another group. }
 
 	Int Property iRerollMaxCount Auto
-	{ Initialise with 0, set by Menu. Maximum number of times a MultiPoint Reroll can occur. }
+	{ Default value of 2, change in Menu. Maximum number of times a MultiPoint Reroll can occur. }
 	
 	RarityChancesPresetStruct[] Property RarityChancePresets Auto Const
 	{ Fill each members struct with balanced values for Rarity chances. }
 
 	Int Property iCommonActorChance Auto
-	{ Initialise with 0, set by Menu. Chance of Common Actor appearing in a Region }
+	{ Default value of 60 (preset 4), change in Menu. Chance of Common Actor appearing in a Region. }
 
 	Int Property iUncommonActorChance Auto
-	{ Initialise with 0, set by Menu. Chance of Common Actor appearing in a Region. Above this, spawns Rare }
+	{ Default value of 30 (preset 4), change in Menu. Chance of Uncommon Actor appearing in a Region. Above this, spawns Rare. }
+	
+	Int[] Property iSpPresetBonusChance Auto
+	{ Members 1-3 (0 ignored) can be set from Menu to apply a bonus "chance to fire" percent value to all SpawnPoints in the Region.
+Init 4 members with default values of 0 = 0, 1 = 0, 2 = 5, 3 = 10.	}
 
 EndGroup
 
-Int iCurrentRarityChancePreset ;Local storage of the last value selected from Menu
+Int iCurrentRarityChancePreset = 3 ;Local storage of the last value selected from Menu. Default Preset = 3 (60/30/10).
 
 
 ;------------------------------
@@ -459,7 +465,6 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 	if !bInit
 		
 		SetMenuSettingsMode(10)
-		PlayerRef.Additem(SOTC_MainMenuTape, 1, false) ;We want to know it's been added.
 
 		iCurrentPreset = aiPresetToSet
 		
@@ -491,6 +496,8 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 			iCounter += 1
 			
 		endwhile
+		
+		Debug.Trace("All STMs created, size now: " +SpawnTypeMasters.Length)
 		
 		
 		;Start all ActorManagers
@@ -554,6 +561,8 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		
 		SendCustomEvent("InitTravelLocs", kArgs)
 		
+		PlayerRef.Additem(SOTC_MainMenuTape, 1, false) ;We want to know it's been added.
+		
 		Debug.Trace("Setup Complete")
 	
 	endif
@@ -565,16 +574,22 @@ EndFunction
 
 Function FillMasterActorLists()
 
-	Int iCounter = 1 ;Start from Urban spawntype. 0 is Master list.
+	Int iCounter
 	
-	Int iSize = SpawnTypeMasters[0].ActorList.Length
+	;Ensure first member on ST Master is not None, for whatever reason, such as not being done before this was called. 
+	if SpawnTypeMasters[0].ActorList[0] == None
+		SpawnTypeMasters[0].ActorList.Remove(0)
+	endif
+	
 	SOTC:ActorManagerScript CurrentActor = SpawnTypeMasters[0].ActorList[0] ;Kick it off with first member
+	Int iSize = SpawnTypeMasters[0].ActorList.Length
 	
 	;NOTE: Remember that SpawnType 0 is the Main Random List, here we organise everything else.
 	
 	while iCounter < iSize
 		
 		AddActorToMasterSpawnTypes(CurrentActor)
+		Debug.Trace("Actor was added to SpawnTypes. ID was: " +iCounter)
 		;Decided 2 loops was better. Can use loop function as standalone later.
 		
 		iCounter += 1
@@ -582,14 +597,17 @@ Function FillMasterActorLists()
 		
 	endwhile
 	
+	Debug.Trace("All Actors added to SpawnTypes.")
+	
 	;Remove all first members of None, to avoid script errors. (Patch 0.09.01)
-	iCounter = 0
+	iCounter = 1 ;Start from Urban STM, we already done [0] (Master list) above. 
 	iSize = SpawnTypeMasters.Length
 	
 	while iCounter < iSize
 	
-		if (SpawnTypeMasters[iCounter].ActorList.Length > 1) && (SpawnTypeMasters[iCounter].ActorList[0] == None)
+		if ((SpawnTypeMasters[iCounter].ActorList.Length) > 1) && (SpawnTypeMasters[iCounter].ActorList[0] == None)
 			SpawnTypeMasters[iCounter].ActorList.Remove(0)
+			Debug.Trace("Removed remaining member of None from STM ActorList, ID was: " +iCounter)
 		endif
 		
 		iCounter += 1
@@ -806,7 +824,7 @@ EndFunction
 
 
 ;Used to send custom single setting changes on the Master level, from the menu directly.
-Function SendMasterSingleSettingUpdateEvent(string asSetting, Bool abBool01 = false, Int aiInt01 = 0, Float aiFloat01 = 0.0) ;Parameters optional if needed
+Function SendMasterSingleSettingUpdateEvent(string asSetting, Bool abBool01 = false, Int aiInt01 = 0, Int aiInt02 = 0, Float aiFloat01 = 0.0) ;Parameters optional if needed
 
 	;NOTE: Here we use strings for the first Var[] member so that this one event can be universal.
 	;Will be received by all scripts that registered, but ignored if it isn't for them.
@@ -856,12 +874,22 @@ Function SendMasterSingleSettingUpdateEvent(string asSetting, Bool abBool01 = fa
 		SettingParams[1] = iRandomAmbushChance
 		SendCustomEvent("MasterSingleSettingUpdate", SettingParams)
 		
+	elseif asSetting == "SpPresetBonusChance"
+	
+		SettingParams = new Var[3]
+		SettingParams[0] = asSetting
+		SettingParams[1] = aiInt01 ;The selected Preset to set value for. 
+		SettingParams[2] = aiInt02 ;The value to set
+		SendCustomEvent("MasterSingleSettingUpdate", SettingParams)
+		
 	elseif asSetting == "ForceResetSps"
 	
 		SendCustomEvent("ForceResetAllSps")
 		;Menu safe as it does not reset Timers.
 		
 	endif
+	
+	;DEV NOTE: May revisit the use of the optional bool param and possibly implement override options for Regions with CustomSettings flag enabled. 
 	
 EndFunction
 
@@ -947,7 +975,9 @@ EndFunction
 Function SetMenuCurrentWorld(Int aiWorldID)
 	
 	SOTC_Global_CurrentMenuWorld.SetValue(aiWorldID as Float)
-	SOTC_Global_RegionCount.SetValue(((Worlds[aiWorldID].Regions.Length - 1) as Float)) ;We need the offset value
+	SOTC_Global_RegionCount.SetValue(((Worlds[aiWorldID].Regions.Length) as Float)) ;We need the offset value
+	Debug.Trace("Menu current World was set. Value is: " +SOTC_Global_CurrentMenuWorld.GetValue())
+	Debug.Trace("Region count for World is: " +SOTC_Global_RegionCount.GetValue())
 	
 EndFunction
 
@@ -956,7 +986,8 @@ Function SetMenuCurrentRegion(Int aiRegionID)
 	
 	SOTC_Global_CurrentMenuRegion.SetValue(aiRegionID as float) ;This value is semi obsolete as of version 0.13.01
 	MenuCurrentRegionScript = Worlds[(SOTC_Global_CurrentMenuWorld.GetValue() as Int)].Regions[aiRegionID]
-
+	Debug.Trace("Menu current Region was set. Value is: " +SOTC_Global_CurrentMenuRegion.GetValue())
+	
 EndFunction
 
 
@@ -1038,6 +1069,17 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 			SendMasterSingleSettingUpdateEvent("EzBorderMode")
 		endif
 		SOTC_Global02.SetValue(iEzBorderMode as Float)
+		
+	elseif asSetting == "SpPresetBonusChance"
+	;Global01 is set to selected Preset in Menu. Then here we can play with the real bonus value.
+	;This is required as same sub-menu is used for all 3 Preset selections.	
+		
+		Int i = (SOTC_Global01.GetValue()) as Int 
+		if abSetValues
+			iSpPresetBonusChance[i] = aiValue01
+			SendMasterSingleSettingUpdateEvent("SpPresetBonusChance", i, aiValue01)
+		endif
+		SOTC_Global02.SetValue(iSpPresetBonusChance[i] as Float)
 		
 	elseif asSetting == "RarityChances"
 	;DEV NOTE - Rarity chances are a bit different from other settings, only presets are given
@@ -1212,6 +1254,15 @@ Function ShowSpawnWarning()
 		endif
 	
 	endif
+	
+EndFunction
+
+
+;This function returns the Radroach ClassPreset[1] when a SpawnTypeRegional instance fails to produce an Actor due to empty lists. 
+;This is done instead of intricate security functions and returns, and also an ode to Bethesdas own failsafe for Actors.
+SOTC:ActorClassPresetScript Function GetMasterFailsafeActor()
+
+	return SpawnTypeMasters[0].ActorList[2].ClassPresets[1] ;Radroaches, Common Preset.
 	
 EndFunction
 

@@ -189,10 +189,11 @@ ActorBase[] Function GetRandomGroupLoadout(bool abGetBossList)
 	
 EndFunction
 
+;DEV NOTE: These two functions (above and below this) need to be renamed approriately next version (0.14.03).
 
 ;This function return a single group loadout for spawning (Script Instance version)
 ;Mostly unused, but exists if needed
-ActorGroupLoadoutScript Function GetRandomGroupScript()
+SOTC:ActorGroupLoadoutScript Function GetRandomGroupScript()
 
 	Int iSize
 	SOTC:ActorGroupLoadoutScript ElectedGroup

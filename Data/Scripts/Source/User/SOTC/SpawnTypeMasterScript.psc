@@ -123,6 +123,7 @@ EndFunction
 Function InitMasterActorList(Int aiNumOfActors)
 
 	ActorList = new SOTC:ActorManagerScript[aiNumOfActors]
+	Debug.Trace("Master Actor List Initialised to: " +ActorList.Length)
 	
 EndFunction
 

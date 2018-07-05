@@ -5,6 +5,10 @@
 
 ## NEWS
 
+### Update 0.15.01 brings further refinements before Alpha.
+
+[05/07/2018] While I did say the last update would probably be the last, as it would be a number of optimizations and fixes were found while polishing the files. Big kudos to Jostrus yet again for stellar ideas/methods/optimizations! Not going to call this the last update before Alpha again, but I do consider the framework for it complete at this stage.  
+
 ### Another major milestone reached, SpawnEngine updated to version 0.14.01. 
 
 [01/07/2018] Intended to be the final update before the next Alpha release (which is looking to be public), this updates brings significant amounts of new terminal Menus, completes the code for the included Random Events (Seven Days to Die, Ghoul Apocalypse and Random Roaches), a few more bug fixes and a few more minor features added here and there for better effect. Now I have started dropping and configuring SpawnPoints across Commonwealth Region 1, and as soon as that is done we'll have our first REAL taste of what this mod will deliver!  
@@ -77,6 +81,36 @@ Please be patient while work continues on both a working test file and official 
 
 ## UPDATE LOG
 
+##### [05/07/2018] SpawnEngine updated to version 0.15.01.180705
+
+###### HOUSEKEEPING:
+- Update Notepad++ lang file again.
+- Add some debug traces here and there on MasterScript. 
+
+###### MAJOR/MINOR FEATURE UPDATES/CHANGES/ADDITIONS:
+- [MINOR] Added ability (and Menu) to set SpPresetChanceBonus on the Master level (as in all Regions at once).
+- [MINOR] Added SetMenuVars() function to SpawnPointScript, along with 3 Globals as Properties (only one in use, but future proofing). Necessary for future Menus for "contested" SPs that are toggleable from Menu.  
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Optimize a number fo terminal fragments to use single common function where possible, and fix a few big/small issues (special thanks to Jostrus again for help with this). 
+- Removed hard-coded setting of Region/Master SpawnChance values now that SpBonusChnace is implemented.  
+- Revamped security measures on SpawnTypeRegionalScript's GetRandomActor() function regarding if certain Actor lists are empty. Functions will check the next applicable list for content, and if or some reason the yare all empty, will activate a failsafe on MasterScript. 
+- Added new function to Master, GetMasterFailsafeActor() which will pull Radraoches to spawn if the ST script lists are empty (just like vanilla failback! :D ). 
+- Rename Property ActorListScript on SpawnTypeRegionalScript to SpawnTypeMaster for clarity. 
+- Fix major issue left over from many versions ago with grabbing GroupLoadout data. Had intended to change over to returning entire GroupLoadoutScript to SpawnPoints, so Regular unit list and Boss list can go hand in hand (whereas currently/previously, was grabbing either list at random each time, major problem if intended group had no bosses defined with the way things were setup). Function was already written, just had to change SpawnPoint scripts to use this instead and run an additional check. 
+- Slightly changed instantation method of ActorClassPresetScripts, no longer checking for blank members on base object array on ActorManager. Not necessary as they set themselves to correct index anyway. 
+- Change RegionManager to grab size of SpawnTypeMasters list from MasterScript instead of using hard coded number. 
+- Fix Random Event quests running shutdown code on startup (added check). 
+- Add default values to some Properties on Master and RegionManager (and update descriptions).
+- Fix initialisation error with FillMasterActorLists() on MasterScript overshooting by 1. 
+- Recompile all Terminal fragments to fix errors with extra parameter added to Menu function in previous version (which was since removed again). This logged Papyrus errors of "Incorrect number of parameters" as some fragments were compiled without this change, and caused menu item conditions to not work properly interestingly enough. 
+- Fix Difficulty settings Menu terminal fragment running unnecessary function call (double handling).
+- Fix MasterSingleSettingsUpdate() mix up with "Random Ambush" chance and "Sp Preset Chance bonus" settings. Had entered code in wrong spot after copying. 
+- Change Master Init function to add SOTC Main Menu tape AFTER setup completes.
+- Removed setting of EventQuestStatus global OnStageSet in GhoulApocQuestScript. This may lead to race conditions in future, so now Menu must explicitly call SetMenuVars() to update the value when necessary. 
+- Set default value of bVanillaMode to TRUE on MasterScript. Predict there will be less problems this way if user doesn't flag this manually after installing.
+
+------
 ##### [01/07/2018] SpawnEngine updated to version 0.14.01.180701
 
 ###### HOUSEKEEPING:

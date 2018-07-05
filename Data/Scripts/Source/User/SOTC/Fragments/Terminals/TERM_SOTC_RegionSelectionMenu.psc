@@ -5,7 +5,6 @@ Scriptname SOTC:Fragments:Terminals:TERM_SOTC_RegionSelectionMenu Extends Termin
 Function Fragment_Terminal_01(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(19)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -14,7 +13,6 @@ EndFunction
 Function Fragment_Terminal_02(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(0)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -23,7 +21,6 @@ EndFunction
 Function Fragment_Terminal_03(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(1)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -32,7 +29,6 @@ EndFunction
 Function Fragment_Terminal_04(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(2)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -41,7 +37,6 @@ EndFunction
 Function Fragment_Terminal_05(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(3)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -50,7 +45,6 @@ EndFunction
 Function Fragment_Terminal_06(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(4)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -59,7 +53,6 @@ EndFunction
 Function Fragment_Terminal_07(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(5)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -68,7 +61,6 @@ EndFunction
 Function Fragment_Terminal_08(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(6)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -77,7 +69,6 @@ EndFunction
 Function Fragment_Terminal_09(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(7)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -86,7 +77,6 @@ EndFunction
 Function Fragment_Terminal_10(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(8)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -95,7 +85,6 @@ EndFunction
 Function Fragment_Terminal_11(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(9)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -104,7 +93,6 @@ EndFunction
 Function Fragment_Terminal_12(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(10)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -113,7 +101,6 @@ EndFunction
 Function Fragment_Terminal_13(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(11)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -122,7 +109,6 @@ EndFunction
 Function Fragment_Terminal_14(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(12)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -131,7 +117,6 @@ EndFunction
 Function Fragment_Terminal_15(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(13)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -140,7 +125,6 @@ EndFunction
 Function Fragment_Terminal_16(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(14)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -149,7 +133,6 @@ EndFunction
 Function Fragment_Terminal_17(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(15)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -158,7 +141,6 @@ EndFunction
 Function Fragment_Terminal_18(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(16)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -167,7 +149,6 @@ EndFunction
 Function Fragment_Terminal_19(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(17)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -176,7 +157,6 @@ EndFunction
 Function Fragment_Terminal_20(ObjectReference akTerminalRef)
 ;BEGIN CODE
 (SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuCurrentRegion(18)
-(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuSettingsMode(1)
 ;END CODE
 EndFunction
 ;END FRAGMENT

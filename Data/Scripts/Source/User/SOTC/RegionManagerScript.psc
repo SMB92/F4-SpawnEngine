@@ -201,7 +201,7 @@ Formlist akEzEasyList, Formlist akEzHardList, Formlist akEzEasyNBList, Formlist 
 		;Create instances of spawntype objectreferences and set them up
 		ObjectReference kNewInstance
 		Int iCounter
-		Int iSize = 16 ;Need to figure out more intuitive way, currently hard set to number of default.
+		Int iSize = MasterScript.SpawnTypeMasters.Length - 1
 		
 		while iCounter < iSize
 		
@@ -319,10 +319,17 @@ Event SOTC:MasterQuestScript.MasterSingleSettingUpdate(SOTC:MasterQuestScript ak
 	
 		iRandomAmbushChance = akArgs[1] as Int
 		bCustomSettingsActive = true
+		
+	elseif (akArgs[0] as string) == "SpPresetBonusChance"
 	
+		iSpPresetChanceBonusList[(akArgs[1] as Int)] = akArgs[2] as Int
+		;[1] = index, [2] = value to set. 
+		bCustomSettingsActive = true
+		
 	endif
 	
 	;No need for iEventFlagCount for these events.
+	;DEV NOTE: May look at removing bCustomSettingsActive flag in future. 
 	
 EndEvent
 
@@ -431,31 +438,28 @@ EndFunction
 ;MENU FUNCTIONS
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
-;As of version 0.13.01, this sets preset values for various settings instead of using the old struct
-;method (previously stored struct of settings in an array with the index matching presets ID's). This
-;is used for both Master Events and Menu direct setting of presets. iCurrentPreset must be set first.
+;As of version 0.13.01, this sets preset values for various settings instead of using the old struct method (previously stored struct of settings in an 
+;array with the index matching presets ID's). This is used for both Master Events and Menu direct setting of presets. iCurrentPreset must be set first,
+;which SetMenuVars handles, and MasterPreset event will only do if CustomSettings flag is false/set to be overridden. 
 ;Setting from Menu will flag bCustomSettingsActive as true. Presets are hard coded.
 Function SetPresetVars(Bool abSetCustomFlag = false) ;Parameter value used when custom setting from Menu.
 
 	bCustomSettingsActive = abSetCustomFlag
 	
 	if iCurrentPreset == 1 ;SOTC Preset
-		iRegionSpawnChance = 75
 		iRandomSwarmChance = 5
 		iRandomRampageChance = 5
 		iRandomAmbushChance = 5
 	
 	elseif iCurrentPreset == 2 ;WOTC Preset
-		iRegionSpawnChance = 85
 		iRandomSwarmChance = 10
-		iRandomRampageChance = 15
-		iRandomAmbushChance = 10
+		iRandomRampageChance = 5
+		iRandomAmbushChance = 5
 	
 	elseif iCurrentPreset == 3 ;COTC Preset
-		iRegionSpawnChance = 100
-		iRandomSwarmChance = 20
-		iRandomRampageChance = 25
-		iRandomAmbushChance = 15
+		iRandomSwarmChance = 10
+		iRandomRampageChance = 10
+		iRandomAmbushChance = 10
 
 	;else - WTF value was set?
 	endif
@@ -534,6 +538,7 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 
 	elseif asSetting == "SpPresetChanceBonus"
 	;Global01 is set to selected Preset in Menu. Then here we can play with the real bonus value.
+	;This is required as same sub-menu is used for all 3 Preset selections.
 		
 		Int i = (SOTC_Global01.GetValue()) as Int ;Get the selected Menu Preset stored in Global above.
 		if abSetValues

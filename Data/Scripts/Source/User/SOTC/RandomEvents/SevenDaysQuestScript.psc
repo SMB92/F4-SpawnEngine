@@ -174,16 +174,20 @@ Event OnStageSet(Int auiStageID, int auiItemID)
 		endif
 		
 	elseif auiStageID == 100 ;Shutdown
+	
+		if fInit == 1.0 ;Ensure we we're active. Startup stage is also 100. 
 		
-		if bPending == true ;Remove from MasterScript queue if Pending
-			
-			MasterScript.SafelyUnregisterActiveEvent("Timed", Self as Quest)
+			if bPending == true ;Remove from MasterScript queue if Pending
+				
+				MasterScript.SafelyUnregisterActiveEvent("Timed", Self as Quest)
 
+			endif
+			
+			iEventCounter = 0
+			CancelTimerGameTime(iEventTimerID)
+			fInit = 0.0
+			
 		endif
-		
-		iEventCounter = 0
-		CancelTimerGameTime(iEventTimerID)
-		fInit = 0.0
 		
 	endif
 	

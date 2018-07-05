@@ -4,14 +4,14 @@ Scriptname SOTC:Fragments:Terminals:TERM_SOTC_SettingsMenu_RSEvents Extends Term
 ;BEGIN FRAGMENT Fragment_Terminal_01
 Function Fragment_Terminal_01(ObjectReference akTerminalRef)
 ;BEGIN CODE
-if (SOTC_Global_MenuSettingsMode.GetValue()) == 0.0
+if MasterScript.iMenuSettingsMode == 0 ;Master Mode, apply to all
 
-	(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuVars("RegionSwarmChance")
-	
-else ;Outright assume 1.0 value, Region mode. 
+	MasterScript.SetMenuVars("RegionSwarmChance")
 
-	(SOTC_MasterQuest as SOTC:MasterQuestScript).MenuCurrentRegionScript.SetMenuVars("RegionSwarmChance")
-	
+elseif MasterScript.iMenuSettingsMode == 1 ;Regional Mode, apply to Region only
+
+	MasterScript.MenuCurrentRegionScript.SetMenuVars("RegionSwarmChance")
+
 endif
 ;END CODE
 EndFunction
@@ -20,14 +20,14 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_02
 Function Fragment_Terminal_02(ObjectReference akTerminalRef)
 ;BEGIN CODE
-if (SOTC_Global_MenuSettingsMode.GetValue()) == 0.0
+if MasterScript.iMenuSettingsMode == 0 ;Master Mode, apply to all
 
-	(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuVars("RegionRampageChance")
-	
-else ;Outright assume 1.0 value, Region mode. 
+	MasterScript.SetMenuVars("RegionRampageChance")
 
-	(SOTC_MasterQuest as SOTC:MasterQuestScript).MenuCurrentRegionScript.SetMenuVars("RegionRampageChance")
-	
+elseif MasterScript.iMenuSettingsMode == 1 ;Regional Mode, apply to Region only
+
+	MasterScript.MenuCurrentRegionScript.SetMenuVars("RegionRampageChance")
+
 endif
 ;END CODE
 EndFunction
@@ -36,14 +36,14 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_03
 Function Fragment_Terminal_03(ObjectReference akTerminalRef)
 ;BEGIN CODE
-if (SOTC_Global_MenuSettingsMode.GetValue()) == 0.0
+if MasterScript.iMenuSettingsMode == 0 ;Master Mode, apply to all
 
-	(SOTC_MasterQuest as SOTC:MasterQuestScript).SetMenuVars("RegionAmbushChance")
-	
-else ;Outright assume 1.0 value, Region mode. 
+	MasterScript.SetMenuVars("RegionAmbushChance")
 
-	(SOTC_MasterQuest as SOTC:MasterQuestScript).MenuCurrentRegionScript.SetMenuVars("RegionAmbushChance")
-	
+elseif MasterScript.iMenuSettingsMode == 1 ;Regional Mode, apply to Region only
+
+	MasterScript.MenuCurrentRegionScript.SetMenuVars("RegionAmbushChance")
+
 endif
 ;END CODE
 EndFunction
@@ -51,6 +51,4 @@ EndFunction
 
 ;END FRAGMENT CODE - Do not edit anything between this and the begin comment
 
-Quest Property SOTC_MasterQuest Auto Const
-
-GlobalVariable Property SOTC_Global_MenuSettingsMode Auto Const
+SOTC:MasterQuestScript Property MasterScript Auto Const

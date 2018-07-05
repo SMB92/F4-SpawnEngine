@@ -184,13 +184,9 @@ Function PerformFirstTimeSetup(ObjectReference akMasterMarker)
 		Debug.Trace("Initialising ClassPresets")
 		
 		while iCounter < iSize
-			
-			if kClassPresetObjects[iCounter] != None ;Not all Classes defined per Actor
-				kNewInstance = akMasterMarker.PlaceAtMe(kClassPresetObjects[iCounter], 1 , false, false, false)
-				(kNewInstance as SOTC:ActorClassPresetScript).PerformFirstTimeSetup(Self)
-			else
-				Debug.Trace("Skipped adding a Class as it isn't defined")
-			endif
+			;DEV NOTE: No need to check for blank members, CP base objects insert to correct index on dynamic array anyway. 
+			kNewInstance = akMasterMarker.PlaceAtMe(kClassPresetObjects[iCounter], 1 , false, false, false)
+			(kNewInstance as SOTC:ActorClassPresetScript).PerformFirstTimeSetup(Self)
 			
 			iCounter += 1
 			

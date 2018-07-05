@@ -26,6 +26,8 @@ Scriptname SOTC:SpawnPointScript extends ObjectReference
 ;PROPERTIES & IMPORTS
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
+;DEV NOTE: Most Properties on this script are const, and should be setup properly. This should allow alterations later to be picked up without resetting.
+
 import SOTC:Struct_ClassDetails ;Struct definition needs to be present
 
 
@@ -210,6 +212,21 @@ Be careful with this value if not using with Interior/Patrol modes. }
 	Int Property iPointRandomAmbushBonus = 1 Auto Const
 	{ Enter a value above 0 if wanting to give this Point a "Random Ambush" chance bonus. Ignored for MultiPoint. }
 
+EndGroup
+
+
+Group MenuGlobals
+{ Can be used for Menu and future functions. }
+
+	GlobalVariable Property SOTC_Global01 Auto Const Mandatory
+	{ Auto-fill }
+	GlobalVariable Property SOTC_Global02 Auto Const Mandatory
+	{ Auto-fill }
+	GlobalVariable Property SOTC_Global03 Auto Const Mandatory
+	{ Auto-fill }
+	
+	;Added 3 Globals, sop in the event we actually need more, won't have to stress so much about adding more. 
+	
 EndGroup
 
 
@@ -546,6 +563,24 @@ Function ResetChildMarkers()
 EndFunction
 
 
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+;MENU FUNCTIONS
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+;Added here for ease of use with SPs that may be controllable by Menu. 
+Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 = 0)
+
+	if asSetting == "ChanceToSpawn"
+	
+		if abSetValues
+			iChanceToSpawn = aiValue01
+		endif
+		SOTC_Global01.SetValue(iClassToSpawn as Float)
+		
+	endif
+	
+EndFunction
+
 
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;SINGLE GROUP SPAWN EVENTS & FUNCTIONS
@@ -627,14 +662,16 @@ Function PrepareSingleGroupSpawn()
 	endif
 
 
-	;Organise the ActorBase arrays
-	;------------------------------
+	;Organise the ActorBase arrays/Get GroupLoadout.
+	;------------------------------------------------
 	
-	ActorBase[] kRegularUnits = (ActorParamsScript.GetRandomGroupLoadout(false)) as ActorBase[] ;Cast to copy locally
+	SOTC:ActorGroupLoadoutScript GroupLoadout = ActorParamsScript.GetRandomGroupScript()
+	
+	ActorBase[] kRegularUnits = (GroupLoadout.kGroupUnits) as ActorBase[] ;Cast to copy locally
 	ActorBase[] kBossUnits
-	Bool bBossAllowed = (ActorParams.iChanceBoss) as Bool
-	if bBossAllowed ;Set if allowed. Later used as parameter.
-		kBossUnits = (ActorParamsScript.GetRandomGroupLoadout(true)) as ActorBase[] ;Cast to copy locally
+	Bool bBossAllowed ;Later used as parameter.
+	if (ActorParams.iChanceBoss as Bool) && (GroupLoadout.kBossGroupUnits[0] != None) ;Check if Boss allowed and there is actually Boss on this GL.
+		kBossUnits = (GroupLoadout.kBossGroupUnits) as ActorBase[] ;Cast to copy locally
 	endif
 	
 	
@@ -1093,14 +1130,16 @@ Function PrepareSingleGroupNoEventSpawn()
 	endif
 
 
-	;Organise the ActorBase arrays
-	;------------------------------
+	;Organise the ActorBase arrays/Get GroupLoadout.
+	;------------------------------------------------
 	
-	ActorBase[] kRegularUnits = (ActorParamsScript.GetRandomGroupLoadout(false)) as ActorBase[] ;Cast to copy locally
+	SOTC:ActorGroupLoadoutScript GroupLoadout = ActorParamsScript.GetRandomGroupScript()
+	
+	ActorBase[] kRegularUnits = (GroupLoadout.kGroupUnits) as ActorBase[] ;Cast to copy locally
 	ActorBase[] kBossUnits
-	Bool bBossAllowed = (ActorParams.iChanceBoss) as Bool
-	if bBossAllowed ;Set if allowed. Later used as parameter.
-		kBossUnits = (ActorParamsScript.GetRandomGroupLoadout(true)) as ActorBase[] ;Cast to copy locally
+	Bool bBossAllowed ;Later used as parameter.
+	if (ActorParams.iChanceBoss as Bool) && (GroupLoadout.kBossGroupUnits[0] != None) ;Check if Boss allowed and there is actually Boss on this GL.
+		kBossUnits = (GroupLoadout.kBossGroupUnits) as ActorBase[] ;Cast to copy locally
 	endif
 	
 	

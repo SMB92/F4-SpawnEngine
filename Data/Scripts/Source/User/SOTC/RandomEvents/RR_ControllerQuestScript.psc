@@ -61,15 +61,19 @@ Event OnStageSet(int auiStageID, Int auiItemID)
 		
 	elseif auiStageID == 100
 		
-		akDistanceTracker.Disable()
-		akDistanceTracker.Delete()
-		
-		if akWorkshop != None ;Must be WS detected
-			UnregisterForDistanceEvents(PlayerRef, akWorkshop)
+		if fInit == 1.0 ;Ensure we we're active. Startup stage is also 100. 
+			
+			akDistanceTracker.Disable()
+			akDistanceTracker.Delete()
+			
+			if akWorkshop != None ;Must be WS detected
+				UnregisterForDistanceEvents(PlayerRef, akWorkshop)
+			endif
+			SOTC_RandomRoachesDynamicQuest.Stop()
+			fInit = 0.0
+			
 		endif
-		SOTC_RandomRoachesDynamicQuest.Stop()
-		fInit = 0.0
-		
+			
 	endif
 		
 		

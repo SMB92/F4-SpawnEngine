@@ -4,7 +4,7 @@ Scriptname SOTC:Fragments:Terminals:TERM_SOTC_SettingsMenu_RgnSpBonus Extends Te
 ;BEGIN FRAGMENT Fragment_Terminal_01
 Function Fragment_Terminal_01(ObjectReference akTerminalRef)
 ;BEGIN CODE
-(SOTC_MasterQuest as SOTC:MasterQuestScript).MenuCurrentRegionScript.SetMenuVars("SpPresetChanceBonus", true, 0)
+UpdateMenuVars(0)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -12,7 +12,7 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_02
 Function Fragment_Terminal_02(ObjectReference akTerminalRef)
 ;BEGIN CODE
-(SOTC_MasterQuest as SOTC:MasterQuestScript).MenuCurrentRegionScript.SetMenuVars("SpPresetChanceBonus", true, 5)
+UpdateMenuVars(5)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -20,7 +20,7 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_03
 Function Fragment_Terminal_03(ObjectReference akTerminalRef)
 ;BEGIN CODE
-(SOTC_MasterQuest as SOTC:MasterQuestScript).MenuCurrentRegionScript.SetMenuVars("SpPresetChanceBonus", true, 10)
+UpdateMenuVars(10)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -28,7 +28,7 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_04
 Function Fragment_Terminal_04(ObjectReference akTerminalRef)
 ;BEGIN CODE
-(SOTC_MasterQuest as SOTC:MasterQuestScript).MenuCurrentRegionScript.SetMenuVars("SpPresetChanceBonus", true, 15)
+UpdateMenuVars(15)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -36,7 +36,7 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_05
 Function Fragment_Terminal_05(ObjectReference akTerminalRef)
 ;BEGIN CODE
-(SOTC_MasterQuest as SOTC:MasterQuestScript).MenuCurrentRegionScript.SetMenuVars("SpPresetChanceBonus", true, 20)
+UpdateMenuVars(20)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -44,7 +44,7 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_06
 Function Fragment_Terminal_06(ObjectReference akTerminalRef)
 ;BEGIN CODE
-(SOTC_MasterQuest as SOTC:MasterQuestScript).MenuCurrentRegionScript.SetMenuVars("SpPresetChanceBonus", true, 25)
+UpdateMenuVars(25)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -52,7 +52,7 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_07
 Function Fragment_Terminal_07(ObjectReference akTerminalRef)
 ;BEGIN CODE
-(SOTC_MasterQuest as SOTC:MasterQuestScript).MenuCurrentRegionScript.SetMenuVars("SpPresetChanceBonus", true, 30)
+UpdateMenuVars(30)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -60,7 +60,7 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_08
 Function Fragment_Terminal_08(ObjectReference akTerminalRef)
 ;BEGIN CODE
-(SOTC_MasterQuest as SOTC:MasterQuestScript).MenuCurrentRegionScript.SetMenuVars("SpPresetChanceBonus", true, 40)
+UpdateMenuVars(40)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -68,7 +68,7 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_09
 Function Fragment_Terminal_09(ObjectReference akTerminalRef)
 ;BEGIN CODE
-(SOTC_MasterQuest as SOTC:MasterQuestScript).MenuCurrentRegionScript.SetMenuVars("SpPresetChanceBonus", true, 50)
+UpdateMenuVars(50)
 ;END CODE
 EndFunction
 ;END FRAGMENT
@@ -76,11 +76,25 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_10
 Function Fragment_Terminal_10(ObjectReference akTerminalRef)
 ;BEGIN CODE
-(SOTC_MasterQuest as SOTC:MasterQuestScript).MenuCurrentRegionScript.SetMenuVars("SpPresetChanceBonus", true, 100)
+UpdateMenuVars(100)
 ;END CODE
 EndFunction
 ;END FRAGMENT
 
 ;END FRAGMENT CODE - Do not edit anything between this and the begin comment
 
-Quest Property SOTC_MasterQuest Auto Const
+SOTC:MasterQuestScript Property MasterScript Auto Const
+
+Function UpdateMenuVars(Int aiValue01)
+
+	if MasterScript.iMenuSettingsMode == 0 ;Master Mode, apply to all
+
+		MasterScript.SetMenuVars("SpPresetChanceBonus", true, aiValue01)
+
+	elseif MasterScript.iMenuSettingsMode == 1 ;Regional Mode, apply to Region only
+
+		MasterScript.MenuCurrentRegionScript.SetMenuVars("SpPresetChanceBonus", true, aiValue01)
+
+	endif
+	
+EndFunction

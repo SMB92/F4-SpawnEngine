@@ -13,7 +13,7 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_05
 Function Fragment_Terminal_05(ObjectReference akTerminalRef)
 ;BEGIN CODE
-(SOTC_RE_SevenDaysControllerQuest as SOTC:RandomEvents:GhoulApocQuestScript).SetMenuVars("InitStatus")
+(SOTC_RE_GhoulApocControllerQuest as SOTC:RandomEvents:GhoulApocQuestScript).SetMenuVars("InitStatus")
 ; A variable on the script stores whehtehr or not the Event is active, as GetStage is not reliable for repeatable stage Quests.
 ;END CODE
 EndFunction

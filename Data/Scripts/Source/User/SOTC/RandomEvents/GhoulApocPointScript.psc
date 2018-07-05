@@ -175,14 +175,16 @@ Function EventHelperPrepareSingleGroupSpawn()
 	ClassDetailsStruct ActorParams = ActorParamsScript.ClassDetails[RegionManager.iCurrentPreset]
 	
 	
-	;Organise the ActorBase arrays
-	;------------------------------
+	;Organise the ActorBase arrays/Get GroupLoadout.
+	;------------------------------------------------
 	
-	ActorBase[] kRegularUnits = (ActorParamsScript.GetRandomGroupLoadout(false)) as ActorBase[] ;Cast to copy locally
+	SOTC:ActorGroupLoadoutScript GroupLoadout = ActorParamsScript.GetRandomGroupScript()
+	
+	ActorBase[] kRegularUnits = (GroupLoadout.kGroupUnits) as ActorBase[] ;Cast to copy locally
 	ActorBase[] kBossUnits
-	Bool bBossAllowed = (ActorParams.iChanceBoss) as Bool
-	if bBossAllowed ;Not gonna set this unless it's allowed. Later used as parameter
-		kBossUnits = (ActorParamsScript.GetRandomGroupLoadout(true)) as ActorBase[] ;Cast to copy locally
+	Bool bBossAllowed ;Later used as parameter.
+	if (ActorParams.iChanceBoss as Bool) && (GroupLoadout.kBossGroupUnits[0] != None) ;Check if Boss allowed and there is actually Boss on this GL.
+		kBossUnits = (GroupLoadout.kBossGroupUnits) as ActorBase[] ;Cast to copy locally
 	endif
 	
 	
