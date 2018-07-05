@@ -21,15 +21,23 @@ Scriptname SOTC:ThreadControllerScript extends ObjectReference
 
 Group Dynamic
 	
-	SOTC:SettingsEventMonitorScript Property EventMonitor Auto
-	{ Init None, fills at runtime. }
-	
 	GlobalVariable Property SOTC_Global01 Auto Const Mandatory
 	{ Auto-fill }
 	GlobalVariable Property SOTC_Global02 Auto Const Mandatory
 	{ Auto-fill }
 	GlobalVariable Property SOTC_Global03 Auto Const Mandatory
 	{ Auto-fill }
+	
+	Int Property iActiveRegionsCount Auto 
+	{ Incremented when a Region Quest starts for the first time. }
+	Int Property iActiveThreadCount Auto 
+	{ Current Active Spawnpoints spawning right now if any. }
+	Int Property iActiveSPCount Auto 
+	{ Number of active SpawnPoints. }
+	Int Property iActiveNpcCount Auto 
+	{ Number of currently managed NPCs. }
+	Int Property iEventFlagCount Auto
+	{ Init 0. Used for Master Events, instances can use this to flag themselves as completed event blocks. }
 	
 EndGroup
 
@@ -53,22 +61,6 @@ Group Settings
 	
 EndGroup
 
-
-;Suppose the following could become properties as well.
-Int iActiveRegionsCount ;Incremented when a Region Quest starts for the first time.
-Int iActiveThreadCount ;Current Active Spawnpoints spawning right now if any
-Int iActiveSPCount ;Number of active SpawnPoints
-Int iActiveNpcCount ;Number of currently managed NPCs.
-
-;Master Event Vars
-Int Property iEventFlagCount Auto
-{ Init 0. Used for Master Events (see docs/comments). }
-;A highly dynamic variable used to monitor number of instances that completed an event block 
-;during Master events. This number will be incremented by each instance that has completed it's 
-;event block, and when it compares to the expected count will enable the User/Master Script to 
-;be notified that they can resume work/play. During such events, an external monitor will run to
-;compare this value until the target is reached.
-;Currently only used to compare with Active Region count for Master to Region events.
 
 Bool bCooldownActive ;Flag to deny SPs because cooldown state is active.
 
@@ -196,7 +188,7 @@ EndFunction
 
 
 ;Increment Active NPC count
-Function IncrementActiveNpcCount(Int aiIncrement)
+Function IncrementActiveNpcCount(Int aiIncrement) ;Increment 0 to simply return the value. 
 
 	iActiveNpcCount +=  aiIncrement
 	
@@ -204,14 +196,14 @@ EndFunction
 
 
 ;Increment Active SP count
-Function IncrementActiveSpCount(Int aiIncrement)
+Function IncrementActiveSpCount(Int aiIncrement) ;Increment 0 to simply return the value. 
 
 	iActiveSpCount +=  aiIncrement
 	
 EndFunction
 
 ;Increment Active Regions Count
-Int Function IncrementActiveRegionsCount(int aiIncrement)
+Int Function IncrementActiveRegionsCount(int aiIncrement) ;Increment 0 to simply return the value. 
 
 	iActiveRegionsCount += aiIncrement
 	return iActiveRegionsCount
@@ -219,29 +211,10 @@ Int Function IncrementActiveRegionsCount(int aiIncrement)
 	
 EndFunction
 
-;Prepare the external monitor to keep an eye on Event flag count.
-Function PrepareToMonitorEvent(string asType)
 
-	if asType == "Regions"
-	
-		EventMonitor.BeginMonitor(iActiveRegionsCount) ;Parameter is target count.
-		Debug.Notification("TC Called Event Mon." +iActiveRegionsCount)
-		
-	endif
-	
-	;Currently only Region events defined here. May be extended in future.
-	
-EndFunction
-
-
-;Prepares this instance for deletion, simply deletes EventMonitor.
 Function MasterFactoryReset()
 
-	EventMonitor.Disable()
-	EventMonitor.Delete()
-	EventMonitor = None ;De-persist
-	
-	;Master will proceed to delete this instance once this returns.
+	;Currently nothing here. May be reused in future. 
 	
 EndFunction
 

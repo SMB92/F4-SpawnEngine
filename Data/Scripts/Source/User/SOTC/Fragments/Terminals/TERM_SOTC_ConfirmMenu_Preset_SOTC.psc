@@ -9,9 +9,9 @@ SOTC:MasterQuestScript MasterScript = MasterQuest as SOTC:MasterQuestScript
 
 MasterScript.SetMenuSettingsMode(10) ;Pending Full Preset
 
-MasterScript.iCurrentPreset = 3
+MasterScript.iCurrentPreset = 1
 
-MasterScript.RegisterMasterForPipBoyCloseEvent(0, 0)
+MasterScript.RegisterMasterForPipBoyCloseEvent()
 ;END CODE
 EndFunction
 ;END FRAGMENT

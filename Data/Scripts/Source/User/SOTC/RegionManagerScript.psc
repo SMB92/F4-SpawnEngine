@@ -287,6 +287,7 @@ Event SOTC:MasterQuestScript.PresetUpdate(SOTC:MasterQuestScript akSender, Var[]
 	endif
 	
 	ThreadController.iEventFlagCount += 1 ;Flag as complete
+	Debug.Trace("Region flagged Master Preset Update as complete. ID was: " +iRegionID)
 
 EndEvent
 
@@ -349,7 +350,7 @@ Event SOTC:MasterQuestScript.InitTravelLocs(SOTC:MasterQuestScript akSender, Var
 
 	if (akArgs as Bool) == True ;Initialise, add to RegionManager
 	
-		StartTimer(10, iTravelLocInitWaitTimerID)
+		StartTimer(5.0, iTravelLocInitWaitTimerID)
 		
 	endif
 	
@@ -363,7 +364,7 @@ Event OnTimer(Int aiTimerID)
 		if kTravelLocs[0] == None
 			kTravelLocs.Remove(0)
 			;Clean off the remianing None member on first index
-			Debug.Trace("A Region initialised its kTavelLocs array")
+			Debug.Trace("Region Travel Loc array should be filled, init event complete.")
 		endif
 		
 	endif
@@ -394,6 +395,7 @@ Function ReshuffleActorLists(Bool abForceReset) ;All Spawntypes attached.
 	
 		Spawntypes[iCounter].ReshuffleDynActorLists(abForceReset, iCurrentPreset)
 		;If SpawnType is running custom settings, will return immediately if parameter is False.
+		iCounter += 1
 		
 	endwhile
 	

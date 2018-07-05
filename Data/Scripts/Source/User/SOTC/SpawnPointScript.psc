@@ -165,9 +165,9 @@ Group Overrides
 that does not include these checks.	}
 
 	Bool Property bRandomiseStartLoc Auto Const
-	{ This can be used to randomise the initial placement of spawned groups with certain Package Modes. One must define a number of
-ChildPoints around this SP in order for this to work. ChildPoints should be placed in same cell as this SP, use at own risk 
-otherwise. Supported Package Modes are 0, 1 and 2. For Mode 0 (Sandbox/Hold), this overrides the use of iNumPackageLocs if set.
+	{ This can be used to randomise the initial placement of spawned groups with certain Package Modes (0, 1 and 2. 
+One must define a number of ChildPoints around this SP in order for this to work. ChildPoints should be placed
+in same cell as this SP, use at own risk otherwise. For Mode 0 (Sandbox/Hold), overrides iNumPackageLocs if set.
 This is somehwat the equivalent of Interior Mode's spawn method for Modes 0-2. Ignored in MultiPoint Mode. }
 
 	Float Property fSafeDistanceFromPlayer = 8192.0 Auto Const
@@ -1375,7 +1375,12 @@ Function PrepareSingleGroupNoEventSpawn()
 			endwhile
 			
 		elseif iPackageMode == 3
-		
+			
+			iSize = kGroupList.Length
+			while iCounter < iSize
+				ApplySneakState(kGroupList[iCounter])
+				iCounter += 1
+			endwhile
 			RegisterForDistanceLessThanEvent(MasterScript.PlayerRef, Self as ObjectReference, fAmbushDistance) ;Possibly faster then Game.GetPlayer()
 
 		endif
@@ -2109,6 +2114,16 @@ Event OnDistanceLessThan(ObjectReference akObj1, ObjectReference akObj2, float a
 	endwhile
 	
 EndEvent
+
+
+;Sets all Actors in the Group to start sneaking, while waiting for trigger above.
+Function ApplySneakState(Actor akActor)
+;DEV NOTE: This function is currently in TEST PHASE. The Package applied after this later, may not return from sneaking. =
+
+	akActor.StartSneaking()
+	
+EndFunction
+
 
 
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------

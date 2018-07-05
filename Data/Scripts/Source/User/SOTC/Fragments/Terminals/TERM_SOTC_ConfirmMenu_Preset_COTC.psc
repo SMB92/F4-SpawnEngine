@@ -11,7 +11,7 @@ MasterScript.SetMenuSettingsMode(10) ;Pending Full Preset
 
 MasterScript.iCurrentPreset = 3
 
-MasterScript.RegisterMasterForPipBoyCloseEvent(0, 0)
+MasterScript.RegisterMasterForPipBoyCloseEvent()
 ;END CODE
 EndFunction
 ;END FRAGMENT

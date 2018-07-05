@@ -117,13 +117,6 @@ Group InstanceBaseObjects
 	MiscObject Property kThreadControllerObject Auto Const Mandatory
 	{ Unique }
 	
-	MiscObject Property kSettingsEventMonitorObject Auto Const Mandatory
-	{ Unique }
-	
-	;No longer instanced as of version 0.13.01.
-	;MiscObject Property kPointPersistBaseObject Auto Const Mandatory
-	;{ Unique }
-	
 	MiscObject Property kSpawnTypeMasterObject Auto Const Mandatory
 	{ SpawnTypeMasterScript base objects }
 	
@@ -160,7 +153,7 @@ Group ModSettings
 	; 3 - Very Hard ("Veteran" in SOTC)
 	; 4 - NONE - Scale to player.
 
-	Bool Property bVanillaMode Auto ;Yay or nay 
+	Bool Property bVanillaMode = true Auto ;Yay or nay 
 	{ Default value is TRUE. Change in Menu. Vanilla mode disables certain SpawnPoints. }
 
 	Int Property iEzApplyMode Auto
@@ -475,11 +468,6 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		Debug.Trace("ThreadController created on Master")
 		
 		ObjectReference kNewInstance
-
-		kNewInstance = kMasterCellMarker.PlaceAtMe(kSettingsEventMonitorObject, 1 , false, false, false)
-		(kNewInstance as SOTC:SettingsEventMonitorScript).PerformFirstTimeSetup(ThreadController)
-		
-		Debug.Trace("EventMonitor created on ThreadController")
 		
 		
 		;Start SpawnTypeMasters first
@@ -560,6 +548,7 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		kArgs[0] = b
 		
 		SendCustomEvent("InitTravelLocs", kArgs)
+		Utility.Wait(7.0) ;Wait 12 seconds for that event to complete (eeach region waits 10 seconds for all Travel Locs to self add). 
 		
 		PlayerRef.Additem(SOTC_MainMenuTape, 1, false) ;We want to know it's been added.
 		
@@ -714,7 +703,7 @@ Function MasterFactoryReset()
 	
 	
 	;Destroy the ThreadController and Event Monitor
-	ThreadController.MasterFactoryReset()
+	;ThreadController.MasterFactoryReset() ;Currently not needed (version 0.15.02).
 	ThreadController.Disable()
 	ThreadController.Delete()
 	ThreadController = None ;De-persist. 
@@ -776,10 +765,11 @@ Function SendMasterMassEvent()
 		Params[2] = bForceResetCustomSpawnTypeSettings
 		Params[3] = iCurrentPreset
 		
-		ThreadController.PrepareToMonitorEvent("Regions") 
-		;String parameter to tell what script type will be receiving the event
-		
+		Int iTarget = ThreadController.iActiveRegionsCount
 		SendCustomEvent("PresetUpdate", Params)
+		Debug.Trace("Master Preset Update Sent. Waiting for event to reach target number of instances. Target is: " +iTarget)
+		
+		BeginEventMonitor(iTarget)
 		
 	elseif iMenuSettingsMode == 11 ;ALL SPAWNTYPES/ACTORS ONLY
 		
@@ -790,24 +780,22 @@ Function SendMasterMassEvent()
 		Params[1] = bForceResetCustomSpawnTypeSettings
 		Params[2] = iValue01
 		
-		ThreadController.PrepareToMonitorEvent("Regions") 
-		;String parameter to tell what script type will be receiving the event		
-		
+		Int iTarget = ThreadController.iActiveRegionsCount
 		SendCustomEvent("PresetUpdate", Params)
+		Debug.Trace("Master SpawnTypes-only Preset Update Sent. Waiting for event to reach target number of instances. Target is: " +iTarget)
 		
-	elseif iMenuSettingsMode == 12 ;FORCE RESET ALL SPAWNPOINTS
+		BeginEventMonitor(iTarget)
+		
+	elseif iMenuSettingsMode == 12 ;FORCE RESET ALL SPAWNPOINTS AND TIMERS. - (Not yet implemented).
 	;This event does not require user to exit Menu as timers are not restarted. Possibly should move to Single settings event for clarity. 
 		
-		ThreadController.PrepareToMonitorEvent("Regions") 
-		;String parameter to tell what script type will be receiving the event
-		
-		SendCustomEvent("ForceResetAllSpsAndTimers")
+		Int iTarget = ThreadController.iActiveRegionsCount
+		SendCustomEvent("ForceResetAllSpsAndTimers") 
+		Debug.Trace("Master SP + Timer Reset issued. Waiting for event to reach target number of instances. Target is: " +iTarget)
+		BeginEventMonitor(iTarget)
 		
 	elseif iMenuSettingsMode == 13 ;SINGLE SPAWNTYPE ONLY
 	
-		ThreadController.PrepareToMonitorEvent("Regions") 
-		;String parameter to tell what script type will be receiving the event
-		
 		Params = new Var[4]
 		sPresetType = "SingleSpawntype"
 		
@@ -816,9 +804,26 @@ Function SendMasterMassEvent()
 		Params[2] = bForceResetCustomSpawnTypeSettings
 		Params[3] = iValue02 ;The Preset to set
 		
+		Int iTarget = ThreadController.iActiveRegionsCount
 		SendCustomEvent("PresetUpdate", Params)
+		Debug.Trace("Master Single SpawnType Preset Update Sent. Waiting for event to reach target number of instances. Target is: " +iTarget)
+		BeginEventMonitor(iTarget)
 		
 	endif
+	
+EndFunction
+
+
+;Used by the above Event issuer, checks Event flag on Threadcontroller until target is reached. 
+Function BeginEventMonitor(Int aiTarget)
+
+	Utility.Wait(1.0) ;Wait a sec, event may have possibly completed.
+	while aiTarget < ThreadController.iEventFlagCount
+		Utility.Wait(1.0) ;Wait another second. 
+	endwhile
+		
+	Debug.MessageBox("Settings have been updated. You may resume as normal. The menu has been unlocked")
+	ClearMenuVars()
 	
 EndFunction
 
@@ -899,30 +904,28 @@ Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
 
 	if (asMenuName == "PipboyMenu") && (!abOpening) ; On Pip-Boy closing
 		
-		if (iMenuSettingsMode >= 10) && (iMenuSettingsMode <= 30)  ;Settings events allocated to value range 10-30.
-		
-			SendMasterMassEvent() ;This will "lock" the menu and require player to exit Menu Mode.
+		if (iMenuSettingsMode >= 10) && (iMenuSettingsMode <= 30)  ;Settings events allocated to value range 10-30. Menu should be locked.
 			
-			;DEV NOTE: As of version 0.14.01, Event Quests are now Start Enabled and stages used to send work
-			;Events to this script.
-			;Check if Random Events pending start.
-			;if kEventQuestsPendingStart[0] != None 
-			;Array is initialized with one memmer of None for security purposes, if first member is not none, invoke start.
-			;	SafelyStartPendingEventQuests()
-			;endif
+			Debug.Trace("Sending Master Mass Event ID: " +iMenuSettingsMode)
+			SendMasterMassEvent()
+			UnregisterForAllMenuOpenCloseEvents()
+			bRegisteredForPipboyClose = false
+			Debug.Trace("Mass Event Complete")
 			
+			;DEV NOTE: As of version 0.14.01, Event Quests are now Start Enabled and stages used to send work Events to those scripts.
 			
 		elseif iMenuSettingsMode == 100 ;Factory Reset
 			
+			Debug.Trace("Master Factory Reset initialising")
 			MasterFactoryReset()
-			;Full uninstallation is done from AuxQuest.
+			bRegisteredForPipboyClose = false
+			;Full uninstallation is done from AuxQuest and is called last from the above function block.
 		
 		endif
 		
 	endif
 
-	;ClearMenuVars() - Moved to SettingsEventMonitor
-	UnregisterForAllMenuOpenCloseEvents()
+	;ClearMenuVars() - Moved to SettingsEventMonitor as that works in its own thread. 
 	
 EndEvent
 
@@ -949,11 +952,9 @@ EndFunction
 
 
 Function SetMenuSettingsMode(int aiMode)
-	
-	if iMenuSettingsMode != 5 ;Ensure first time settings mode does not get killed
-		iMenuSettingsMode = aiMode ;Local variable that script deals with
-		SOTC_Global_MenuSettingsMode.SetValue(aiMode as float) ;Global for the Menu
-	endif
+
+	iMenuSettingsMode = aiMode ;Local variable that script deals with
+	SOTC_Global_MenuSettingsMode.SetValue(aiMode as float) ;Global for the Menu
 	
 EndFunction
 
@@ -1164,6 +1165,7 @@ Function ClearMenuVars()
 	MenuCurrentActorScript = None
 	MenuCurrentRegionScript = None
 	MenuCurrentRegSpawnTypeScript = None
+	ThreadController.iEventFlagCount = 0 
 EndFunction
 
 
@@ -1274,7 +1276,7 @@ EndFunction
 
 Bool Function CheckForBypassEvents() ;Check for any events not subject to EventLock
 
-	if (kRE_BypassEvents[0] != None) && Utility.RandomInt(0,100) <= iRE_BypassEventChance
+	if (kRE_BypassEvents[0] != None) && Utility.RandomInt(1,100) <= iRE_BypassEventChance
 		iEventType = 1
 		return true
 	else
@@ -1304,7 +1306,7 @@ Bool Function CheckForEvents()
 	endif
 	
 	;Failing the above, roll for a static event
-	if (kRE_StaticEvents[0] != None) && (Utility.RandomInt(0,100) <= iRE_StaticEventChance)
+	if (kRE_StaticEvents[0] != None) && (Utility.RandomInt(1,100) <= iRE_StaticEventChance)
 		iEventType = 3
 		StartTimer(1, iEventFireTimerID) ;Starts event code in own thread
 		return true

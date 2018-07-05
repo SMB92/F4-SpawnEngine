@@ -5,6 +5,10 @@
 
 ## NEWS
 
+### Quick patch to version 0.15.02.180706.
+
+[06/07/2018] More polish, biggest things to note in this update, blew away the "Settings Event Monitor" script, as no longer needed with new methods on MasterScript, and also fixed an infinite loop on the SpawnTypeRegionalScript (no counter). 
+
 ### Update 0.15.01 brings further refinements before Alpha.
 
 [05/07/2018] While I did say the last update would probably be the last, as it would be a number of optimizations and fixes were found while polishing the files. Big kudos to Jostrus yet again for stellar ideas/methods/optimizations! Not going to call this the last update before Alpha again, but I do consider the framework for it complete at this stage.  
@@ -81,6 +85,22 @@ Please be patient while work continues on both a working test file and official 
 
 ## UPDATE LOG
 
+##### [06/07/2018] SpawnEngine updated to version 0.15.02.180706
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Add experimental ApplyStartSneaking() function to SpawnPointScript for Ambush spawns. This puts spawns in sneak mode until they are ready to rush the player. Needs much testing, as Package may not override when applied.
+- Fix confusing Property description for bRandomiseStartLoc on SpawnPointScript. 
+- Removed obsolete value check from SetMenuSettingsMode() on MasterScript
+- Fix Static and Bypass events still firing on setting of 0. 
+- Move reset of EventFlagCounter from Event Monitor back to ThreadController as this had to return there anyway. 
+- Changed Debug Notif on ThreadController to Trace, which it was meant to be. 
+- Add more debug traces around.
+- Add 5 second timer to mod start, so player can get bearings first. 
+- Made some changes to PerformFirstTimeSetup() function on Master for better effect. Now a mandatory 7 second wait for all Regions to init travel locs dynamically. Maybe extreme, but better safe then sorry. 
+- Fix never ending loop on RegionManager, reshuffling actor list. 
+- REMOVED SettingsEventMonitorScript and objects/instances from mod. Better method found. Now handled by MasterScript. 
+
+------
 ##### [05/07/2018] SpawnEngine updated to version 0.15.01.180705
 
 ###### HOUSEKEEPING:
