@@ -154,8 +154,8 @@ EndFunction
 ;RETURN FUNCTIONS
 ;------------------------------------------------------------------------------------------------
 
-;This function returns a single group loadout for spawning (ActorBase[] version)
-ActorBase[] Function GetRandomGroupLoadout(bool abGetBossList)
+;This function returns a single group loadout for spawning (ActorBase[] version). Mostly unused, but exists if needed
+ActorBase[] Function GetRandomGroupList(bool abGetBossList, Bool abIsConfinedSpace = false)
 
 	Int iSize
 	SOTC:ActorGroupLoadoutScript ElectedGroup
@@ -191,9 +191,8 @@ EndFunction
 
 ;DEV NOTE: These two functions (above and below this) need to be renamed approriately next version (0.14.03).
 
-;This function return a single group loadout for spawning (Script Instance version)
-;Mostly unused, but exists if needed
-SOTC:ActorGroupLoadoutScript Function GetRandomGroupScript()
+;This function return a single group loadout for spawning, returning the actual script. 
+SOTC:ActorGroupLoadoutScript Function GetRandomGroupLoadout(Bool abIsConfinedSpace = false)
 
 	Int iSize
 	SOTC:ActorGroupLoadoutScript ElectedGroup

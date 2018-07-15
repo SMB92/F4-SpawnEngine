@@ -5,6 +5,10 @@
 
 ## NEWS
 
+### Version 0.16.03 published to closed testing group. 
+
+[15/07/2018] After the 0.15.02 private alpha, a few more issues were identified, and this version is a collective of these fixes, thus the skipping through to version 0.16.03. New methods were also implemented to speed up AI evaluation and more advanced methods are being investigated for Sandbox AI. 
+
 ### Quick patch to version 0.15.02.180706.
 
 [06/07/2018] More polish, biggest things to note in this update, blew away the "Settings Event Monitor" script, as no longer needed with new methods on MasterScript, and also fixed an infinite loop on the SpawnTypeRegionalScript (no counter). 
@@ -85,6 +89,35 @@ Please be patient while work continues on both a working test file and official 
 
 ## UPDATE LOG
 
+##### [15/07/2018] SpawnEngine updated to version 0.16.03.180715
+
+###### HOUSEKEEPING:
+- Update Notepad++ Lang file again. 
+- Made some Property descriptions for overrides on SpawnPointScript a bit more transparent. 
+
+###### MAJOR/MINOR FEATURE UPDATES/CHANGES/ADDITIONS:
+- [MINOR] Added bHasOversizedUnits() Properties to GroupLoadouts script for both Regular Unit list and Boss Unit list. This extra granularity ensures large actors don't appear in confined spaaces that maybe some varieties of an NPC type can fit in (think, Mirelurks etc). Not yet implemented to Spawn code, coming next version. 
+- [MAJOR] Implemented new method to speed up initial Evaluation of applied AI packages. A new class, SOTC:EvalPackageEffectScript has been added. SpawnPoint will now cast a simple spell/magic effect to each Actor which has a simple script to call EvaluatePackage() when applied. This allows such call to be run in own thread while the serialised work of the SpawnPoint finishes much faster due to this call being so latent. Credits to Jostrus for the idea.
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Fix infinite loop on RegionManager
+- Fix typing of GetGroupLoadout() functions (as noted a few versions ago, these were mixed up). 
+- Fix bad strings in SetMenuVars functions on Master, and RegionManager SingleSettingsUpdate event for Sp Preset Chance Bonus setting. Wasn't being set because of this. 
+- Updated Master and Region Spawn Check functions to pass SpawnPoints as script type, not ObjectRef, and fixed bad logic. 
+- Fix SpawnPoints always trying to check SpawnTypeScript if enable, even in Mode 1 (which does not make use of ST's, only Actors directly). Added extra check for mode. 
+- Add new function to SpawnPointScript, InitFailProcedure(), to shorten the Init block when fails by moving common code here. 
+- Fix bad building of returning array in GetRandomActors() function on SpawnTypeRegionalScript.
+- Add extra security check to SpawnPoint when attempting to cleanup PackageLocs array, should no longer produce an error in logs. 
+- Fix SpawnTypes based on ClassPreset not returning the correct ClassPreset by default (when not forcing the value).
+- Fix ThreadController granting an extra thread than the max allowed, due to comparison operator only checking > instead of >=. 
+- Fix SpawnTypeRegionalScript not returning Rare Actors for that Region properly.
+
+###### MISC NOTES:
+- For the purpose of this release, as no Menu option has been implemented to prompt the user if they want to "override custom settings", when setting a Preset all settings will be refreshed to that of the Presets, if applicable (which isn't that many a side from the NPC distribution). 
+- Sandbox methods need to be vastly improved, particularly for Human NPCs. Creatures/wildlife seem fine but humans tend to stand around and do nothing if there is little to no furniture items to use. A number of methods are being investigated at this time. 
+- AI evaluation for travelling groups after arriving at their first destination is very slow. This is a game engine issue and not something I can easily fix with out manually controlling the whole process. It is not a major problem as the player will likely kill the majority of spawns before this ever happens, but worth noting. 
+
+------
 ##### [06/07/2018] SpawnEngine updated to version 0.15.02.180706
 
 ###### SCRIPT OPTIMIZATION/REVISION/FIXES:

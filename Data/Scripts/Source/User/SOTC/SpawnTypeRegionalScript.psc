@@ -8,7 +8,7 @@ Scriptname SOTC:SpawnTypeRegionalScript extends ObjectReference
 ;are explicitly received as function arguments and are multi-instance scripts.
 ; "a" - (Function/Event Blocks only) Variable was received as function argument OR the variable
 ;was created from a passed-in Struct/Var[] member
-; "k" - Is an "Object" as usual, whether created in a Block or defined in the empty state/a state.
+; "k" - Is an "Form/Object" as usual, whether created in a Block or defined in the empty state/a state.
 ; "f,b,i,s" - The usual Primitives: Float, Bool, Int, String.
 
 ;------------------------------------------------------------------------------------------------
@@ -221,6 +221,7 @@ Function FillDynActorLists()
 	endwhile
 	
 	;Detect and remove first member of None on filled lists, if it exists.
+	;We are checking if greater than 1 member otherwise leave the member of None so array stays safely initialised, GetRandomActor functions will check for this. 
 	
 	if (CommonActorList.Length > 1) && (CommonActorList[0] == None)
 		CommonActorList.Remove(0)
@@ -292,12 +293,10 @@ SOTC:ActorClassPresetScript Function GetRandomActor(Int aiForcedRarity, Bool abF
 	endif
 	
 	
-	if !abForceClassPreset ;Short circuit for speed, as this is the most likely setting.
-		iClass = iRarity
+	if !abForceClassPreset && iBaseClassID > 0 ;If SpawnType based on Class, use that Class, if not forced above.
+		iClass = iBaseClassID
 	elseif abForceClassPreset && aiForcedClassPreset <= 3 ;Security check, if user entered more than 3, revert to iRarity value.
 		iClass = aiForcedClassPreset
-	elseif iBaseClassID > 0 ;If SpawnType based on Class, use that Class, if not forced above.
-		iClass = iBaseClassID
 	else ;Absolute failsafe, same as first check, in the event everything fails.
 		iClass = iRarity
 	endif
@@ -311,14 +310,12 @@ SOTC:ActorClassPresetScript Function GetRandomActor(Int aiForcedRarity, Bool abF
 		elseif UncommonActorList[0] != None ;It's not empty, else fail to Rare list.
 			return GetUncommonActor(iClass)
 		elseif (RareActorList[0] != None) ;It's not empty, else FAIL ENTIRELY.
-			GetRareActor(iClass)
-		else ;WOE, WOE IS YE! MELTDOWN BEGINS
-			Debug.Trace("MAJOR ERROR: SPAWNTYPE REGIONAL LISTS EMPTY, SPAWNPOINT MELTDOWN UNDERWAY, PAPYRUS ERRORS TO ENSUE! ID was:" +iSpawnTypeID)
-			;SPAWNPOINT WILL NOW FIRE ON NOTHING, PAPYRUS LOG WILL BE FULL OF ERRORS, SAVE GAME BROKEN AND PC CATCH FIRE!
-			Debug.Trace("PSYCH! RETURNING RADROACHES INSTEAD! KEKEKEKEK!")
+			return GetRareActor(iClass)
+		else ;Return failsafe Actor.
+			Debug.Trace("SpawnType could not return an Actor, returning failsafe Actor from Master")
 			return MasterScript.GetMasterFailsafeActor()
 			
-		endif ;ENDTIMES!
+		endif
 		
 		
 	elseif iRarity == 2
@@ -326,16 +323,14 @@ SOTC:ActorClassPresetScript Function GetRandomActor(Int aiForcedRarity, Bool abF
 		if UncommonActorList[0] != None ;It's not empty, else fail to Rare list first.
 			return GetUncommonActor(iClass)
 		elseif (RareActorList[0] != None) ;It's not empty, else fail to Common list last.
-			GetRareActor(iClass)
+			return GetRareActor(iClass)
 		elseif CommonActorList[0] != None ;It's not empty, else FAIL ENTIRLEY.
 			return GetCommonActor(iClass)
-		else ;WOE, WOE IS YE! MELTDOWN BEGINS
-			Debug.Trace("MAJOR ERROR: SPAWNTYPE REGIONAL LISTS EMPTY, SPAWNPOINT MELTDOWN UNDERWAY, PAPYRUS ERRORS TO ENSUE! ID was:" +iSpawnTypeID)
-			;SPAWNPOINT WILL NOW FIRE ON NOTHING, PAPYRUS LOG WILL BE FULL OF ERRORS, SAVE GAME BROKEN AND PC CATCH FIRE!
-			Debug.Trace("PSYCH! RETURNING RADROACHES INSTEAD! KEKEKEKEK!")
+		else ;Return failsafe Actor.
+			Debug.Trace("SpawnType could not return an Actor, returning failsafe Actor from Master")
 			return MasterScript.GetMasterFailsafeActor()
 			
-		endif ;ENDTIMES!
+		endif
 
 
 	else ;Not going to bother checking for 3, if somehow its not 1, 2 or 3, Rare will be selected.
@@ -343,18 +338,15 @@ SOTC:ActorClassPresetScript Function GetRandomActor(Int aiForcedRarity, Bool abF
 		if RareActorList[0] != None ;It's not empty, else fail to Uncommon list.
 			return GetUncommonActor(iClass)
 		elseif (UncommonActorList[0] != None) ;It's not empty, else fail to Common list last.
-			GetRareActor(iClass)
+			return GetRareActor(iClass)
 		elseif CommonActorList[0] != None ;It's not empty, else FAIL ENTIRLEY.
 			return GetCommonActor(iClass)
-		else ;WOE, WOE IS YE! MELTDOWN BEGINS
-			Debug.Trace("MAJOR ERROR: SPAWNTYPE REGIONAL LISTS EMPTY, SPAWNPOINT MELTDOWN UNDERWAY, PAPYRUS ERRORS TO ENSUE! ID was:" +iSpawnTypeID)
-			;SPAWNPOINT WILL NOW FIRE ON NOTHING, PAPYRUS LOG WILL BE FULL OF ERRORS, SAVE GAME BROKEN AND PC CATCH FIRE!
-			Debug.Trace("PSYCH! RETURNING RADROACHES INSTEAD! KEKEKEKEK!")
+		else ;Return failsafe Actor.
+			Debug.Trace("SpawnType could not return an Actor, returning failsafe Actor from Master")
 			return MasterScript.GetMasterFailsafeActor()
 			
-		endif ;ENDTIMES!
+		endif
 
-		
 	endif
 	
 EndFunction
@@ -368,7 +360,12 @@ SOTC:ActorClassPresetScript Function GetCommonActor(Int aiClass)
 	;Common list should ALWAYS have something in it.
 	
 	Int iSize = CommonActorList.Length - 1
-	return CommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[aiClass]
+	SOTC:ActorManagerScript ActorToReturn = CommonActorList[(Utility.RandomInt(0,iSize))]
+	Debug.Trace("Common Actor Rolled = " +ActorToReturn.sActorType)
+	Debug.Trace("Returning Class Preset: " +aiClass)
+	return ActorToReturn.ClassPresets[aiClass]
+	
+	;return CommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[aiClass]
 
 EndFunction
 
@@ -378,7 +375,11 @@ SOTC:ActorClassPresetScript Function GetUncommonActor(Int aiClass)
 	Int iSize = UncommonActorList.Length - 1
 	
 	if  (UncommonActorList[0] != None) ;Check the list is initialised and has something on it. 
-		return UncommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[aiClass]
+		SOTC:ActorManagerScript ActorToReturn = UncommonActorList[(Utility.RandomInt(0,iSize))]
+		Debug.Trace("Uncommon Actor Rolled = " +ActorToReturn.sActorType)
+		Debug.Trace("Returning Class Preset: " +aiClass)
+		return ActorToReturn.ClassPresets[aiClass]
+		;return UncommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[aiClass]
 	else ;Otherwise default to Common list
 		return GetCommonActor(aiClass)
 	endif
@@ -391,7 +392,11 @@ SOTC:ActorClassPresetScript Function GetRareActor(Int aiClass)
 	Int iSize = RareActorList.Length - 1
 	
 	if  (RareActorList[0] != None) ;Check the list is initialised and has something on it. 
-		return UncommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[aiClass]
+		SOTC:ActorManagerScript ActorToReturn = RareActorList[(Utility.RandomInt(0,iSize))]
+		Debug.Trace("Rare Actor Rolled = " +ActorToReturn.sActorType)
+		Debug.Trace("Returning Class Preset: " +aiClass)
+		return ActorToReturn.ClassPresets[aiClass]
+		;return UncommonActorList[(Utility.RandomInt(0,iSize))].ClassPresets[aiClass]
 	else ;Otherwise default to Uncommon list
 		return GetUncommonActor(aiClass)
 	endif
@@ -443,6 +448,8 @@ SOTC:ActorClassPresetScript[] Function GetRandomActors(int aiForcedRarity, Bool 
 		else ;Not going to bother checking for 3, if somehow its not 1, 2 or 3, Rare will be selected.
 			ActorListToReturn.Add((GetRareActor(iClass)))
 		endif
+		
+		iCounter += 1
 		
 	endwhile
 	

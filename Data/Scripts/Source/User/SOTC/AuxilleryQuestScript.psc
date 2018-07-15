@@ -67,10 +67,9 @@ Event OnQuestInit()
 		bInit == true ;Never want to receive this event again.
 		
 		Debug.StartScriptProfiling("SOTC:MasterQuestScript")
-		Debug.StartScriptProfiling("SOTC:RegionManager")
+		Debug.StartScriptProfiling("SOTC:RegionManagerScript")
 		Debug.StartScriptProfiling("SOTC:SpawnTypeRegionalScript")
 		Debug.StartScriptProfiling("SOTC:ThreadControllerScript")
-		Debug.StartScriptProfiling("SOTC:SettingsEventMonitorScript")
 		Debug.StartScriptProfiling("SOTC:AuxilleryQuestScript")		
 		
 	endif

@@ -155,7 +155,7 @@ Bool bInit ;Security check to make sure Init events/functions don't fire again w
 
 ;NOTE - Random events are currently not fully implemented on the Regional level.
 Bool bEventThreadLockEngaged ;Used to skip/block spawn event checker
-ObjectReference kEventPoint ;When an event fires, this will set with the intercepted calling point
+SOTC:SpawnPointScript kEventPoint ;When an event fires, this will set with the intercepted calling point
 
 
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -201,7 +201,7 @@ Formlist akEzEasyList, Formlist akEzHardList, Formlist akEzEasyNBList, Formlist 
 		;Create instances of spawntype objectreferences and set them up
 		ObjectReference kNewInstance
 		Int iCounter
-		Int iSize = MasterScript.SpawnTypeMasters.Length - 1
+		Int iSize = MasterScript.SpawnTypeMasters.Length
 		
 		while iCounter < iSize
 		
@@ -321,9 +321,13 @@ Event SOTC:MasterQuestScript.MasterSingleSettingUpdate(SOTC:MasterQuestScript ak
 		iRandomAmbushChance = akArgs[1] as Int
 		bCustomSettingsActive = true
 		
-	elseif (akArgs[0] as string) == "SpPresetBonusChance"
-	
-		iSpPresetChanceBonusList[(akArgs[1] as Int)] = akArgs[2] as Int
+	elseif (akArgs[0] as string) == "SpPresetChanceBonus"
+		
+		Debug.Trace("Received SP CB Event, akArgs1 = " +akArgs[1] as Int)
+		Debug.Trace("Received SP CB Event, akArgs2 = " +akArgs[2] as Int)
+		
+		Int i = akArgs[1] as Int
+		iSpPresetChanceBonusList[i] = akArgs[2] as Int
 		;[1] = index, [2] = value to set. 
 		bCustomSettingsActive = true
 		
@@ -383,7 +387,8 @@ EndFunction
 
 ;This function SERIALIZES reshuffle of Spawntype Actor Lists. Should be safe to run in Menu mode.
 Function ReshuffleActorLists(Bool abForceReset) ;All Spawntypes attached.
-
+	
+	Debug.Trace("Reshuffling Region Actor lists for all SpawnTypes on Region: " +iRegionID)
 	Int iChance = iRegionSpawnChance ;Store this value til done
 	iRegionSpawnChance = 0 ;Stops all Spawns for now
 	;This shouldn't take so long as to affect SPs but we do this to be sure.
@@ -392,9 +397,10 @@ Function ReshuffleActorLists(Bool abForceReset) ;All Spawntypes attached.
 	int iSize = SpawnTypes.Length
 	
 	while iCounter < iSize
-	
+		
 		Spawntypes[iCounter].ReshuffleDynActorLists(abForceReset, iCurrentPreset)
 		;If SpawnType is running custom settings, will return immediately if parameter is False.
+		Debug.Trace("Region SpawnType Actor lists reshuffled for SpawnType ID: " +iCounter)
 		iCounter += 1
 		
 	endwhile
@@ -566,16 +572,18 @@ EndFunction
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ;Check for a pending event, check preset restriction of calling point.
-Bool Function RegionSpawnCheck(ObjectReference akCallingPoint, Int aiPresetRestriction)
+Bool Function RegionSpawnCheck(SOTC:SpawnPointScript akCallingPoint, Int aiPresetRestriction)
 	
-	;NOTE - Random events are currently not fully implemented on the Regional level. No code iSize
+	;NOTE - Random events are currently not fully implemented on the Regional level. No code
 	;included here for them yet. 
 	
 	if ((Utility.RandomInt(1,100)) <= iRegionSpawnChance)
-		return true ;Green light.
+		;Debug.Trace("Region just passed a spawn check. Region Chance is: " +iRegionSpawnChance)
+		return false ;Green light.
 	endif
 	
-	return false ;Red light.
+	;Debug.Trace("Region just failed a spawn check. Region Chance is: " +iRegionSpawnChance)
+	return true ;Red light.
 
 EndFunction
 

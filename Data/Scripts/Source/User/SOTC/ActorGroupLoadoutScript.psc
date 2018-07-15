@@ -47,6 +47,12 @@ Set false for Classes not desired. Only add to Classes that exist for this Actor
 	Int Property iPlayerLevelRestriction Auto ;Can be modified from Menu. 
 	{ If wanting to restrict this group from appearing while Player is below a certain level, set this value accordingly. }
 	
+	Bool Property bHasOversizedRegularUnits Auto Const
+	{ If the Regular Units list contains "Oversized" actors (that would be unsafe for confined spaces), flag this True. }
+	
+	Bool Property bHasOversizedBossUnits Auto Const
+	{ If the Boss Units list contains "Oversized" actors (that would be unsafe for confined spaces), flag this True. }
+	
 EndGroup
 
 
@@ -133,6 +139,8 @@ EndFunction
 
 ;Return one of the above Grouplists. Used rarely from this script, if at all. Best to get from
 ;ActorClassPresetScript functions instead (as that is passed directly to SpawnPoints anyway).
+;DEV NOTE: This function does not consider if Group has oversized actors or not as it is there is
+;no failback if it does (it would have to return None.). Use ClassPresetScript function instead.
 ActorBase[] Function GetGroupLoadout(bool abGetBossList)
 
 	if !abGetBossList

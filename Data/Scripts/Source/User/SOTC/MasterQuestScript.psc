@@ -761,8 +761,8 @@ Function SendMasterMassEvent()
 		sPresetType = "Full"
 		
 		Params[0] = sPresetType ;The type of Preset change
-		Params[1] = bForceResetCustomRegionSettings
-		Params[2] = bForceResetCustomSpawnTypeSettings
+		Params[1] = true ;bForceResetCustomRegionSettings For the Alpha test, this will just be true always
+		Params[2] = true ;bForceResetCustomSpawnTypeSettings For the ALpha test, this will just be true always. 
 		Params[3] = iCurrentPreset
 		
 		Int iTarget = ThreadController.iActiveRegionsCount
@@ -879,12 +879,14 @@ Function SendMasterSingleSettingUpdateEvent(string asSetting, Bool abBool01 = fa
 		SettingParams[1] = iRandomAmbushChance
 		SendCustomEvent("MasterSingleSettingUpdate", SettingParams)
 		
-	elseif asSetting == "SpPresetBonusChance"
+	elseif asSetting == "SpPresetChanceBonus"
 	
 		SettingParams = new Var[3]
 		SettingParams[0] = asSetting
 		SettingParams[1] = aiInt01 ;The selected Preset to set value for. 
 		SettingParams[2] = aiInt02 ;The value to set
+		Debug.Trace("Sending SP CB Event, aiInt01 = " +aiInt01)
+		Debug.Trace("Sending SP CB Event, aiInt02 = " +aiInt02)
 		SendCustomEvent("MasterSingleSettingUpdate", SettingParams)
 		
 	elseif asSetting == "ForceResetSps"
@@ -1006,7 +1008,7 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 		
 		if abSetValues
 			iCurrentDifficulty = aiValue01
-			SendMasterSingleSettingUpdateEvent("Difficulty", iCurrentDifficulty)
+			SendMasterSingleSettingUpdateEvent("Difficulty", false, iCurrentDifficulty)
 		endif
 		SOTC_Global01.SetValue(iCurrentDifficulty as Float)
 		
@@ -1071,14 +1073,14 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 		endif
 		SOTC_Global02.SetValue(iEzBorderMode as Float)
 		
-	elseif asSetting == "SpPresetBonusChance"
+	elseif asSetting == "SpPresetChanceBonus"
 	;Global01 is set to selected Preset in Menu. Then here we can play with the real bonus value.
 	;This is required as same sub-menu is used for all 3 Preset selections.	
 		
 		Int i = (SOTC_Global01.GetValue()) as Int 
 		if abSetValues
 			iSpPresetBonusChance[i] = aiValue01
-			SendMasterSingleSettingUpdateEvent("SpPresetBonusChance", i, aiValue01)
+			SendMasterSingleSettingUpdateEvent("SpPresetChanceBonus", false, i, aiValue01, 0.0)
 		endif
 		SOTC_Global02.SetValue(iSpPresetBonusChance[i] as Float)
 		
@@ -1214,7 +1216,7 @@ EndFunction
 ;SPAWN UTILITY FUNCTIONS & EVENTS
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Bool Function MasterSpawnCheck(ObjectReference akCallingPoint, Bool abAllowVanilla, Bool abEventSafe)
+Bool Function MasterSpawnCheck(SOTC:SpawnPointScript akCallingPoint, Bool abAllowVanilla, Bool abEventSafe)
 
 	if CheckForBypassEvents() ;Check for any events not subject to EventLock
 		return true ;deny the calling point
@@ -1231,13 +1233,16 @@ Bool Function MasterSpawnCheck(ObjectReference akCallingPoint, Bool abAllowVanil
 	endif
 	
 	;Vanilla Mode check
-	
-	if (!abAllowVanilla) && (bVanillaMode) && ((Utility.RandomInt(1,100)) <= iMasterSpawnChance)
+	if (!abAllowVanilla) && (bVanillaMode)
 		return true ;Denied due to vanilla mode
 	endif
 	
-	;If we got this far than all good, SP can proceed.
-	return false ;Proceed
+	;Finally, dice roll. 
+	if ((Utility.RandomInt(1,100)) <= iMasterSpawnChance)
+		return false ;Proceed
+	else
+		return true ;Fail
+	endif
 	
 EndFunction
 

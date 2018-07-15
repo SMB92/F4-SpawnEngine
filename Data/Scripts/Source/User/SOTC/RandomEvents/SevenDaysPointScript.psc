@@ -118,7 +118,7 @@ Function EventHelperPrepareSingleGroupSpawn()
 	;Organise the ActorBase arrays/Get GroupLoadout.
 	;------------------------------------------------
 	
-	SOTC:ActorGroupLoadoutScript GroupLoadout = ActorParamsScript.GetRandomGroupScript()
+	SOTC:ActorGroupLoadoutScript GroupLoadout = ActorParamsScript.GetRandomGroupLoadout()
 	
 	ActorBase[] kRegularUnits = (GroupLoadout.kGroupUnits) as ActorBase[] ;Cast to copy locally
 	ActorBase[] kBossUnits

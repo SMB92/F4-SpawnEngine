@@ -113,11 +113,14 @@ And yes, this is required for interiors as not all interiors are confined. }
 	ReferenceAlias Property kPackage Auto Const Mandatory
 	{ Fill with the Alias holding the Package, according to Package Mode selected. Not required for Mode 3 (uses Rush Package). }
 	
+	Spell Property kEvalPackageSpell Auto Const Mandatory
+	{ Fill with SOTC_EvalPackageSpell on the base form. Forces EvaluatePackage on spawns in own thread. }
+	
 	ReferenceAlias Property kPackageRush Auto Const Mandatory
 	{ Fill with SOTC_RushPackage01. This gets filled the same on EVERY instance of this marker. Used for Ramapage/Random Ambush features. }
 	
 	Keyword[] Property kPackageKeywords Auto Const Mandatory
-	{ Fill with as many package keywords as needed (even if just 1). Used for linking to package marker(s) i.e Travel Locations. }
+	{ Fill with SOTC_PackageKeywords (10 by default). Add more if needed. Used for linking to package marker(s). }
 	
 	Int Property iNumPackageLocsRequired Auto Const Mandatory
 	{ If using Travel Package (Mode 1), set to the number of travel locations required by the Package. You can also use this with Sandbox(Mode 0) 
@@ -131,7 +134,7 @@ iForceGroupsToSpawn override, must have that many ChildPoints. Length of this ar
 	Bool Property bSpreadSpawnsToChildPoints Auto Const
 	{ If set true, spawned Actors will be placed at random ChildPoints (which must be defined) around the SpawnPoint, so they are spread apart.
 ChildPoints should be placed in same cell as this SP, use at own risk otherwise. Causes bRandomiseStartLoc override and iNumPackageLocs
-for Package Mode 0 (Sandbox/Hold) to be ignored. This setting is ignored for Packages Modes 2 and 5, and MultiPoint mode. }
+for Package Mode 0 (Sandbox/Hold) and Package Mode 2 (Patrols) to be ignored. }
 
 	Int Property iChanceToSpawn = 100 Auto Mandatory ;AUTO so can be modified at runtime, particularly if made a Property of a Menu. 
 	{ Use this define an extra chance/dice roll for this SP or set 100 for always. Default is 100
@@ -153,64 +156,66 @@ EndGroup
 
 
 Group Overrides
+{ Read descs. of each as to which modes these overrides apply. }
 
 	Int Property iPlayerLevelRestriction = 0 Auto Const
-	{ Can be used to set a Player level requirement if desired. }
+	{ All modes. Can be used to set a Player level requirement if desired. }
 
 	Int Property iPresetRestriction Auto Const 
-	{ Fill this (1-3) if it is desired to restrict this point to a certain Master preset level. }
+	{ All modes. Fill this (1-3) if it is desired to restrict this point to a certain Master preset level. }
 	
 	Bool Property bBlockLocalRandomEvents Auto Const
-	{ Set true to ignore local events, such as Swarm, Rampage and Ambush. This will be slightly faster as forces the use of a function
-that does not include these checks.	}
+	{ All Modes except Package Mode 3. Set true to ignore local events, such as Swarm, Rampage and Ambush. This will be slightly faster as 
+forces the use of a function that does not include these checks.	}
 
 	Bool Property bRandomiseStartLoc Auto Const
-	{ This can be used to randomise the initial placement of spawned groups with certain Package Modes (0, 1 and 2. 
+	{ This can be used to randomise the initial placement of entire spawned groups with certain Package Modes (0, 1 and 2.
+It is different from the primary setting bSpreadSpawnsToChildPoints as this applies to whole group, not individuals.
 One must define a number of ChildPoints around this SP in order for this to work. ChildPoints should be placed
 in same cell as this SP, use at own risk otherwise. For Mode 0 (Sandbox/Hold), overrides iNumPackageLocs if set.
 This is somehwat the equivalent of Interior Mode's spawn method for Modes 0-2. Ignored in MultiPoint Mode. }
 
 	Float Property fSafeDistanceFromPlayer = 8192.0 Auto Const
-	{ Default value of 8192.0 (2 exterior cell lengths), safe distance to spawn from Player. Change if desired. }
+	{ All modes. Default value of 8192.0 (2 exterior cell lengths), safe distance to spawn from Player. Change if desired. }
 
 	Float Property fAmbushDistance = 800.0 Auto Const
-	{ Default of 800.0 units, distance target from Player before Ambush (Mode 3) activates. Enter override value if desired. }
+	{ Pacakge Mode 3 only. Default of 800.0 units, distance target from Player before Ambush activates. Enter override value if desired. }
 
 	Int Property iForceUseRarityList Auto Const
-	{ Fill this 1-3, if wanting to force grab a certain "rarity" of actor in this Region (i.e force use Rarity list). }
+	{ Spawn Mode 0 only. Fill this 1-3, if wanting to force grab a certain "rarity" of actor in this Region (i.e force use Rarity list). }
 	
 	Bool Property bForceClassPreset Auto Const
-	{ Set True if wanting to force a Rarity-Based Class Preset, optional to the above. Can be used in MultiPoint mode. }
+	{ Spawn Mode 0 only. Set True if wanting to force a Rarity-Based Class Preset, optional to the above. }
 	
 	Int Property iForcedClassPreset Auto Const
-	{ If above is set True, set this to a value of 0-3 (can only use Rarity-based CPs). 0 is debug CP. }
+	{ Spawn Mode 0 only. If above is set True, set this to a value of 0-3 (can only use Rarity-based CPs). 0 is debug CP. }
 	
 	Bool Property bForceMasterPreset Auto Const
-	{ Use if wanting to force a Master Preset to be used when grabbing params from ClassPreset. }
+	{ All modes. Use if wanting to force a Master Preset to be used when grabbing params from ClassPreset. }
 	
 	Int Property iForcedMasterPreset Auto Const
 	{ Leave 0 if above is false. Otherwise set 0-3 (0 is debug preset). Set 777 to randomise Preset. }
 	
 	Bool Property bForceDifficulty Auto Const
-	{ If desired to force a Difficulty level, set true. }
+	{ All Modes. If desired to force a Difficulty level, set true. }
 	
 	Int Property iForcedDifficulty Auto Const
 	{ Set 0-4 if above is true. As per Vanilla Difficulty settings. }
 	
 	Int Property iForceGroupsToSpawnCount Auto Const
-	{ If wanting to force the number of Groups to spawn at a MultiPoint, set this above 0, or will be randomised.
+	{ MultiPoint only. If wanting to force the number of Groups to spawn at a MultiPoint, set this above 0, or will be randomised.
 Be careful with this value if not using with Interior/Patrol modes. }
 	
 	;Local Event chance bonuses:
 	
-	Int Property iPointSwarmBonus = 1 Auto Const
-	{ Enter a value above 0 if wanting to give this Point a "Swarm" chance bonus. Ignored for MultiPoint. }
+	Int Property iPointSwarmBonus Auto Const
+	{ All Modes. Enter a value above 0 if wanting to give this Point a "Swarm" chance bonus. Ignored for MultiPoint. }
 	
-	Int Property iPointRampageBonus = 1 Auto Const
-	{ Enter a value above 0 if wanting to give this Point a "Rampage" chance bonus. Ignored for MultiPoint. }
+	Int Property iPointRampageBonus Auto Const
+	{ All Modes. Enter a value above 0 if wanting to give this Point a "Rampage" chance bonus. Ignored for MultiPoint. }
 	
-	Int Property iPointRandomAmbushBonus = 1 Auto Const
-	{ Enter a value above 0 if wanting to give this Point a "Random Ambush" chance bonus. Ignored for MultiPoint. }
+	Int Property iPointRandomAmbushBonus Auto Const
+	{ All Modes. Enter a value above 0 if wanting to give this Point a "Random Ambush" chance bonus. Ignored for MultiPoint. }
 
 EndGroup
 
@@ -305,14 +310,10 @@ Event OnTimer(int aiTimerID)
 			SetSpScriptLinks()
 		
 			;Master Level checks/intercepts
-			if MasterScript.MasterSpawnCheck(Self as ObjectReference, bAllowVanilla, bEventSafe) ;MASTER CHECK: If true, denied
+			if MasterScript.MasterSpawnCheck(Self, bAllowVanilla, bEventSafe) ;MASTER CHECK: If true, denied
 				;Master script assuming control, kill this thread and disable
 				Debug.Trace("SpawnPoint denied by Master check")
-				if ThreadController.fFailedSpCooldownTimerClock > 0.0
-					bSpawnpointActive = true
-					StartTimer(ThreadController.fFailedSpCooldownTimerClock, iFailedSpCooldownTimerID)
-					;DEV NOTE: If the Fail Cooldown Timer is off, this will spam if constantly in and out of the cell.
-				endif				
+				InitFailProcedure()			
 				return ;Nip in the bud
 			endif
 			
@@ -320,33 +321,32 @@ Event OnTimer(int aiTimerID)
 			
 			;Region Level checks/intercept. This will send in local spawn parameters if no intercept takes place.
 			;NOTE: as of version 0.06.01, no events are defined on RegionManager, will always return false. 
-			if RegionManager.RegionSpawnCheck(Self as ObjectReference, iPresetRestriction) ;REGION CHECK: If true, denied
+			if RegionManager.RegionSpawnCheck(Self, iPresetRestriction) ;REGION CHECK: If true, denied
 				;Region script assuming control, kill this thread and disable
-				Debug.Trace("MiniPoint denied by Region check")
-				if ThreadController.fFailedSpCooldownTimerClock > 0.0
-					bSpawnpointActive = true
-					StartTimer(ThreadController.fFailedSpCooldownTimerClock, iFailedSpCooldownTimerID)
-					;DEV NOTE: If the Fail Cooldown Timer is off, this will spam if constantly in and out of the cell.
-				endif
+				Debug.Trace("SpawnPoint denied by Region check")
+				InitFailProcedure()
 				return ;Nip in the bud
 			endif
 			
 			Debug.Trace("SpawnPoint passed Region Check")
 			
-			if (SpawnTypeScript.bSpawnTypeEnabled) && (ThreadController.GetThread(iThreadsRequired)) && \
+			;Check SpawnType or Actor if enabled
+			if (iSpawnMode == 0) && (SpawnTypeScript.bSpawnTypeEnabled) && (ThreadController.GetThread(iThreadsRequired)) && \
 			((Utility.RandomInt(1,100)) <= ((iChanceToSpawn) + (RegionManager.GetRegionSpPresetChanceBonus()))) ;LOCAL CHECK
 				Debug.Trace("SpawnPoint Spawning")
 				PrepareLocalSpawn() ;Do Spawning
 				Debug.Trace("SpawnPoint successfully spent")
+				
+			elseif (iSpawnMode == 1) && (ActorManager.bActorEnabled) && (ThreadController.GetThread(iThreadsRequired)) && \
+			((Utility.RandomInt(1,100)) <= ((iChanceToSpawn) + (RegionManager.GetRegionSpPresetChanceBonus()))) ;LOCAL CHECK
+				Debug.Trace("SpawnPoint Spawning")
+				PrepareLocalSpawn() ;Do Spawning
+				Debug.Trace("SpawnPoint successfully spent")
+				
 			else
 				;Denied by dice, Disable and wait some time before trying again.
-				Debug.Trace("SpawnPoint denied by dice or Spawntype disabled, cooling off before next attempt allowed")
-				if ThreadController.fFailedSpCooldownTimerClock > 0.0
-					bSpawnpointActive = true
-					StartTimer(ThreadController.fFailedSpCooldownTimerClock, iFailedSpCooldownTimerID)
-					;DEV NOTE: If the Fail Cooldown Timer is off, this will spam if constantly in and out of the cell.
-				endif
-				
+				Debug.Trace("SpawnPoint denied by dice or Spawntype/Actor disabled")
+				InitFailProcedure()
 			endif
 			
 		;else
@@ -361,7 +361,19 @@ Event OnTimer(int aiTimerID)
 	
 EndEvent
 
+;Added in version 0.16.01. Simply calls the ThreadController to see if fail cooldown timer needs to be run. 
+Function InitFailProcedure()
 
+	if ThreadController.fFailedSpCooldownTimerClock > 0.0
+		bSpawnpointActive = true
+		StartTimer(ThreadController.fFailedSpCooldownTimerClock, iFailedSpCooldownTimerID)
+		Debug.Trace("SpawnPoint cooling off before next attempt allowed")
+		;DEV NOTE: If the Fail Cooldown Timer is off, this will spam if constantly in and out of the cell.
+	endif
+
+EndFunction
+	
+	
 
 Function SetSpScriptLinks()
 	
@@ -410,7 +422,7 @@ Function PrepareLocalSpawn() ;Determine how to proceed
 		
 	elseif iPackageMode < 3 ;Start spawning single group at/on this Point. Modes 0, 1 and 2. 
 	
-		Debug.Trace("SpawnPoint spawning single group")
+		Debug.Trace("SpawnPoint spawning single group. SpawnMode and ID are: " +iSpawnMode +iSpawnTypeOrActorID)
 		
 		if bBlockLocalRandomEvents 
 			PrepareSingleGroupNoEventSpawn()
@@ -607,6 +619,10 @@ Function PrepareSingleGroupSpawn()
 		
 		;Create direct links to ActorManagerScript and ClassDetailsStruct
 		
+		if ActorParamsScript == None
+			Debug.Trace("WARNING: Actor Params was NONE, Mode, Pacakge and ID is: " +iSpawnMode +iPackageMode +iSpawnTypeOrActorID)
+		endif
+		
 		ActorManager = ActorParamsScript.ActorManager
 		;We'll get this now as it will have to be passed to the loop as well as various other work which makes this essential
 		
@@ -665,7 +681,7 @@ Function PrepareSingleGroupSpawn()
 	;Organise the ActorBase arrays/Get GroupLoadout.
 	;------------------------------------------------
 	
-	SOTC:ActorGroupLoadoutScript GroupLoadout = ActorParamsScript.GetRandomGroupScript()
+	SOTC:ActorGroupLoadoutScript GroupLoadout = ActorParamsScript.GetRandomGroupLoadout()
 	
 	ActorBase[] kRegularUnits = (GroupLoadout.kGroupUnits) as ActorBase[] ;Cast to copy locally
 	ActorBase[] kBossUnits
@@ -712,7 +728,7 @@ Function PrepareSingleGroupSpawn()
 	
 	if iPackageMode == 0 || iPackageMode == 1 ;Supported for these modes only.
 	
-		if (ActorManager.bSupportsRampage) && (RegionManager.RollForRampage(iPointRampageBonus)) ;Roll dice if supported and NOT Interior mode.
+		if (ActorManager.bSupportsRampage) && (RegionManager.RollForRampage(iPointRampageBonus))
 			bApplyRushPackage = true
 		endif
 		
@@ -778,8 +794,8 @@ Function PrepareSingleGroupSpawn()
 
 	endif ;If none of the above resolved, we won't be using TravelLocs. ApplyPackage loops deal with this accordingly.
 	
-	;Security check on kPackageLocs array, in case we used it in a way that requires this.
-	if kPackageLocs[0] == None
+	;Security check on kPackageLocs array, in case we used it in a way that requires this. 
+	if kPackageLocs.Length > 0 && kPackageLocs[0] == None
 		kPackageLocs.Remove(0)
 	endif
 
@@ -1073,6 +1089,10 @@ Function PrepareSingleGroupNoEventSpawn()
 			ActorParamsScript = SpawnTypeScript.GetRandomActor(0, bForceClassPreset, iForcedClassPreset) ;returns ActorClassPresetScript
 		endif
 		
+		if ActorParamsScript == None
+			Debug.Trace("WARNING: Actor Params was NONE, Mode, Pacakge and ID is: " +iSpawnMode +iPackageMode +iSpawnTypeOrActorID)
+		endif
+		
 		;Create direct links to ActorManagerScript and ClassDetailsStruct
 		
 		ActorManager = ActorParamsScript.ActorManager
@@ -1133,7 +1153,7 @@ Function PrepareSingleGroupNoEventSpawn()
 	;Organise the ActorBase arrays/Get GroupLoadout.
 	;------------------------------------------------
 	
-	SOTC:ActorGroupLoadoutScript GroupLoadout = ActorParamsScript.GetRandomGroupScript()
+	SOTC:ActorGroupLoadoutScript GroupLoadout = ActorParamsScript.GetRandomGroupLoadout()
 	
 	ActorBase[] kRegularUnits = (GroupLoadout.kGroupUnits) as ActorBase[] ;Cast to copy locally
 	ActorBase[] kBossUnits
@@ -2034,10 +2054,12 @@ EndFunction
 Function ApplyPackageSingleLocData(ReferenceAlias akPackage, Actor akActor, ObjectReference akPackageLoc)
 ;Package must be passed to this one, as it can be used for any Package with only single linked ref requirement.
 
-	
 	akActor.SetLinkedRef(akPackageLoc, kPackageKeywords[0])
 	akPackage.ApplyToRef(akActor) ;Finally apply the data alias with package
-	akActor.EvaluatePackage() ;And evaluate so no delay
+	
+	;As of version 0.16.02, cast spell to Actor to run EvaluatePacakge call in own thread. 
+	;akActor.EvaluatePackage() ;And evaluate so no delay
+	kEvalPackageSpell.Cast(akActor, akActor)
 	
 EndFunction
 
@@ -2056,7 +2078,10 @@ Function ApplyPackageTravelData(Actor akActor, ObjectReference[] akPackageLocs)
 	endwhile
 
 	kPackage.ApplyToRef(akActor) ;Finally apply the data alias with package
-	akActor.EvaluatePackage() ;And evaluate so no delay
+	
+	;As of version 0.16.02, cast spell to Actor to run EvaluatePacakge call in own thread. 
+	;akActor.EvaluatePackage() ;And evaluate so no delay
+	kEvalPackageSpell.Cast(akActor, akActor)
 	
 EndFunction
 
@@ -2090,7 +2115,10 @@ Function ApplyPackagePatrolData(Actor akActor, Int aiStartLoc)
 	endwhile
 		
 	kPackage.ApplyToRef(akActor) ;Finally apply the data alias with package
-	akActor.EvaluatePackage() ;And evaluate so no delay	
+	
+	;As of version 0.16.02, cast spell to Actor to run EvaluatePacakge call in own thread. 
+	;akActor.EvaluatePackage() ;And evaluate so no delay
+	kEvalPackageSpell.Cast(akActor, akActor)
 
 EndFunction
 
@@ -2195,6 +2223,7 @@ Function PrepareMultiGroupSpawn()
 	;--------------------------------------------
 	
 	ObjectReference[] kPackageLocs = new ObjectReference[0] ;Create it, because even if we skip it, it still has to be passed to loop
+	;Need to keep an eye on this in case it spits errors about being an empty array/Papyrus trashing it. 
 
 	if (bSpreadSpawnsToChildPoints) || (iPackageMode == 2) ;Patrol Mode, use ChildPoints array.
 		kPackageLocs = kChildPoints

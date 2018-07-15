@@ -133,7 +133,7 @@ EndFunction
 ;Check if enough Thread available to continue functioning
 Bool Function GetThread(int aiMinThreadsRequired)
 	
-	if (iActiveThreadCount > iMaxAllowedThreads) || iActiveNpcCount > iMaxNumActiveNPCs || iActiveSpCount > iMaxNumActiveSPs \
+	if (iActiveThreadCount >= iMaxAllowedThreads) || iActiveNpcCount > iMaxNumActiveNPCs || iActiveSpCount > iMaxNumActiveSPs \
 	|| (bThreadKillerActive) || (bCooldownActive)
 		return false ;Nip it in the bud
 	endif

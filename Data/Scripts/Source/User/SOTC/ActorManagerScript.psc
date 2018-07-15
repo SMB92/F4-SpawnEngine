@@ -231,7 +231,8 @@ Function PerformFirstTimeSetup(ObjectReference akMasterMarker)
 		
 		bInit = true
 		
-		Debug.Trace("Actor initialisation complete")
+		Debug.Trace("ActorManager initialisation complete for: " +sActorType)
+		Debug.Trace("ClassPresets defined: " +ClassPresets)
 	
 	endif
 	
