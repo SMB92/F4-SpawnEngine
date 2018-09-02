@@ -131,6 +131,11 @@ by setting to 1 and giving the SP a single ChildPoint to use as an external spaw
 want to define a Sandbox location away from this SpawnPoint. Do not use this for other purposes unless you know what you are doing. If using the
 iForceGroupsToSpawn override, must have that many ChildPoints. Length of this array doubles as maximum no. of Groups for MultiPoint otherwise. }
 
+	ObjectReference[] Property kPropParents Auto Const
+	{ Default value of None on each member. If using an Enable Parent object to enable any Props, fill this with any of those objects. The index of this
+array correlates with the Integer ID on the GroupLoadout script as to the primary Race/Type of the Actor. ID's are: 0 = Always None (required for checks),
+1 = Human (camp/furniture etc), 2 = SuperMutant (gore etc), 3 = Predator Mutant/Animal (dead bodies etc). If ID passed is None in this array, will be ignored. }
+
 	Bool Property bSpreadSpawnsToChildPoints Auto Const
 	{ If set true, spawned Actors will be placed at random ChildPoints (which must be defined) around the SpawnPoint, so they are spread apart.
 ChildPoints should be placed in same cell as this SP, use at own risk otherwise. Causes bRandomiseStartLoc override and iNumPackageLocs
@@ -243,6 +248,22 @@ EndGroup
 Int iStaggerStartupTimerID = 1 Const
 Int iFailedSpCooldownTimerID = 2 Const
 
+Int iSpShortExpiryTimerID = 3
+Int iSpLongExpiryTimerID = 4
+;These timers are for disabling or deleting spawns when the Point is no longer in the loaded area. Should only be used for spawns staying close to SP. 
+
+Bool bSubjectToExpiry
+Bool bShortExpiryTimerRunning
+Bool bLongExpiryTimerRunning
+Bool bShortExpiryTimerExpired
+;Bool bLongExpiryTimerExpired
+;These bools are for checking and flagging Expiry timers for functions that need this info.
+Bool bIsInLoadedArea
+;Flag for CellAttach/Detach status. 
+
+Int iPropsEnabled
+;Set to the value of iActorRaceTypeID if Props are enabled, for cleaning up later. 0 is None.
+
 Bool bSpawnpointActive ;Condition check. Once SP is activated this is set true.
 
 SOTC:ThreadControllerScript ThreadController
@@ -286,10 +307,34 @@ Bool bApplyRushPackage ;If flagged, will Apply the Rush package, used for Rampag
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Event OnCellAttach()
+
+	bIsInLoadedArea = true
+	
 	;Inital check, is not active, chance is not None (as could be nulled by Menu for example).
 	if (!bSpawnpointActive) && (iChanceToSpawn as Bool) 
 		;Staggering the startup might help to randomise SPs in an area when Threads are scarce
 		StartTimer((Utility.RandomFloat(0.15,0.35)), iStaggerStartupTimerID)
+	
+	elseif bSpawnpointActive ;Check current expiry timer status if is Active. 
+		
+		if bShortExpiryTimerExpired && bLongExpiryTimerRunning		
+			EnableActorRefs()
+			CancelTimer(iSpLongExpiryTimerID)
+		elseif bShortExpiryTimerRunning
+			CancelTimer(iSpShortExpiryTimerID)
+		endif
+		
+	endif
+	
+EndEvent
+
+
+Event OnCellDetach()
+
+	bIsInLoadedArea = false
+	
+	if iPackageMode != 1 && !bIsMultiPoint ;Expiry timers do not apply to travelling Actors, or currently MultiPoints. 
+		StartSpExpiryTimers()
 	endif
 	
 EndEvent
@@ -356,6 +401,23 @@ Event OnTimer(int aiTimerID)
 	elseif aiTimerID == iFailedSpCooldownTimerID
 	
 		bSpawnpointActive = false ;Return to armed state. 
+		
+	elseif aiTImerID == iSpShortExpiryTimerID
+		
+		if !bIsInLoadedArea
+			bShortExpiryTimerRunning = false
+			bShortExpiryTimerExpired = true
+			DisableActorRefs()
+			StartTimer(ThreadController.fSpLongExpiryTimerClock, iSpLongExpiryTimerID)
+			bLongExpiryTimerRunning = true
+		;esle do nothing, detach event will refire the timers. 
+		endif
+		
+	elseif iSpLongExpiryTimerID
+	
+		bLongExpiryTimerRunning = false
+		bSubjectToExpiry = false
+		FactoryReset()
 	
 	endif
 	
@@ -404,7 +466,7 @@ Function PrepareLocalSpawn() ;Determine how to proceed
 	if iPackageMode > 4 || iPackageMode < 0;FAILURE
 		Debug.Trace("Unexpected Package mode detected on SpawnPoint, returning immediately, function FAILED. Mode was set to: " +iPackageMode)
 		bSpawnpointActive = true
-		CleanupManager.AddSpentPoint(Self) ;All points are added by Object rather than script type.
+		CleanupManager.AddSpentPoint(Self)
 		;Cleanup will be handled by the CleanupManager upon Region reset timer firing.
 		ThreadController.ReleaseThreads(iThreadsRequired) ;Spawning done, threads can be released.
 		return
@@ -433,7 +495,7 @@ Function PrepareLocalSpawn() ;Determine how to proceed
 	elseif iPackageMode == 3 ;Ambush - distance-based.
 		
 		PrepareSingleGroupNoEventSpawn() ;Only function that supports this mode, ignores local events by default.
-		;This function will be cut short and return in this mode, after Registration for distance is done. 
+		;This function will be cut short and return in this mode, after Registration for distance is done.
 	
 	elseif iPackageMode == 4 ;Interior mode, distributes the group across different parts of the Interior.
 	;DEV NOTE - Master Random Events framework needs an update for interiors.
@@ -480,9 +542,68 @@ EndFunction
 ;NOTE - We should not have to remove linked refs as only Marker remains persistent
 ;NOTE - Remove Alias Data regardless.
 
+;If applicable, start the Short and Long expiry Timers to disable or cleanup Actors that have been inactive for a long time. 
+Function StartSpExpiryTimers()
+	
+	bSubjectToExpiry = true
+	
+	if bLongExpiryTimerRunning
+		CancelTimer(iSpLongExpiryTimerID)
+		bLongExpiryTimerRunning = false
+	endif
+	
+	StartTimer(ThreadController.fSpShortExpiryTimerClock, iSpShortExpiryTimerID)
+	bShortExpiryTimerRunning = true
+	bShortExpiryTimerExpired = false
+	
+	;Moved long expiry timer start to Event block of short timer when it expires to reduce number of simultaneous timers. 
+	
+EndFunction
+
+
+;When Short Expiry timer expires and SP is not in the loaded area, disable Actors.
+Function DisableActorRefs()
+
+	Int iSize = kGroupList.Length
+	Int iCounter
+	
+	while iCounter < iSize
+	
+		kGroupList[iCounter].Disable()
+		iCounter += 1
+		
+	endwhile
+	
+EndFunction
+
+
+;If Player re-enters the area before Long Expiry, re-enable the Actors. 
+Function EnableActorRefs()
+
+	Int iSize = kGroupList.Length
+	Int iCounter
+	
+	while iCounter < iSize
+	
+		kGroupList[iCounter].Enable()
+		iCounter += 1
+		
+	endwhile
+	
+	;WARNING: This should be followed by a call to restart the expiry timers whnever this function is called. 
+	
+EndFunction
+
+
 ;Cleanup all active data produced by this SP
 Function FactoryReset()
 
+	if !bSpawnpointActive || (bSubjectToExpiry && bIsInLoadedArea)
+		return
+	endif
+	;This is a little workaround for version 0.18.01 with new Expiry timers. If SP has been deactivated by expiry, return.
+	;If the point is in loaded area and is using Expiry Timers, CleanupManager can safely avoid cleanup. 
+	
 	if bIsMultiPoint ;No groups stored here.
 		
 		CleanupHelperRefs()
@@ -496,6 +617,10 @@ Function FactoryReset()
 			CleanupActorRefs(kPackage)
 		endif
 		
+	endif
+	
+	if iPropsEnabled > 0
+		kPropParents[iPropsEnabled].Disable()
 	endif
 	
 	;Delink scripts in case the instances may be changed later (i.e mod reset) which may cause errors to log.
@@ -689,6 +814,15 @@ Function PrepareSingleGroupSpawn()
 	if (ActorParams.iChanceBoss as Bool) && (GroupLoadout.kBossGroupUnits[0] != None) ;Check if Boss allowed and there is actually Boss on this GL.
 		kBossUnits = (GroupLoadout.kBossGroupUnits) as ActorBase[] ;Cast to copy locally
 	endif
+	
+	;Check if the GroupLoadout has any Props to use at this SP based on the iActorRaceTypeID value, and enable them via enable parent here. 
+	iPropsEnabled = GroupLoadout.iActorRaceTypeID
+	if kPropParents[iPropsEnabled] != None ;If The value above was returned 0 (None) this is still safe. 
+		kPropParents[iPropsEnabled].Enable()
+	else 
+		iPropsEnabled = 0 ;Reset to 0 if SP does not have. 
+	endif
+	;We've done it this way to avoid multiple calls to GroupLoadout script, keeping checks faster locally. 
 	
 	
 	;Check and setup EncounterZone data
@@ -1161,6 +1295,15 @@ Function PrepareSingleGroupNoEventSpawn()
 	if (ActorParams.iChanceBoss as Bool) && (GroupLoadout.kBossGroupUnits[0] != None) ;Check if Boss allowed and there is actually Boss on this GL.
 		kBossUnits = (GroupLoadout.kBossGroupUnits) as ActorBase[] ;Cast to copy locally
 	endif
+	
+	;Check if the GroupLoadout has any Props to use at this SP based on the iActorRaceTypeID value, and enable them via enable parent here. 
+	iPropsEnabled = GroupLoadout.iActorRaceTypeID
+	if kPropParents[iPropsEnabled] != None ;If The value above was returned 0 (None) this is still safe. 
+		kPropParents[iPropsEnabled].Enable()
+	else 
+		iPropsEnabled = 0 ;Reset to 0 if SP does not have. 
+	endif
+	;We've done it this way to avoid multiple calls to GroupLoadout script, keeping checks faster locally. 
 	
 	
 	;Check and setup EncounterZone data

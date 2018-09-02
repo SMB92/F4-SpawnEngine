@@ -68,6 +68,10 @@ Group Config
 	Bool Property bIsFriendlyNeutralToPlayer Auto Mandatory
 	{ Init with correct starting value for this Actor. Used to prevent random hostile events }
 	
+	Int Property iActorRaceTypeID Auto Const
+	{ Set the primary Race/Type ID of this Actor for use with Prop system. ID's are: 0 = Human (camp/furniture etc), 
+1 = SuperMutant (gore etc), 2 = Predator Mutant/Animal (dead bodies etc). }
+	
 	Bool Property bIsOversizedActor Auto Mandatory
 	{ Set true if this Actor is unsafe to spawn in confined areas. }
 

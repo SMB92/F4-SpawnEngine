@@ -174,7 +174,7 @@ Formlist akEzEasyList, Formlist akEzHardList, Formlist akEzEasyNBList, Formlist 
 		iWorldID = aiWorldID
 		iRegionID = aiRegionID
 		iCurrentPreset = aiPresetToSet
-		SetPresetVars()
+		;SetPresetVars() Temporaily removed in version 0.18.01
 		aWorldManager.Regions[iRegionID] = Self ;Only needs to access it once
 		
 		RegisterForCustomEvent(MasterScript, "PresetUpdate")
@@ -252,7 +252,7 @@ Event SOTC:MasterQuestScript.PresetUpdate(SOTC:MasterQuestScript akSender, Var[]
 		if (!bCustomSettingsActive) || (akArgs[1] as Bool) ;If not Custom or Override (akArgs[1]) = true
 		
 			iCurrentPreset = akArgs[3] as Int
-			SetPresetVars()
+			;SetPresetVars() Temporarily removed in version 0.18.01
 			ReshuffleActorLists(akArgs[2] as Bool) ;(akArgs[2]) - bool to reset custom spawntype settings
 			;DEV NOTE: Calling this function will safely reinitialise the arrays, no work need be done here.
 			
@@ -322,9 +322,6 @@ Event SOTC:MasterQuestScript.MasterSingleSettingUpdate(SOTC:MasterQuestScript ak
 		bCustomSettingsActive = true
 		
 	elseif (akArgs[0] as string) == "SpPresetChanceBonus"
-		
-		Debug.Trace("Received SP CB Event, akArgs1 = " +akArgs[1] as Int)
-		Debug.Trace("Received SP CB Event, akArgs2 = " +akArgs[2] as Int)
 		
 		Int i = akArgs[1] as Int
 		iSpPresetChanceBonusList[i] = akArgs[2] as Int
@@ -452,25 +449,27 @@ EndFunction
 ;Setting from Menu will flag bCustomSettingsActive as true. Presets are hard coded.
 Function SetPresetVars(Bool abSetCustomFlag = false) ;Parameter value used when custom setting from Menu.
 
-	bCustomSettingsActive = abSetCustomFlag
+	;THIS FUNCTION HAS BEEN COMMENTED OUT IN VERSION 0.18.01. BETTER METHODS FOR RESETTING PRESET VALUES ARE BEING TABLED.
+
+	;bCustomSettingsActive = abSetCustomFlag
 	
-	if iCurrentPreset == 1 ;SOTC Preset
-		iRandomSwarmChance = 5
-		iRandomRampageChance = 5
-		iRandomAmbushChance = 5
-	
-	elseif iCurrentPreset == 2 ;WOTC Preset
-		iRandomSwarmChance = 10
-		iRandomRampageChance = 5
-		iRandomAmbushChance = 5
-	
-	elseif iCurrentPreset == 3 ;COTC Preset
-		iRandomSwarmChance = 10
-		iRandomRampageChance = 10
-		iRandomAmbushChance = 10
+	;if iCurrentPreset == 1 ;SOTC Preset
+	;	iRandomSwarmChance = 5
+	;	iRandomRampageChance = 5
+	;	iRandomAmbushChance = 5
+	;
+	;elseif iCurrentPreset == 2 ;WOTC Preset
+	;	iRandomSwarmChance = 10
+	;	iRandomRampageChance = 5
+	;	iRandomAmbushChance = 5
+	;
+	;elseif iCurrentPreset == 3 ;COTC Preset
+	;	iRandomSwarmChance = 10
+	;	iRandomRampageChance = 10
+	;	iRandomAmbushChance = 10
 
 	;else - WTF value was set?
-	endif
+	;endif
 
 	;Reshuffle Actor lists needs to be called from the calling function.
 	

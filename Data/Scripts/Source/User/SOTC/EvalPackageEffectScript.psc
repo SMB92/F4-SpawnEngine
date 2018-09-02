@@ -19,7 +19,6 @@ Scriptname SOTC:EvalPackageEffectScript extends ActiveMagicEffect
 
 Event OnEffectStart(Actor akTarget, Actor akCaster)
 
-	GoToState("DoneState")
 	akTarget.EvaluatePackage()
 	
 EndEvent

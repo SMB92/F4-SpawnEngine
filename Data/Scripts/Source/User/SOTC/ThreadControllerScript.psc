@@ -59,6 +59,14 @@ Group Settings
 	Float Property fFailedSpCooldownTimerClock = 300.0 Auto ;Moved to ThreadController
 	{ Initialise 300.0 (5 Mins), can be set in Menu. Time to cooldown before failed point retry }
 	
+	Float Property fSpShortExpiryTimerClock = 180.0 Auto
+	{ Default value of 180.0 (3 Minutes). This Timer on the SpawnPoint will disable all spawned Actors if the SP
+is no longer in the loaded area. If the Player re-enters before the Long Timer below, Actors will be re-enabled. }
+	
+	Float Property fSpLongExpiryTimerClock = 180.0 Auto
+	{ Default value of 180.0 (3 Minutes). If this Timer expires on the SpawnPoint, all Actors will be cleaned up.
+This Timer is started after the Short Expiry Timer if it expires. }
+	
 EndGroup
 
 

@@ -544,7 +544,7 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		
 		;Notify TravelLoc Markers they can safely add themselves to their Regions now.
 		Var[] kArgs = new Var[1]
-		Bool b = true
+		Bool b = true ;True tells the Markers to setup. False was to delete themselves on uninstall, but as they are persistent that'll probably never be implemented. 
 		kArgs[0] = b
 		
 		SendCustomEvent("InitTravelLocs", kArgs)

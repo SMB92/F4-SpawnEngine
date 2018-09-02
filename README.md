@@ -5,6 +5,10 @@
 
 ## NEWS
 
+### First update to the Public Alpha candidate, now at version 0.18.01.  
+
+[02/09/2018] After having decided to release the private testing candidate to the public on the 1st anniversary of the first public version (back when SOTC was a baby that wreaked havoc on the game), today I am publishing the first update for it. I have been extremley busy in the last couple months, hence why the lack of an update, and while this update may seem small, the few new features I have added today will go a long way towards better performance, management and quality-of-life. Progress is still slow at this point, and will hopefully pick up pace within the next month or so.  
+
 ### Version 0.16.03 published to closed testing group. 
 
 [15/07/2018] After the 0.15.02 private alpha, a few more issues were identified, and this version is a collective of these fixes, thus the skipping through to version 0.16.03. New methods were also implemented to speed up AI evaluation and more advanced methods are being investigated for Sandbox AI. 
@@ -89,6 +93,30 @@ Please be patient while work continues on both a working test file and official 
 
 ## UPDATE LOG
 
+##### [02/09/2018] SpawnEngine updated to version 0.18.01.180902
+
+###### HOUSEKEEPING:
+- Update NP++ Lang file again with new functions.
+- Add/cleanup some commentary as usual. 
+
+###### MAJOR/MINOR FEATURE UPDATES/CHANGES/ADDITIONS:
+- [MAJOR] Implemented Short and Long expiry timers on SpawnPointSscript to help with AI overload problems. Now if an SP with local Spawns (non-travelling etc) will disable its Actors after 3 minutes and force clean them up after 6 minutes (as said travelling Actors are exepted and so are Multi-Point SPs at this time). While this does technically warrant the obsoletion of the RegionTrackerScript, I have coded around it for now to make them both work in harmony. Long expiry will cleanup Actors only, but not reset the point entirely. This is the subject of ongoing change until the best balance is struck. 
+- [MAJOR] Added framework for the use of "Props". This was a fairly simple addition as far as scripts concerned, I've simply added a new Property to SpawnPointScript, ActorManagerScript and ActorGroupLoadoutScript and code in relevant sections of the SpawnPointScript. This allows one to set an Enable Parent for any placed "Props" (Read: objects for use in Actor sandboxing, such as dynamic camps etc). The framework allows for 3 types of Prop[s collections that can be used: Human/Camp, SuperMutant, Predator Mutant/Animal etc at present. New property on GroupLoadout determines which will be used, if it exists for that SP. I am looking at further enhancing this by potentially randomising enabled Props depending on group numbers etc. 
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Fixed bug with mod trying to Init multiple times when Pipboy opened after setting preset for the first time from Aux Menu. 
+- Removed profiling of scripts on first start from AuxScript.
+- Removed setting of default values (namely SetPresetVars() function) on RegionManagerScript. It only set values for the extra features of Rampage, Ambush and Swarm.  
+
+###### MISC NOTES:
+- Version 0.17.xx was skipped as this was the first public release Alpha, and only contained physical plugin fixes.
+
+###### PLUGIN CHANGES:
+- Changed starting values of SpPresetChanceBonus for each Preset to 5, 10, 20% respectively. This is the universal bonus chance applied to ALL SpawnPoints (each SP has it's own percentage chance to spawn). May well rebalance this again in future.
+- Increased sandbox radius for travelling Actors once reached their destination to 1536 unit (double the previous). Further changes are coming for this system as noted in #to-do-list
+- Added new Static (XMarkerHeading) Object -SOTC_PropEnableParent. Currently not in use but will be used for Props as noted in #to-do-list
+
+------
 ##### [15/07/2018] SpawnEngine updated to version 0.16.03.180715
 
 ###### HOUSEKEEPING:

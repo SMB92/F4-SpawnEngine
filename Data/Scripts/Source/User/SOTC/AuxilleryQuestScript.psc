@@ -66,11 +66,11 @@ Event OnQuestInit()
 		PointPersistStore = (kMasterCellMarker.PlaceAtme(SOTC_PointPersistStore, 1 , false, false, false)) as SOTC:PointPersistScript
 		bInit == true ;Never want to receive this event again.
 		
-		Debug.StartScriptProfiling("SOTC:MasterQuestScript")
-		Debug.StartScriptProfiling("SOTC:RegionManagerScript")
-		Debug.StartScriptProfiling("SOTC:SpawnTypeRegionalScript")
-		Debug.StartScriptProfiling("SOTC:ThreadControllerScript")
-		Debug.StartScriptProfiling("SOTC:AuxilleryQuestScript")		
+		;Debug.StartScriptProfiling("SOTC:MasterQuestScript")
+		;Debug.StartScriptProfiling("SOTC:RegionManagerScript")
+		;Debug.StartScriptProfiling("SOTC:SpawnTypeRegionalScript")
+		;Debug.StartScriptProfiling("SOTC:ThreadControllerScript")
+		;Debug.StartScriptProfiling("SOTC:AuxilleryQuestScript")		
 		
 	endif
 	
@@ -97,10 +97,10 @@ Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
 
 	if (asMenuName == "PipboyMenu") && (!abOpening) && (bSpawnEngineStarting)
 	
+		UnregisterForAllMenuOpenCloseEvents()
 		Game.GetPlayer().RemoveItem(SOTC_AuxMenuTape, 1, true) ;Silently remove
 		InitSpawnEngine()
-		UnregisterForAllMenuOpenCloseEvents()
-		
+
 	endif
 	
 EndEvent
