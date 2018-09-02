@@ -29,7 +29,7 @@ Group Primary
 	
 	Int Property iActorRaceTypeID Auto Const
 	{ Set the primary Race/Type ID of this Loadout for use with Prop system (this ID can be different for the Loadout then the ActorManager). 
-ID's are: 0 = Human (camp/furniture etc), 1 = SuperMutant (gore etc), 2 = Predator Mutant/Animal (dead bodies etc). }
+ID's are: 0 = Disabled, 1 = Human (camp/furniture etc), 2 = SuperMutant (gore etc), 3 = Predator Mutant/Animal (dead bodies etc). }
 
 	Bool Property bHasPowerArmorUnits Auto Const Mandatory
 	{ If either ActorBase array above has PA Units, sets this true } 
