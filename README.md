@@ -5,6 +5,10 @@
 
 ## NEWS
 
+### Major backend update, new features and more fixes in version 0.19.01.
+
+[15/09/2018] This update brings many of the planned/realised performance/quality of life improvements needed after the observations made over the last 2 public alpha demo versions, as well as some new major features, the effect of which will be realised over the course of development. More features are coming, but this should be the final major performance update aside from new menus which will be added next minor version. Please be advised the plugin update (when ready) will require a fresh save that is SOTC free, or weird stuff may happen. 
+
 ### First update to the Public Alpha candidate, now at version 0.18.01.  
 
 [02/09/2018] After having decided to release the private testing candidate to the public on the 1st anniversary of the first public version (back when SOTC was a baby that wreaked havoc on the game), today I am publishing the first update for it. I have been extremley busy in the last couple months, hence why the lack of an update, and while this update may seem small, the few new features I have added today will go a long way towards better performance, management and quality-of-life. Progress is still slow at this point, and will hopefully pick up pace within the next month or so.  
@@ -93,6 +97,60 @@ Please be patient while work continues on both a working test file and official 
 
 ## UPDATE LOG
 
+##### [15/09/2018] SpawnEngine updated to version 0.19.01.180915
+
+###### HOUSEKEEPING:
+- Fix spelling mistake in naming of class AuxiliaryQuestScript. Was spelt Auxillery. Can't beleive I let that go so long without correcting lol. 
+- Update NPP lang file again.
+- More Property desc fixes/additions, commentary.
+
+###### MAJOR/MINOR FEATURE UPDATES/CHANGES/ADDITIONS:
+- [MAJOR] Added functionality for mod to detect if Player is in new game and will now show the welcome message/give the holotape 30 seconds after exiting the Vault. 
+- [MAJOR] Added far more granular code for travelling Actors with multiple destinations. Am now holding the AI Engine's hand entirely through the process. Recommend to only use multiple travel locs as seldom as possible as this is slower on the Papyrus side of things. 
+- [MAJOR] Removed the RegionTrackerScript entirely, and all reference of it from the RegionManager and any events from MasterQuestScript. This has been on the cards for a while but finally bit the bullet. Regions will now have a timer clock for reset (so the aggressiveness of reset time is still customizable on a per Region basis) but SPs will now handle reset of themselves. This just makes a lot of sense with new Expiry timer (functionality of which has been expanded dramatically). SPs will can receive force reset events from Master and Region, and will register for these events when the mod first starts. Unregistration will occur on shutdown as well (so no unnecessary persistence beyond what there already is). 
+- [MAJOR] In conjuction with above changes to travelling Actor management, extended Prop system to TravelLocationInitScript. Travel locs can now be flagged by a SpawnPoint to enable props when travelling group reaches it. Only one SP can have props enabled at a location at a time. 
+- [MAJOR] Changed SOTC:PointPersistScript to RegionPersistentDataStoreScript. This has now become a multi-instance script/object (one for each Region, which will be stored in arrays on WorldManagerScript). This deals with a couple of issues: 1. Each instance will have an editor-persistent list of all SpawnPoints/Travel locs in a Region. This allows easier management in development and also ensures that the Property cap per script won't be reached. 2. We will now store arrays of EncounterZones for each Region in this script. I strongly dislkie the formlist method previously used, as it is slower to transfer at startup, and mainly because you can't have copies in a formlist (in which case for EZ's is bad for minimizing higher/lower level spawns when using a random list). As a result, EZ array and TravelLocs Properties, along with Travel Locs Init events are removed from RegionManagerScript (and MasterScript for the latter events) as accessing this new instance is not expected to be "hotly contested" and therefore more memory efficient overall. 
+- [MAJOR] Add new SpawnMode to SpawnPoint - Mode "2". Can now define a list of Actors to use via a new Integer array where you can enter a list of SOTC Actor IDs. This is a step further from the already pre-defined "SpawnTypes" and can be used in custom situations where not all/too many desired Actors are present in a single SpawnType.
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Travelling Actors will now be subject to expiry method introduced last version (SPs will disable actors after a given time, and delete them after a longer time if not become active since).
+- Added new Bool Property, bIgnoreExpiry, to SpawnPointScript. This will stop expiry from working and solely rely on CleanupManager for reset. Added for when Spawns need to be around as long as possible. 
+- Decreased the max number of NPCs to 1000 and Max number of SPs to 300, and capped it at that. With vigorous new management regime, things should never reach this high. 
+- Change Master custom event InitTravelLocs to InitRemoteInstances, this event will now be used to Init all remote objects such as TravelLocation markers and SpawnPoints, or whatever else may make use of it in future.
+- Changed PointPersistScript to organise SpawnPoints into arrays for each World/Region for better tracking. With the CleanupManager and tracking of SPs moved out of Region scripts, this will also serve as point of call when wanting to reset SpawnPoints for specific Worlds/Regions en mass. 
+- Moved instantiation of PointPersistStore back to MasterQuestScript, as it will need to talk to it now. 
+- Removed setting of bCustomSettingsActive flag from RegionManager MasterSettings event. Still trying to find the right method to deal with saving of custom settings/saving profiles. 
+- Remove MasterCellMarker Property from Auxiliary script. No longer needed there. 
+- Remove dumb callback from RegionManager, setting itself on the WorldManager array, and instead do the work on the WorldManager. 
+- Change ForceResetAllSps function/event name to just ResetAllSPs, and added abForceReset parameter instead.
+- Redid SP reset events on Master script, assigned new Event IDs and expanded functionality. Added reset function/event for per-Region resetting.  
+- Add asMessage Param to Master EventMonitor. Can now pass a message to display depending on Event sent (for notifying the user of a settings event that completed after Menu locked).  
+- Fix a couple problems with SpawnPoint PrepareLocalSpawn function, including not incrementing active counts.
+- Removed the Long Expiry timer and options added in 0.18.01 to SpawnPointScript. Pointless with Reset timer and confuses things. 
+- Moved priority of GetThread() call on SpawnPointScript much higher, had forgotten to do this some time ago. 
+- Fix SpawnPointScript potentially not releasing threads on spawn fail.
+- Moved IsCleared check for Interior SPs to initial checks block. Will fail far faster if not cleared (which is better for other threads). 
+- No longer incrementing ActiveNpcCount from spawn functions in SpawnPointScript but rather moved to initial function (for better readability). Fixed double incrementation of iActiveSpCount (removed from same blocks). 
+- Add new Property group to SpawnPointScript, PackageData. All related settings moved here. 
+- Fix Fail Cooldown Timer on SpawnPoint not actually blocking spawn attempts while running.
+- Force Multi-Point mode on SpawnPointScript to use only one travel destination for travelling Actors.
+- Fix glaring issue with Boss Spawns never actually been flagged as allowed on SpawnPointScript (I believe this was an oversight when some major changes were done around version 0.13).
+- Removed all "SpawnNoPackage" loops from SpawnPointScript and added new parameter "abApplyPackage" to "SpawnSingleLoc" loops instead. Added code to deal with Travel Mode as well.
+- Fix SpawnActorRandomEzSingleLocLoop() function on SpawnPoint not (attempting) applying Package to the guaranteed first Actor. 
+- Fix inconsistency with check for Patrol Mode between Prepare Spawn functions. One wasn't checking at all. 
+- Removed duplicate setting of iSize variable right before checking Package Mode from Prepare Spawn functions.
+- Removed some debug.trace from SpawnPointScript, was only present to track certain bug that's been fixed. 
+- Removed a whole bunch of unused Preset setting code. The planned system was too confusing and likely to prove unpopular anyway. bCustomSettingsActive setting is removed from everywhere along with any function that uses it or similar params.
+- Fix Package Mode 3 (Ambush) never actually working for MultiPoint mode.
+- Taken ApplySneakState out of testing phase and implemented for Package Mode 3. Actors in this mode will now start in sneak state before rushing the Player. Implemented for MultiPoint mode also.
+- Added kPackageEval Spell as a Property to SpHelperScript. Save passing as is always required.
+- Made Package Keywords array a Property on SPHelperScript. Will now fill the base instances of SpawnPoint and SpHelper with all Package keywords as they are too easy to miss when setting up. 
+- Converted SpResetClock Property on RegionManager to a float. Was an oversight. 
+
+###### PLUGIN CHANGES:
+-Coming in 0.19.02 release candidate. 
+
+------
 ##### [02/09/2018] SpawnEngine updated to version 0.18.01.180902
 
 ###### HOUSEKEEPING:

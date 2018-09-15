@@ -28,7 +28,7 @@ Group Primary
 	Quest Property SOTC_MasterQuest Auto Const Mandatory
 	{ Auto-fills. Link to own Quest }
 	
-	SOTC:AuxilleryQuestScript Property AuxilleryQuestScript Auto Const Mandatory
+	SOTC:AuxiliaryQuestScript Property AuxiliaryQuestScript Auto Const Mandatory
 	{ Fill with Auxillery Controller Quest. }
 	
 	SOTC:WorldManagerScript[] Property Worlds Auto Mandatory
@@ -83,10 +83,6 @@ Group Dynamic
 	; [14] - RAMPAGE (CLASS-BASED) - Stores all Actors that support Rampage feature.
 	
 	;NOTE: See "CLASSES VS SPAWNTYPES" commentary of the SpawnTypeMasterScript for more in-depth info
-	
-	;No longer instanced as of version 0.13.01
-	;SOTC:PointPersistScript Property PointPersistStore Auto
-	;{ Init None, instanced at runtime. Store all Travel Markers placed in World. }
 	
 EndGroup
 
@@ -201,8 +197,8 @@ EndGroup
 ;Temp Vars for Menu
 Bool bForceResetCustomRegionSettings
 Bool bForceResetCustomSpawnTypeSettings
-Int iValue01 ;A temp variable that can be used for CustomEvents if needed.
-Int iValue02 ;A temp variable that can be used for CustomEvents if needed.
+Int iEventValue01 ;A temp variable that can be used for CustomEvents if needed.
+Int iEventValue02 ;A temp variable that can be used for CustomEvents if needed.
 
 ;-------------------------------------
 
@@ -432,13 +428,10 @@ EndGroup
 ;CUSTOM EVENT DEFINITIONS
 ;-------------------------
 
-CustomEvent PresetUpdate ;Update sent to Regions and/or Spawntypes for Preset change.
-CustomEvent MasterSingleSettingUpdate ;Event to send single settings updates to scripts.
-CustomEvent ForceResetAllSpsAndTimers ;Reset all Regions SPs AND Timers. Not menu safe, currently not implemented (version 0.13.03). 
-CustomEvent ForceResetAllSps ;Reset all Regions SPs. Does not (re)start timer, safe from Menu, but
-;we will force the user to exit menu anyway as it may take some time to complete.
-CustomEvent InitTravelLocs
-
+CustomEvent PresetUpdate ;MASTER EVENT ID = 10 - Update sent to Regions and/or Spawntypes for Preset change.
+CustomEvent MasterSingleSettingUpdate ;NO EVENT ID - DOES NOT REQUIRE MENU MODE EXIT - Event to send single settings updates to scripts. 
+CustomEvent ResetAllActiveSps ;MASTER EVENT IDS 16 & 17 (FORCE RESET FALSE/TRUE). 
+;DEV NOTE: InitRemoteInstances Event removed in 0.19.01 as Regions now have their own RegionPersistentDataStore object containing all specific data. 
 
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;INITIALISATION FUNCTIONS & EVENTS
@@ -464,11 +457,10 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		;Start creating instances, starting with ThreadController. 
 		
 		ThreadController = (kMasterCellMarker.PlaceAtMe(kThreadControllerObject, 1 , false, false, false)) as SOTC:ThreadControllerScript
-		
 		Debug.Trace("ThreadController created on Master")
 		
-		ObjectReference kNewInstance
-		
+
+		ObjectReference kNewInstance ;Used for objects/instances that will add themselves dynamically upon instantiation. 
 		
 		;Start SpawnTypeMasters first
 		Int iCounter 
@@ -529,26 +521,14 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 		endwhile
 		
 		
-		;DEV NOTE: As of version 0.14.01, Event Quests are now Start Enabled and stages used to send work
-		;Events to this script.
-		;Debug.Trace("Events starting")
-		;SafelyStartPendingEventQuests() ;Will return immediately if no events
+		;DEV NOTE: As of version 0.14.01, Event Quests are now Start Enabled and stages used to send work Events to this script.
 		
-		
-		;Instancing done, mod is ready.
+		;Instancing done, mod is ready. Flag as on, cleanup and give tape. 
 		
 		SOTC_MasterGlobal.SetValue(1.0) ;Officially turned on.
 		ClearMenuVars()
 		
-		Debug.Trace("Sending Init event to Travel markers")
-		
-		;Notify TravelLoc Markers they can safely add themselves to their Regions now.
-		Var[] kArgs = new Var[1]
-		Bool b = true ;True tells the Markers to setup. False was to delete themselves on uninstall, but as they are persistent that'll probably never be implemented. 
-		kArgs[0] = b
-		
-		SendCustomEvent("InitTravelLocs", kArgs)
-		Utility.Wait(7.0) ;Wait 12 seconds for that event to complete (eeach region waits 10 seconds for all Travel Locs to self add). 
+		;DEV NOTE: InitRemoteInstances Event removed in 0.19.01 as Regions now have their own RegionPersistentDataStore object containing all specific data. 
 		
 		PlayerRef.Additem(SOTC_MainMenuTape, 1, false) ;We want to know it's been added.
 		
@@ -559,6 +539,7 @@ Function PerformFirstTimeSetup(Int aiPresetToSet)
 	;Add more work if needed
 	
 EndFunction
+
 
 
 Function FillMasterActorLists()
@@ -606,6 +587,7 @@ Function FillMasterActorLists()
 EndFunction
 
 
+
 Function SafelyClearMasterActorLists()
 
 	Int iCounter = 1 ;Start at 1, 0 is MasterList
@@ -620,12 +602,14 @@ Function SafelyClearMasterActorLists()
 EndFunction
 
 
+
 Function ResetMasterActorLists()
 
 	SafelyClearMasterActorLists()
 	FillMasterActorLists()
 	
 EndFunction
+
 
 
 ;Adds a single ActorManager to all applicable Master Lists.
@@ -647,6 +631,7 @@ Function AddActorToMasterSpawnTypes(SOTC:ActorManagerScript aActorToAdd)
 	endwhile
 
 EndFunction
+
 
 
 ;This function returns the mod to the pre-activated state, removing all dynamically produced data.
@@ -712,8 +697,8 @@ Function MasterFactoryReset()
 	
 	;Clear Menu Vars before handover to AuxQuestScript
 	ClearMenuVars()
-	;Handover to AuxilleryQuestScript. This will stop this Quest. 
-	AuxilleryQuestScript.FinaliseMasterFactoryReset()
+	;Handover to AuxiliaryQuestScript. This will stop this Quest. 
+	AuxiliaryQuestScript.FinaliseMasterFactoryReset()
 	
 EndFunction
 
@@ -754,78 +739,111 @@ Function SendMasterMassEvent()
 
 	Var[] Params
 	string sPresetType
+	string sEventMessage ;Displayed when event complete and Menu unlocked. 
 
-	if iMenuSettingsMode == 10 ;FULL PRESET
+	if iMenuSettingsMode == 10 ;FULL PRESET UPDATE
 		
-		Params = new Var[4]
+		ThreadController.ToggleThreadKiller(true) ;Disable all Spawn threads until event complete.
+		
+		Params = new Var[2]
 		sPresetType = "Full"
 		
 		Params[0] = sPresetType ;The type of Preset change
-		Params[1] = true ;bForceResetCustomRegionSettings For the Alpha test, this will just be true always
-		Params[2] = true ;bForceResetCustomSpawnTypeSettings For the ALpha test, this will just be true always. 
-		Params[3] = iCurrentPreset
+		Params[1] = iCurrentPreset
 		
 		Int iTarget = ThreadController.iActiveRegionsCount
 		SendCustomEvent("PresetUpdate", Params)
 		Debug.Trace("Master Preset Update Sent. Waiting for event to reach target number of instances. Target is: " +iTarget)
+		sEventMessage = "Master Preset has successfully been updated. Menu is unlocked."
+		BeginEventMonitor(iTarget, sEventMessage)
 		
-		BeginEventMonitor(iTarget)
+	;DEV NOTE: The reason for the below Preset Update events for SpawnTypes/Actors only 	
 		
-	elseif iMenuSettingsMode == 11 ;ALL SPAWNTYPES/ACTORS ONLY
+	elseif iMenuSettingsMode == 11 ;SINGLE SPAWNTYPE ONLY
+		
+		ThreadController.ToggleThreadKiller(true) ;Disable all Spawn threads until event complete.
 		
 		Params = new Var[3]
-		sPresetType = "Spawntypes"
-		
-		Params[0] = sPresetType ;The type of Preset change
-		Params[1] = bForceResetCustomSpawnTypeSettings
-		Params[2] = iValue01
-		
-		Int iTarget = ThreadController.iActiveRegionsCount
-		SendCustomEvent("PresetUpdate", Params)
-		Debug.Trace("Master SpawnTypes-only Preset Update Sent. Waiting for event to reach target number of instances. Target is: " +iTarget)
-		
-		BeginEventMonitor(iTarget)
-		
-	elseif iMenuSettingsMode == 12 ;FORCE RESET ALL SPAWNPOINTS AND TIMERS. - (Not yet implemented).
-	;This event does not require user to exit Menu as timers are not restarted. Possibly should move to Single settings event for clarity. 
-		
-		Int iTarget = ThreadController.iActiveRegionsCount
-		SendCustomEvent("ForceResetAllSpsAndTimers") 
-		Debug.Trace("Master SP + Timer Reset issued. Waiting for event to reach target number of instances. Target is: " +iTarget)
-		BeginEventMonitor(iTarget)
-		
-	elseif iMenuSettingsMode == 13 ;SINGLE SPAWNTYPE ONLY
-	
-		Params = new Var[4]
 		sPresetType = "SingleSpawntype"
 		
 		Params[0] = sPresetType
-		Params[1] = iValue01 ;The ID of the Spawntype.
-		Params[2] = bForceResetCustomSpawnTypeSettings
-		Params[3] = iValue02 ;The Preset to set
+		Params[1] = iEventValue01 ;The ID of the Spawntype.
+		Params[2] = iEventValue02 ;The Preset to set
 		
 		Int iTarget = ThreadController.iActiveRegionsCount
 		SendCustomEvent("PresetUpdate", Params)
-		Debug.Trace("Master Single SpawnType Preset Update Sent. Waiting for event to reach target number of instances. Target is: " +iTarget)
-		BeginEventMonitor(iTarget)
+		Debug.Trace("SpawnType Preset Update Sent. Waiting for event to reach target number of instances. Target is: " +iTarget)
+		sEventMessage = "Preset Mode has been successfully updated for the chosen SpawnTypes only. Menu is unlocked."
+		BeginEventMonitor(iTarget, sEventMessage)
+		
+	;RESET SP EVENTS - IDS 17 TO 20. 	
+		
+	elseif iMenuSettingsMode == 16 ;RESET ALL SPS - NO FORCE (Will not reset SPs in currently loaded area etc).
+		
+		ThreadController.ToggleThreadKiller(true) ;Disable all Spawn threads until event complete.
+		
+		Params = new Var[1]
+		Params[0] = false ;NO FORCE
+		SendCustomEvent("ResetAllActiveSps", Params)
+		
+		Int iTarget = ThreadController.iActiveSPCount
+		sEventMessage = "All valid SpawnPoints have been successfully reset. Menu is now unlocked."
+		Debug.Trace("Master SP Reset issued (Force = false). Event Monitor starting. Target Count: " +iTarget)
+		BeginEventMonitor(iTarget, sEventMessage)
+		
+	elseif iMenuSettingsMode == 17 ;RESET ALL SPS - FORCE (Reset them all regardless of any conditions).
+		
+		ThreadController.ToggleThreadKiller(true) ;Disable all Spawn threads until event complete.
+		
+		Params = new Var[1]
+		Params[0] = true ;FORCE
+		SendCustomEvent("ResetAllActiveSps", Params)
+
+		Int iTarget = ThreadController.iActiveSPCount
+		sEventMessage = "All SpawnPoints have been successfully force reset. Menu is now unlocked."
+		Debug.Trace("Master SP Reset issued (Force = false). Event Monitor starting. Target Count: " +iTarget)
+		BeginEventMonitor(iTarget, sEventMessage) 
+		
+	elseif iMenuSettingsMode == 18 ;RESET ALL SPS - REGION - NO FORCE (Will not reset SPs in currently loaded area etc).
+		
+		ThreadController.ToggleThreadKiller(true) ;Kill threads until reset complete. 
+		Worlds[iEventValue01].Regions[iEventValue02].RegionPersistentDataStore.ResetAllActiveSps(false)
+		;We can't feasibly do the "Event Monitor" for a single Region only as it is a single threaded call and will return. 
+		ClearMenuVars()
+		ThreadController.ToggleThreadKiller(false) ;Re-allow spawn thread traffic.
+		Debug.MessageBox("All SPs for the selected Region have been reset. Menu is unlocked.")
+		
+	elseif iMenuSettingsMode == 19 ;RESET ALL SPS - REGION - FORCE (Reset them all regardless of any conditions).
+		
+		ThreadController.ToggleThreadKiller(true) ;Kill threads until reset complete. 
+		Worlds[iEventValue01].Regions[iEventValue02].RegionPersistentDataStore.ResetAllActiveSps(true)
+		;We can't feasibly do the "Event Monitor" for a single Region only as it is a single threaded call and will return. 
+		ClearMenuVars()
+		ThreadController.ToggleThreadKiller(false) ;Re-allow spawn thread traffic.
+		Debug.MessageBox("All SPs for the selected Region have been force reset. Menu is unlocked.")
 		
 	endif
 	
 EndFunction
 
 
-;Used by the above Event issuer, checks Event flag on Threadcontroller until target is reached. 
-Function BeginEventMonitor(Int aiTarget)
 
-	Utility.Wait(1.0) ;Wait a sec, event may have possibly completed.
+;Used by the above Event issuer, checks Event flag on Threadcontroller until target is reached. 
+Function BeginEventMonitor(Int aiTarget, string asMessage)
+
+	;No thread traffic should be occuring on Master while this is in effect.
+	
+	Utility.Wait(3.0) ;Wait 3 seconds, event may have possibly completed.
 	while aiTarget < ThreadController.iEventFlagCount
 		Utility.Wait(1.0) ;Wait another second. 
 	endwhile
 		
-	Debug.MessageBox("Settings have been updated. You may resume as normal. The menu has been unlocked")
-	ClearMenuVars()
+	Debug.MessageBox(""+asMessage)
+	ClearMenuVars() ;This will reset the EventFlagCount on TC.
+	ThreadController.ToggleThreadKiller(false) ;Allow spawn threads. 
 	
 EndFunction
+
 
 
 ;Used to send custom single setting changes on the Master level, from the menu directly.
@@ -889,16 +907,12 @@ Function SendMasterSingleSettingUpdateEvent(string asSetting, Bool abBool01 = fa
 		Debug.Trace("Sending SP CB Event, aiInt02 = " +aiInt02)
 		SendCustomEvent("MasterSingleSettingUpdate", SettingParams)
 		
-	elseif asSetting == "ForceResetSps"
-	
-		SendCustomEvent("ForceResetAllSps")
-		;Menu safe as it does not reset Timers.
-		
 	endif
 	
 	;DEV NOTE: May revisit the use of the optional bool param and possibly implement override options for Regions with CustomSettings flag enabled. 
 	
 EndFunction
+
 
 
 ;Event for issuing the settings changes on Menus close. Used to avoid Menu lockups with latent functions.
@@ -926,8 +940,6 @@ Event OnMenuOpenCloseEvent(string asMenuName, bool abOpening)
 		endif
 		
 	endif
-
-	;ClearMenuVars() - Moved to SettingsEventMonitor as that works in its own thread. 
 	
 EndEvent
 
@@ -935,12 +947,12 @@ EndEvent
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;MENU FUNCTIONS & EVENTS
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
-;Used for quick setting variables/Globals.
 
-Function RegisterMasterForPipBoyCloseEvent(Int aiValue01 = 0, Int aiValue02 = 0) ;Register For Pipboy close event. Parameters optional
+;Register For Pipboy close event. Parameters optionals. More can be added in future if needed.
+Function RegisterMasterForPipBoyCloseEvent(Int aiEventValue01 = 0, Int aiEventValue02 = 0) 
 	
-	iValue01 = aiValue01 ;A temp value that can be used by events if needed.
-	iValue02 = aiValue02 ;A temp value that can be used by events if needed.
+	iEventValue01 = aiEventValue01 ;A temp value that can be used by events if needed.
+	iEventValue02 = aiEventValue02 ;A temp value that can be used by events if needed.
 	
 	;Pending major settings updates will take place after this event
 	if !bRegisteredForPipboyClose ;Security check is intended for other functions rather than this one.
@@ -995,19 +1007,19 @@ EndFunction
 
 
 ;This function either sets Menu Globals to current values before viewing a Menu option, or it sets the new value selected from said Menu. 
-Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 = 0)
+Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiEventValue01 = 0)
 
 	if asSetting == "MasterPreset"
 	
 		if abSetValues
-			iCurrentPreset = aiValue01
+			iCurrentPreset = aiEventValue01
 		endif
 		SOTC_Global01.SetValue(iCurrentPreset as Float)
 		
 	elseif asSetting == "MasterDifficulty"
 		
 		if abSetValues
-			iCurrentDifficulty = aiValue01
+			iCurrentDifficulty = aiEventValue01
 			SendMasterSingleSettingUpdateEvent("Difficulty", false, iCurrentDifficulty)
 		endif
 		SOTC_Global01.SetValue(iCurrentDifficulty as Float)
@@ -1015,28 +1027,28 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 	elseif asSetting == "MasterChance"
 		
 		if abSetValues
-			iMasterSpawnChance = aiValue01
+			iMasterSpawnChance = aiEventValue01
 		endif
 		SOTC_Global01.SetValue(iMasterSpawnChance as Float)
 		
 	elseif asSetting == "VanillaMode"
 		
 		if abSetValues
-			bVanillaMode = aiValue01 as Bool
+			bVanillaMode = aiEventValue01 as Bool
 		endif
 		SOTC_Global01.SetValue(bVanillaMode as Float)
 		
 	elseif asSetting == "SpWarning"
 		
 		if abSetValues
-			bSpawnWarningEnabled = aiValue01 as Bool
+			bSpawnWarningEnabled = aiEventValue01 as Bool
 		endif
 		SOTC_Global01.SetValue(bSpawnWarningEnabled as Float)
 		
 	elseif asSetting == "RegionSwarmChance"
 	
 		if abSetValues
-			iRandomSwarmChance = aiValue01
+			iRandomSwarmChance = aiEventValue01
 			SendMasterSingleSettingUpdateEvent("RegionSwarmChance")
 		endif
 		SOTC_Global01.SetValue(iRandomSwarmChance as Float)
@@ -1044,7 +1056,7 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 	elseif asSetting == "RegionRampageChance"
 	
 		if abSetValues
-			iRandomRampageChance = aiValue01
+			iRandomRampageChance = aiEventValue01
 			SendMasterSingleSettingUpdateEvent("RegionRampageChance")
 		endif
 		SOTC_Global01.SetValue(iRandomRampageChance as Float)
@@ -1052,7 +1064,7 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 	elseif asSetting == "RegionAmbushChance"
 	
 		if abSetValues
-			iRandomAmbushChance = aiValue01
+			iRandomAmbushChance = aiEventValue01
 			SendMasterSingleSettingUpdateEvent("RegionAmbushChance")
 		endif
 		SOTC_Global01.SetValue(iRandomAmbushChance as Float)
@@ -1060,7 +1072,7 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 	elseif asSetting == "EzApplyMode"
 	
 		if abSetValues
-			iEzApplyMode = aiValue01
+			iEzApplyMode = aiEventValue01
 			SendMasterSingleSettingUpdateEvent("EzApplyMode")
 		endif
 		SOTC_Global01.SetValue(iEzApplyMode as Float)
@@ -1068,7 +1080,7 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 	elseif asSetting == "EzBorderMode"
 		
 		if abSetValues
-			iEzBorderMode = aiValue01
+			iEzBorderMode = aiEventValue01
 			SendMasterSingleSettingUpdateEvent("EzBorderMode")
 		endif
 		SOTC_Global02.SetValue(iEzBorderMode as Float)
@@ -1079,8 +1091,8 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 		
 		Int i = (SOTC_Global01.GetValue()) as Int 
 		if abSetValues
-			iSpPresetBonusChance[i] = aiValue01
-			SendMasterSingleSettingUpdateEvent("SpPresetChanceBonus", false, i, aiValue01, 0.0)
+			iSpPresetBonusChance[i] = aiEventValue01
+			SendMasterSingleSettingUpdateEvent("SpPresetChanceBonus", false, i, aiEventValue01, 0.0)
 		endif
 		SOTC_Global02.SetValue(iSpPresetBonusChance[i] as Float)
 		
@@ -1090,7 +1102,7 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 	;known selected preset index in Menu, which is also stored on a variable here permanently.
 		
 		if abSetValues
-			SetRarityChancesPreset(aiValue01)
+			SetRarityChancesPreset(aiEventValue01)
 			;Encapsulated to function for external use. 
 		endif
 		SOTC_Global01.SetValue(iCurrentRarityChancePreset as Float)
@@ -1098,35 +1110,35 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 	elseif asSetting == "RerollChance"
 		
 		if abSetValues
-			iRerollChance = aiValue01
+			iRerollChance = aiEventValue01
 		endif
 		SOTC_Global01.SetValue(iRerollChance as Float)
 		
 	elseif asSetting == "RerollMaxCount"
 		
 		if abSetValues
-			iRerollMaxCount = aiValue01
+			iRerollMaxCount = aiEventValue01
 		endif
 		SOTC_Global01.SetValue(iRerollMaxCount as Float)
 		
 	elseif asSetting == "BypassEventChance"
 		
 		if abSetValues
-			iRE_BypassEventChance = aiValue01
+			iRE_BypassEventChance = aiEventValue01
 		endif
 		SOTC_Global01.SetValue(iRE_BypassEventChance as Float)
 		
 	elseif asSetting == "StaticEventChance"
 		
 		if abSetValues
-			iRE_StaticEventChance = aiValue01
+			iRE_StaticEventChance = aiEventValue01
 		endif
 		SOTC_Global01.SetValue(iRE_StaticEventChance as Float)
 	
 	elseif asSetting == "EventCooldownTimer"
 		
 		if abSetValues
-			fEventCooldownTimerClock = aiValue01 as Float
+			fEventCooldownTimerClock = aiEventValue01 as Float
 		endif
 		SOTC_Global01.SetValue(fEventCooldownTimerClock)
 		
@@ -1144,10 +1156,13 @@ Function SetRarityChancesPreset(Int aiPresetToSet)
 EndFunction
 
 
+
 ;Used for wiping any custom settings when setting a Master level preset
 Function SetPresetRegionOverrideMode(Bool abMode)
 	bForceResetCustomRegionSettings = abMode ;Local variable that script deals with
 EndFunction
+
+
 
 ;Same as above but for Regional SpawnType managers, the above overrides this.
 Function SetPresetSpawnTypeOverrideMode(Bool abMode)
@@ -1193,6 +1208,7 @@ Int Function RollForRarity()
 	;Therefore Common has 75% chance, Uncommon has 20% chance, Rare has 5%
 
 EndFunction
+
 
 
 ;Used by Multipoints to get the total number of groups to spawn.
@@ -1257,7 +1273,7 @@ Function ShowSpawnWarning()
 		if i == 1
 			Debug.Notification("You hear movement in the distance")
 		elseif i == 2
-			Debug.Notification("You sense a presence ahead")
+			Debug.Notification("You sense a presence close by")
 		endif
 	
 	endif

@@ -20,9 +20,6 @@ Group Primary
 
 	SOTC:MasterQuestScript Property MasterScript Auto Const Mandatory
 	{ Fill with MasterQuest. }
-
-	MiscObject Property kTrackerObject Auto Const
-	{ Fill with base MiscObject for the Tracker for this Region. Instanced at runtime. }
 	
 	MiscObject Property kSpawnTypeObject Auto Const
 	{ Fill with base MiscObject containing the SpawnTypeRegionalScript. }
@@ -42,8 +39,8 @@ Group Dynamic
 	SOTC:ThreadControllerScript Property ThreadController Auto
 	{ Init None. Fills dynamically. }
 	
-	SOTC:RegionTrackerScript Property CleanupManager Auto
-	{ Initialise with one member of None. Fills dynamically. }
+	SOTC:RegionPersistentDataScript Property RegionPersistentDataStore Auto
+	{ Init None, fills dynamically. }
 
 	SOTC:SpawnTypeRegionalScript[] Property SpawnTypes Auto
 	{ Initialise None on as many members as there are SpawnTypes. Sets dynamically. }
@@ -57,27 +54,15 @@ Group Dynamic
 
 	Int Property iRegionID Auto
 	{ Init 0, filled at runtime. }
-	
-	ObjectReference[] Property kTravelLocs Auto
-	{ Init one member of None, will fill dynamically at runtime. }
-	
+
 EndGroup
 
 
 Group EncounterZoneProperties
 {EZ Properties and settings for this Region}
 
-	EncounterZone[] Property kRegionLevelsEasy Auto
-	{ Init with one member of None. Fills from Formlist on WorldManager. }
-
-	EncounterZone[] Property kRegionLevelsHard Auto
-	{ Init with one member of None. Fills from Formlist on WorldManager. }
-
-	EncounterZone[] Property kRegionLevelsEasyNoBorders Auto
-	{ Init with one member of None. Fills from Formlist on WorldManager. }
-
-	EncounterZone[] Property kRegionLevelsHardNoBorders Auto
-	{ Init with one member of None. Fills from Formlist on WorldManager. }
+	;DEV NOTE: As of version 0.19.01 EZ arrays have moved to the new RegionPersistentDataScript and are filled via editor.
+	;Accessing this data will be done via this new instance stored on this script at runtime.
 
 	Int Property iEzApplyMode Auto
 	{ Initialise with 0. Set in Menu }
@@ -114,8 +99,9 @@ Group RegionSettings
 	; 3 - Very Hard ("Veteran" in SOTC)
 	; 4 - NONE - Scale to player.
 	
-	Bool Property bCustomSettingsActive Auto
-	{ Init False. Flagged by Menu when custom settings have been applied. }
+	Float Property fSpResetTimerClock = 168.0 Auto
+	{ Clock for SpawnPoint reset, applies to all SpawnPoints in Region. Default value of 7 days (Game Time). Set by Menu.}
+	
 
 EndGroup
 
@@ -140,20 +126,12 @@ supports this mode. If any value above 0, there is a chance of a stampede. }
 EndGroup
 
 
-;Timers
-
-Float fTrackerWaitClock ;Wait timer based on Init order. Staggers the startup of the Trackers
-;cleanup timer, in an attempt to prevent all Regions cleanup timers from firing simultaneously.
-
-Int iTravelLocInitWaitTimerID = 1 Const ;Timer for cleaning TravelLocs array after Init.
-
-
 ;Temp Variables
 ;---------------
 
 Bool bInit ;Security check to make sure Init events/functions don't fire again while running
 
-;NOTE - Random events are currently not fully implemented on the Regional level.
+;NOTE - Random events are currently not fully implemented on the Regional level as of 0.19.01, added for future use.
 Bool bEventThreadLockEngaged ;Used to skip/block spawn event checker
 SOTC:SpawnPointScript kEventPoint ;When an event fires, this will set with the intercepted calling point
 
@@ -165,38 +143,24 @@ SOTC:SpawnPointScript kEventPoint ;When an event fires, this will set with the i
 ;DEV NOTE: Init events/functions now handled by Masters creating the instances.
 
 Function PerformFirstTimeSetup(SOTC:WorldManagerScript aWorldManager, SOTC:ThreadControllerScript aThreadController, \
-ObjectReference akMasterMarker, Int aiWorldID, Int aiRegionID, Int aiPresetToSet, \
-Formlist akEzEasyList, Formlist akEzHardList, Formlist akEzEasyNBList, Formlist akEzHardNBList) ;Added Ez Transfer fucntions in 0.11.01
+ObjectReference akMasterMarker, Int aiWorldID, Int aiRegionID, Int aiPresetToSet, SOTC:RegionPersistentDataScript aRegionPersistentDataStore) 
+;DEV NOTE: As of version 0.19.01 EZ arrays have moved to the new RegionPersistentDataScript and are filled via editor.
+;Accessing this data will be done via this new instance passed and stored here.
 	
 	if !bInit
 		
 		ThreadController = aThreadController
+		RegionPersistentDataStore = aRegionPersistentDataStore ;New in version 0.19.01, this contains all TravelLocs, EZ data and SpawnPoints for this Region. 
+		
 		iWorldID = aiWorldID
 		iRegionID = aiRegionID
 		iCurrentPreset = aiPresetToSet
 		;SetPresetVars() Temporaily removed in version 0.18.01
-		aWorldManager.Regions[iRegionID] = Self ;Only needs to access it once
 		
 		RegisterForCustomEvent(MasterScript, "PresetUpdate")
-		RegisterForCustomEvent(MasterScript, "ForceResetAllSps")
 		RegisterForCustomEvent(MasterScript, "MasterSingleSettingUpdate")
-		RegisterForCustomEvent(MasterScript, "InitTravelLocs") 
 		
-		;This timer attempots to stagger the start of Cleanup timers, in attempt to have each Region perform
-		;Cleanup a different times (trying to avoid all at once)
-		fTrackerWaitClock = (ThreadController.IncrementActiveRegionsCount(1)) * 1.2 as float
-		
-		;Create local EncounterZone lists
-		TransferEzFormlistToArray(akEzEasyList, kRegionLevelsEasy)
-		TransferEzFormlistToArray(akEzHardList, kRegionLevelsHard)
-		TransferEzFormlistToArray(akEzEasyNBList, kRegionLevelsEasyNoBorders)
-		TransferEzFormlistToArray(akEzHardNBList, kRegionLevelsHardNoBorders)
-		
-		Debug.Trace("Region Prepped, creating subclasses now")
-		
-		;This function returns the current count of Regions, so we can use this for our stagger timer.
-		CleanupManager = (akMasterMarker.PlaceAtMe(kTrackerObject, 1 , false, false, false)) as SOTC:RegionTrackerScript
-		CleanupManager.PerformFirstTimeSetup(Self, fTrackerWaitClock)
+		Debug.Trace("Region master data set, creating dynamic instances now")
 		
 		;Create instances of spawntype objectreferences and set them up
 		ObjectReference kNewInstance
@@ -224,65 +188,22 @@ Formlist akEzEasyList, Formlist akEzHardList, Formlist akEzEasyNBList, Formlist 
 EndFunction
 
 
-;Transfer Formlist of EZs stored on WOrldManager to local arrays on instantiation. Added in ver. 0.11.01
-Function TransferEzFormlistToArray(Formlist akEzFormlist, EncounterZone[] akEzArray)
-
-	int iCounter
-	Int iSize = akEzFormlist.GetSize() ;Indexing 0 based just like arrays.
-	akEzArray = new EncounterZone[iSize] ;Initialise same size as Formlist, members set not added
-	
-	while iCounter < iSize
-	
-		akEzArray[iCounter] = (akEzFormlist.GetAt(iCounter)) as EncounterZone ;Cast to actual type
-		iCounter += 1
-		
-	endwhile
-	
-	Debug.Trace("EncounterZone formlist successfully transferred to local array")
-
-EndFunction
-
-
 Event SOTC:MasterQuestScript.PresetUpdate(SOTC:MasterQuestScript akSender, Var[] akArgs)
 
 	Bool bEnabled ;Disable the Region if ON, and prepare to turn back ON later
+	;NOTE: Master script is handling Thread Killer. 
 	
 	if (akArgs[0] as string) == "Full"
-	
-		if (!bCustomSettingsActive) || (akArgs[1] as Bool) ;If not Custom or Override (akArgs[1]) = true
 		
-			iCurrentPreset = akArgs[3] as Int
-			;SetPresetVars() Temporarily removed in version 0.18.01
-			ReshuffleActorLists(akArgs[2] as Bool) ;(akArgs[2]) - bool to reset custom spawntype settings
-			;DEV NOTE: Calling this function will safely reinitialise the arrays, no work need be done here.
-			
-		else
-		;Do Nothing
-		endif
+		iCurrentPreset = akArgs[1] as Int
+		ReshuffleActorLists()
+		;DEV NOTE: Calling this function will safely reinitialise the arrays, no work need be done here.
 	
-	elseif (akArgs[0] as string) == "SpawnTypes"
-		
-		Int iChance = iRegionSpawnChance ;Store this value til done
-		iRegionSpawnChance = 0 ;Stops all Spawns for now
-		;This shouldn't take so long as to affect SPs but we do this to be sure.
-	
-		Int iActualPreset = iCurrentPreset ;Store the actual preset for now as a workaround/kludge.
-		iCurrentPreset = akArgs[2] as Int ;And just set the intended preset for Spawntypes until loop done.
-		ReshuffleActorLists(akArgs[1] as Bool) ;(akArgs[2]) - bool to reset custom spawntype settings.
-		iCurrentPreset = iActualPreset ;Restore the Region's preset.
-			
-		iRegionSpawnChance = iChance ;return to original value
-		
 	elseif (akArgs[0] as string) == "SingleSpawntype"
 
-		;Not worth temp disabling for this one. 
-		
-		bEnabled = SpawnTypes[(akArgs[1] as Int)].bSpawntypeEnabled ;Remember this
-		SpawnTypes[(akArgs[1] as Int)].bSpawntypeEnabled = false ;Temp disable if not already
-		SpawnTypes[(akArgs[1] as Int)].ReshuffleDynActorLists(akArgs[2] as Bool, akArgs[3] as Int)
-		;(akArgs[2]) = Custom settings override flag
-		;(akArgs[3]) = Preset to Set
-		SpawnTypes[(akArgs[1] as Int)].bSpawntypeEnabled = bEnabled ;Set back to what it was.
+		;(akArgs[1]) = SpawnType to update
+		SpawnTypes[(akArgs[1] as Int)].ReshuffleDynActorLists(akArgs[2] as Int)
+		;(akArgs[2]) = Preset to Set
 
 	endif
 	
@@ -293,6 +214,8 @@ EndEvent
 
 
 Event SOTC:MasterQuestScript.MasterSingleSettingUpdate(SOTC:MasterQuestScript akSender, Var[] akArgs)
+	
+	;NOTE: Event Monitor does not monitor settings events. No need. Menu safe.
 	
 	if (akArgs[0] as string) == "Difficulty"
 	
@@ -309,100 +232,48 @@ Event SOTC:MasterQuestScript.MasterSingleSettingUpdate(SOTC:MasterQuestScript ak
 	elseif (akArgs[0] as string) == "RegionSwarmChance"
 	
 		iRandomSwarmChance = akArgs[1] as Int
-		bCustomSettingsActive = true
 		
 	elseif (akArgs[0] as string) == "RegionRampageChance"
 	
 		iRandomRampageChance = akArgs[1] as Int
-		bCustomSettingsActive = true
 		
 	elseif (akArgs[0] as string) == "RegionAmbushChance"
 	
 		iRandomAmbushChance = akArgs[1] as Int
-		bCustomSettingsActive = true
 		
 	elseif (akArgs[0] as string) == "SpPresetChanceBonus"
 		
 		Int i = akArgs[1] as Int
 		iSpPresetChanceBonusList[i] = akArgs[2] as Int
 		;[1] = index, [2] = value to set. 
-		bCustomSettingsActive = true
 		
-	endif
-	
-	;No need for iEventFlagCount for these events.
-	;DEV NOTE: May look at removing bCustomSettingsActive flag in future. 
-	
-EndEvent
-
-
-Event SOTC:MasterQuestScript.ForceResetAllSps(SOTC:MasterQuestScript akSender, Var[] akArgs)
-
-	;This event does not require the user to exit Menu mode as it will not restart timers.
-	CleanupManager.ResetSpentPoints()
-	ThreadController.iEventFlagCount += 1 ;Flag as complete
-
-EndEvent
-
-
-;This script receives this Event as it waits some time, enough for Markers to finish adding
-;themselves everywhere, and then cleans up the first Member of None on that array.
-Event SOTC:MasterQuestScript.InitTravelLocs(SOTC:MasterQuestScript akSender, Var[] akArgs)
-
-	if (akArgs as Bool) == True ;Initialise, add to RegionManager
-	
-		StartTimer(5.0, iTravelLocInitWaitTimerID)
+	elseif (akArgs[0] as string) == "SpResetClock"
+		
+		fSpResetTimerClock = akArgs[1] as Float
 		
 	endif
 	
 EndEvent
-
-
-Event OnTimer(Int aiTimerID)
-
-	if aiTimerID == iTravelLocInitWaitTimerID
-	
-		if kTravelLocs[0] == None
-			kTravelLocs.Remove(0)
-			;Clean off the remianing None member on first index
-			Debug.Trace("Region Travel Loc array should be filled, init event complete.")
-		endif
-		
-	endif
-	
-EndEvent
-
-
-;For the tracker to get the stagger timer. 
-Float Function GetTrackerWaitClock()
-
-	return fTrackerWaitClock 
-	;Doesn't need to be an Property IMO but it might be faster if it was.
-	
-EndFunction
 	
 
 ;This function SERIALIZES reshuffle of Spawntype Actor Lists. Should be safe to run in Menu mode.
-Function ReshuffleActorLists(Bool abForceReset) ;All Spawntypes attached.
+Function ReshuffleActorLists() ;All Spawntypes attached.
+	
+	;NOTE: ThreadKiller should be engaged before calling this for safety reasons. 
 	
 	Debug.Trace("Reshuffling Region Actor lists for all SpawnTypes on Region: " +iRegionID)
-	Int iChance = iRegionSpawnChance ;Store this value til done
-	iRegionSpawnChance = 0 ;Stops all Spawns for now
-	;This shouldn't take so long as to affect SPs but we do this to be sure.
 
 	int iCounter = 0
 	int iSize = SpawnTypes.Length
 	
 	while iCounter < iSize
 		
-		Spawntypes[iCounter].ReshuffleDynActorLists(abForceReset, iCurrentPreset)
+		Spawntypes[iCounter].ReshuffleDynActorLists(iCurrentPreset)
 		;If SpawnType is running custom settings, will return immediately if parameter is False.
 		Debug.Trace("Region SpawnType Actor lists reshuffled for SpawnType ID: " +iCounter)
 		iCounter += 1
 		
 	endwhile
-	
-	iRegionSpawnChance = iChance ;return to original value
 	
 EndFunction
 
@@ -412,15 +283,6 @@ Function MasterFactoryReset()
 	
 	Int iCounter
 	Int iSize = SpawnTypes.Length
-	
-	;First we will cleanup all SPs and kill the tracker instance
-	CleanupManager.MasterFactoryReset()
-	CleanupManager.Disable()
-	CleanupManager.Delete()
-	CleanupManager = None ;De-persist
-	
-	;Clear TravelLocs array
-	kTravelLocs.Clear()
 	
 	;Now we will destroy all the SPawnTypeRegional instances
 	while iCounter < iSize
@@ -433,6 +295,7 @@ Function MasterFactoryReset()
 	endwhile
 	
 	ThreadController = None
+	RegionPersistentDataStore = None
 	
 	Debug.Trace("Region instance ready for destruction")
 	;WorldManager will destory this script instance once returned.
@@ -443,15 +306,11 @@ EndFunction
 ;MENU FUNCTIONS
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
-;As of version 0.13.01, this sets preset values for various settings instead of using the old struct method (previously stored struct of settings in an 
-;array with the index matching presets ID's). This is used for both Master Events and Menu direct setting of presets. iCurrentPreset must be set first,
-;which SetMenuVars handles, and MasterPreset event will only do if CustomSettings flag is false/set to be overridden. 
-;Setting from Menu will flag bCustomSettingsActive as true. Presets are hard coded.
-Function SetPresetVars(Bool abSetCustomFlag = false) ;Parameter value used when custom setting from Menu.
 
-	;THIS FUNCTION HAS BEEN COMMENTED OUT IN VERSION 0.18.01. BETTER METHODS FOR RESETTING PRESET VALUES ARE BEING TABLED.
+Function SetPresetVars() ;Parameter value used when custom setting from Menu. Preset Integer should be set first.
 
-	;bCustomSettingsActive = abSetCustomFlag
+	;THIS FUNCTIONS CONTENTS HAS BEEN COMMENTED OUT IN VERSION 0.18.01. BETTER METHODS FOR RESETTING PRESET VALUES ARE BEING TABLED.
+
 	
 	;if iCurrentPreset == 1 ;SOTC Preset
 	;	iRandomSwarmChance = 5
@@ -471,7 +330,7 @@ Function SetPresetVars(Bool abSetCustomFlag = false) ;Parameter value used when 
 	;else - WTF value was set?
 	;endif
 
-	;Reshuffle Actor lists needs to be called from the calling function.
+	;Reshuffle Actor lists should be called from the calling function.
 	
 EndFunction
 
@@ -484,8 +343,8 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 	
 		if abSetValues
 			iCurrentPreset = aiValue01
-			SetPresetVars(true)
-			ReshuffleActorLists(true) ;Force reset, user would have been warned in Menu.
+			SetPresetVars()
+			ReshuffleActorLists() ;Force reset, user would have been warned in Menu.
 		endif
 		SOTC_Global01.SetValue(iCurrentPreset as Float)
 	
@@ -501,7 +360,6 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 		
 		if abSetValues
 			iRegionSpawnChance = aiValue01
-			bCustomSettingsActive = true
 		endif
 		SOTC_Global01.SetValue(iRegionSpawnChance as Float)
 		
@@ -509,7 +367,6 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 	
 		if abSetValues
 			iRandomSwarmChance = aiValue01
-			bCustomSettingsActive = true
 		endif
 		SOTC_Global01.SetValue(iRandomSwarmChance as Float)
 		
@@ -517,7 +374,6 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 	
 		if abSetValues
 			iRandomRampageChance = aiValue01
-			bCustomSettingsActive = true
 		endif
 		SOTC_Global01.SetValue(iRandomRampageChance as Float)
 		
@@ -525,7 +381,6 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 	
 		if abSetValues
 			iRandomAmbushChance = aiValue01
-			bCustomSettingsActive = true
 		endif
 		SOTC_Global01.SetValue(iRandomAmbushChance as Float)
 		
@@ -553,16 +408,16 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 		endif
 		SOTC_Global02.SetValue(iSpPresetChanceBonusList[i] as Float)
 		
+	elseif asSetting == "SpResetClock"
+	
+		if abSetValues
+			fSpResetTimerClock = aiValue01 as Float
+		endif
+		
+		SOTC_Global01.SetValue(fSpResetTimerClock as Float)
+		
 	endif
 
-EndFunction
-
-
-Function MenuForceResetRegionSPs()
-	
-	;NOTE: This function will not restart the Cleanup timer, therefore it is safe to use from Menu.
-	CleanupManager.ResetSpentPoints()
-	
 EndFunction
 
 
@@ -577,11 +432,9 @@ Bool Function RegionSpawnCheck(SOTC:SpawnPointScript akCallingPoint, Int aiPrese
 	;included here for them yet. 
 	
 	if ((Utility.RandomInt(1,100)) <= iRegionSpawnChance)
-		;Debug.Trace("Region just passed a spawn check. Region Chance is: " +iRegionSpawnChance)
 		return false ;Green light.
 	endif
 	
-	;Debug.Trace("Region just failed a spawn check. Region Chance is: " +iRegionSpawnChance)
 	return true ;Red light.
 
 EndFunction
@@ -598,8 +451,8 @@ EndFunction
 ;Gets a single Travel loc from this Region.
 ObjectReference Function GetRandomTravelLoc()
 
-	Int iSize = kTravelLocs.Length - 1
-	ObjectReference kLoc = kTravelLocs[(Utility.RandomInt(0,iSize))]
+	Int iSize = RegionPersistentDataStore.kTravelLocs.Length - 1
+	ObjectReference kLoc = RegionPersistentDataStore.kTravelLocs[(Utility.RandomInt(0,iSize))]
 	
 	return kLoc
 	
@@ -612,7 +465,7 @@ ObjectReference[] Function GetRandomTravelLocs(int aiNumLocations)
 ;In that event, we don't really care because they'll just sandbox that location, if they get there.
 
 	ObjectReference[] kLocListToSend = new ObjectReference[1]
-	Int iSize = kTravelLocs.Length - 1
+	Int iSize = RegionPersistentDataStore.kTravelLocs.Length - 1
 	
 	Int iCounter = 0
 	Int i
@@ -620,7 +473,7 @@ ObjectReference[] Function GetRandomTravelLocs(int aiNumLocations)
 	while iCounter != aiNumLocations
 		
 		i = Utility.RandomInt(0,iSize)
-		kLocListToSend.Add(kTravelLocs[i])
+		kLocListToSend.Add(RegionPersistentDataStore.kTravelLocs[i])
 		iCounter += 1
 		
 	endwhile
@@ -645,20 +498,20 @@ EncounterZone Function GetRandomEz()
 	;Assume this mode first, more likely the user will have this mode on
 	
 		if iCurrentDifficulty < 2 ;0/1 is easy/medium, use "easy" list
-			kEzListToUse = kRegionLevelsEasy
+			kEzListToUse = RegionPersistentDataStore.kRegionLevelsEasy
 			
 		else ;Use the harder list, even for Difficulty of 4 (NONE in Bethesdaland)
-			kEzListToUse = kRegionLevelsHard
+			kEzListToUse = RegionPersistentDataStore.kRegionLevelsHard
 			
 		endif
 			
 	else ;Outright assume == 1, use lists with borders disabled (enemies follow player indoors)
 	
 		if iCurrentDifficulty < 2 ;0/1 is easy/medium, use "easy" list
-			kEzListToUse = kRegionLevelsEasyNoBorders
+			kEzListToUse = RegionPersistentDataStore.kRegionLevelsEasyNoBorders
 			
 		else ;Use the harder list, even for Difficulty of 4 (NONE in Bethesdaland)
-			kEzListToUse = kRegionLevelsHardNoBorders
+			kEzListToUse = RegionPersistentDataStore.kRegionLevelsHardNoBorders
 			
 		endif
 
@@ -676,26 +529,26 @@ EndFunction
 EncounterZone[] Function GetRandomEzList(int aiNumEzsRequired)
 
 	EncounterZone[] kEzListToUse
-	EncounterZone[] kEzListToReturn = new EncounterZone[1] ;The new list to build and return
+	EncounterZone[] kEzListToReturn = new EncounterZone[1] ;The new list to build and return. Init with one member of None to avoid array errors.
 	
 	if iEzBorderMode == 0 ;Default mode, uses normal list (enemies don't follow indoors)
 	;Assume this mode first, more likely the user will have this mode on
 	
 		if iCurrentDifficulty < 2 ;0/1 is easy/medium, use "easy" list
-			kEzListToUse = kRegionLevelsEasy
+			kEzListToUse = RegionPersistentDataStore.kRegionLevelsEasy
 			
 		else ;Use the harder list, even for Difficulty of 4 (NONE in Bethesdaland)
-			kEzListToUse = kRegionLevelsHard
+			kEzListToUse = RegionPersistentDataStore.kRegionLevelsHard
 			
 		endif
 			
 	else ;Outright assume == 1, use lists with borders disabled (enemies follow player indoors)
 	
 		if iCurrentDifficulty < 2 ;0/1 is easy/medium, use "easy" list
-			kEzListToUse = kRegionLevelsEasyNoBorders
+			kEzListToUse = RegionPersistentDataStore.kRegionLevelsEasyNoBorders
 			
 		else ;Use the harder list, even for Difficulty of 4 (NONE in Bethesdaland)
-			kEzListToUse = kRegionLevelsHardNoBorders
+			kEzListToUse = RegionPersistentDataStore.kRegionLevelsHardNoBorders
 			
 		endif
 		
@@ -729,20 +582,20 @@ EncounterZone[] Function GetRegionCurrentEzList()
 	;Assume this mode first, more likely the user will have this mode on
 	
 		if iCurrentDifficulty < 2 ;0/1 is easy/medium, use "easy" list
-			return kRegionLevelsEasy
+			return RegionPersistentDataStore.kRegionLevelsEasy
 			
 		else ;Use the harder list, even for Difficulty of 4 (NONE in Bethesdaland)
-			return kRegionLevelsHard
+			return RegionPersistentDataStore.kRegionLevelsHard
 			
 		endif
 			
 	else ;Outright assume == 1, use lists with borders disabled (enemies follow player indoors)
 	
 		if iCurrentDifficulty < 2 ;0/1 is easy/medium, use "easy" list
-			return kRegionLevelsEasyNoBorders
+			return RegionPersistentDataStore.kRegionLevelsEasyNoBorders
 			
 		else ;Use the harder list, even for Difficulty of 4 (NONE in Bethesdaland)
-			return kRegionLevelsHardNoBorders
+			return RegionPersistentDataStore.kRegionLevelsHardNoBorders
 			
 		endif
 
@@ -754,6 +607,8 @@ EndFunction
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;FEATURE FUNCTIONS
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
+;DEV NOTE: Can be made into a single universal function, however this is easier to read. 
+
 
 ;Random roll for Infestation/Swarm
 Bool Function RollForSwarm(Int aiBonus = 1) ;Parameter added in version 0.13.01 for SP bonuses

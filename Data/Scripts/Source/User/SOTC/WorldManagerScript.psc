@@ -34,14 +34,8 @@ Group Primary
 	MiscObject Property kRegionManagerObject Auto Const Mandatory
 	{ RegionManagerScript base objects }
 	
-	Formlist[] Property kRegionEzLists_Easy Auto Const
-	{ Fill each member with the Formlist of EncounterZones for the corresponding Region. } 
-	Formlist[] Property kRegionEzLists_Hard Auto Const
-	{ Fill each member with the Formlist of EncounterZones for the corresponding Region. }
-	Formlist[] Property kRegionEzLists_EasyNoBorders Auto Const
-	{ Fill each member with the Formlist of EncounterZones for the corresponding Region. }
-	Formlist[] Property kRegionEzLists_HardNoBorders Auto Const
-	{ Fill each member with the Formlist of EncounterZones for the corresponding Region. }
+	MiscObject[] Property kRegionPersistentDataObjects Auto Const Mandatory
+	{ Fill with each RegionPersistentDataStore base obejcts for each Region, in order. These do not have to be instanced. }
 	
 EndGroup
 
@@ -50,6 +44,8 @@ Group Dynamic
 
 	SOTC:RegionManagerScript[] Property Regions Auto
 	{ Init a member of None for as many Regions intended for this World. Sets dynamically. }
+	
+	;New in version 0.19.01, this contains all TravelLocs, EZ data and SpawnPoints for this Region. 
 	
 EndGroup
 
@@ -78,9 +74,11 @@ Function PerformFirstTimeSetup(SOTC:ThreadControllerScript aThreadController, Ob
 		while iCounter < iSize
 		
 			kNewInstance = akMasterMarker.PlaceAtMe(kRegionManagerObject, 1 , false, false, false)
+			
+			Regions[iCounter] = (kNewInstance as SOTC:RegionManagerScript) ;Moved back here from RegionManager so thread doesn't have to bounce back and forth. 
+			
 			(kNewInstance as SOTC:RegionManagerScript).PerformFirstTimeSetup(Self, aThreadController, akMasterMarker, \ 
-			iWorldID, iCounter, aiPresetToSet, kRegionEzLists_Easy[iCounter], kRegionEzLists_Hard[iCounter], \
-			kRegionEzLists_EasyNoBorders[iCounter], kRegionEzLists_HardNoBorders[iCounter])
+			iWorldID, iCounter, aiPresetToSet, (kRegionPersistentDataObjects[iCounter] as SOTC:RegionPersistentDataScript))
 			
 			iCounter += 1
 			

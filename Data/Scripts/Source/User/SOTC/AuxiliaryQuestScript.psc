@@ -1,4 +1,4 @@
-Scriptname SOTC:AuxilleryQuestScript extends Quest
+Scriptname SOTC:AuxiliaryQuestScript extends Quest
 {Ignition script for the main component}
 ;Written by SMB92
 ;Special thanks to J. Ostrus [BigandFlabby] for code contributions that made this mod possible.
@@ -30,11 +30,8 @@ GlobalVariable Property SOTC_MasterGlobal Auto Const Mandatory
 GlobalVariable Property SOTC_Global_MenuSettingsMode Auto Const Mandatory
 { Auto-fill. }
 
-ObjectReference Property kMasterCellMarker Auto Const Mandatory
-{ Fill with the Master Marker in the SOTC Master Persistent Cell. }
-
-MiscObject Property SOTC_PointPersistStore Auto Const
-{ Auto-fill. Creates an instance of the Master Point Persisting class, for iteration upon uninstall. }
+Quest Property MQ102 Auto Const Mandatory
+{ Link to the game-start Quest. Checked upon Init, if player is in new game will defer start until exiting Vault, otherwise gives the tape straight away. }
 
 ;Variables
 ;----------
@@ -44,9 +41,6 @@ Int iPresetToSet ;Will be sent to MasterScript for Init.
 Bool bInit ;Security measure to ensure OnInit() etc events never fire twice
 
 Bool bSpawnEngineStarting ;Security measure to be sure we want to start
-
-SOTC:PointPersistScript PointPersistStore ;Filled at runtime, contains all SpawnPoints and TravelLocs
-;which we can attempt to disable all if we want to uninstall. 
 
 ;Unlike the MasterQuestScript, we won't have a permanent link to player here. 
 
@@ -59,22 +53,43 @@ Event OnQuestInit()
 
 	if !bInit
 		
-		;This needs to check Quest status eventually, and make sure we out of vault. 
-		Utility.Wait(5.0) ;Wait 5 seconds for player to somewhat get their bearing.
-		Debug.MessageBox("Thank you for installing SpawnEngine. Please complete setup from the Auxillery Holotape Menu that's been added to your inventory when you are ready.")
-		Game.GetPlayer().AddItem(SOTC_AuxMenuTape, 1, false) ;We want to know it's been added
-		PointPersistStore = (kMasterCellMarker.PlaceAtme(SOTC_PointPersistStore, 1 , false, false, false)) as SOTC:PointPersistScript
+		if (MQ102.IsObjectiveCompleted(1))
+			InitPreInstallState()
+		else
+			RegisterForRemoteEvent(MQ102, "OnStageSet")
+		endif
+		
 		bInit == true ;Never want to receive this event again.
 		
 		;Debug.StartScriptProfiling("SOTC:MasterQuestScript")
 		;Debug.StartScriptProfiling("SOTC:RegionManagerScript")
 		;Debug.StartScriptProfiling("SOTC:SpawnTypeRegionalScript")
 		;Debug.StartScriptProfiling("SOTC:ThreadControllerScript")
-		;Debug.StartScriptProfiling("SOTC:AuxilleryQuestScript")		
+		;Debug.StartScriptProfiling("SOTC:AuxiliaryQuestScript")		
 		
 	endif
 	
 EndEvent
+
+
+Event Quest.OnStageSet(Quest akSender, Int auiStageID, Int auiItemID)
+
+	if (MQ102 == akSender) && (auiStageID == 10) ;Stage 10 is having left the Vault
+		UnregisterForRemoteEvent(MQ102, "OnStageSet")
+		InitPreInstallState()
+	endif
+	
+EndEvent
+
+
+Function InitPreInstallState()
+
+	Utility.Wait(5.0) ;Wait 5 seconds for player to somewhat get their bearing after leaving vault. 
+	Debug.MessageBox("Thank you for installing SpawnEngine. Please complete setup from the Auxillery Holotape Menu that's been added to your inventory when you are ready.")
+	Game.GetPlayer().AddItem(SOTC_AuxMenuTape, 1, false) ;We want to know it's been added
+
+EndFunction
+
 
 ;------------------------------------------------------------------------------------------------
 ;SOTC AUXILLERY FUNCTIONS & EVENTS

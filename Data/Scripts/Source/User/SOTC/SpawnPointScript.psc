@@ -51,10 +51,15 @@ Group Primary
 	{ Fill with the RegionID where this SP is placed. }
 	
 	Int Property iSpawnMode Auto Const Mandatory
-	{ 0 = Random from SpawnType, 1 = Specific Actor. Fill ID number below accordingly. }
+	{ 0 = Random from SpawnType, 1 = Specific Actor, 2 = Use ID list. Fill ID number(s) below accordingly. }
 	
 	Int Property iSpawnTypeOrActorID Auto Const Mandatory
-	{ Fill with ID (index) of SpawnType or Actor type. See script commentary for ID No. legend. }
+	{ Fill with ID (index) of SpawnType or Actor type for use in Modes 0 and 1. See commentary for ID No. legend. }
+	
+	Int[] Property iModeTwoActorList Auto Const
+	{ If using SpawnMode 2, define a list of Actor IDs here to use in spawning. }
+	;DEV NOTE: This had to be made a new Property as opposed to converting the Proeprty above it to an array as this would break
+	;many already placed SpawnPoints as of version 0.19.01. 
 	
 	Int Property iClassToSpawn Auto Const Mandatory
 	{ Set the ClassPreset to use if spawning a specific Actor type (iSpawnMode = 1, ignored if not, use overrides below for that). 
@@ -69,14 +74,14 @@ See Package legend in script for details. }
 	;A number of different package modes are available. User must provide correct package that matches the data
 	;set on the SpawnPoint (or weird things may happen). They are as follows:
 	; BOOL FLAG - BISMULTIPOINT: In this mode, the Parent SP will create "Helper" SpawnPoints at "ChildPoints" around
-	;the Parent which are defined by the user in the ChildPoints array. The Parent passes data to each Helper which
+	;the Parent which are defined by the author in the ChildPoints array. The Parent passes data to each Helper which
 	;then does the spawning of a group. This mostly exists to spawn enemy groups in parallel for emulating battles,
 	;but not strictly. The number of groups to spawn can be forced, or randomised (based on the number of ChildPoints
 	;defined). Some Package modes may not work with this, or work differently. See below.
 	; 0 - SANDBOX: Actors will sandbox at the SpawnPoint, or a ChildPoint if provided. Use this for "Hold" packages
 	;as well(such as for "Snipers"). Works with MultiPoint mode.
 	; 1 - TRAVEL: Spawns will travel to random locations markers in the Region. Set iNumPackageLocsRequired to the
-	;number of locations expected by the Package. Works with MultiPoint mode.
+	;number of locations expected by the Package. Works with MultiPoint mode, but will only use a single location.
 	; 2 - PATROL: Spawns will travel to ("patrol") each ChildPoint as set out in that array, in the order they are
 	;listed. While this also works with MultiPoint mode (in such case they will start at the random ChildPoint they
 	;started at, and still patrol in the same order as normal) care should be taken when using with random Actor
@@ -110,37 +115,6 @@ And yes, this is required for interiors as not all interiors are confined. }
 	Bool Property bIsInteriorPoint Auto Const ;Re-added in version 0.13.02, to be sued in conjuction with Player distance check.
 	{ Set true if this Point is inside of an Interior. Interior Points should not be placed near entry points to the cell, for best effect. }
 
-	ReferenceAlias Property kPackage Auto Const Mandatory
-	{ Fill with the Alias holding the Package, according to Package Mode selected. Not required for Mode 3 (uses Rush Package). }
-	
-	Spell Property kEvalPackageSpell Auto Const Mandatory
-	{ Fill with SOTC_EvalPackageSpell on the base form. Forces EvaluatePackage on spawns in own thread. }
-	
-	ReferenceAlias Property kPackageRush Auto Const Mandatory
-	{ Fill with SOTC_RushPackage01. This gets filled the same on EVERY instance of this marker. Used for Ramapage/Random Ambush features. }
-	
-	Keyword[] Property kPackageKeywords Auto Const Mandatory
-	{ Fill with SOTC_PackageKeywords (10 by default). Add more if needed. Used for linking to package marker(s). }
-	
-	Int Property iNumPackageLocsRequired Auto Const Mandatory
-	{ If using Travel Package (Mode 1), set to the number of travel locations required by the Package. You can also use this with Sandbox(Mode 0) 
-by setting to 1 and giving the SP a single ChildPoint to use as an external spawn location. Ignored if using bRandomiseStartLoc for Mode 0. }
-	
-	ObjectReference[] Property kChildPoints Auto ;AUTO so can be modified at runtime.
-	{ If using child markers, fill with these from render window. This is used for Patrols/Interiors/MultiPoints/Randomised Start Locs or if we 
-want to define a Sandbox location away from this SpawnPoint. Do not use this for other purposes unless you know what you are doing. If using the
-iForceGroupsToSpawn override, must have that many ChildPoints. Length of this array doubles as maximum no. of Groups for MultiPoint otherwise. }
-
-	ObjectReference[] Property kPropParents Auto Const
-	{ Default value of None on each member. If using an Enable Parent object to enable any Props, fill this with any of those objects. The index of this
-array correlates with the Integer ID on the GroupLoadout script as to the primary Race/Type of the Actor. ID's are: 0 = Always None (required for checks),
-1 = Human (camp/furniture etc), 2 = SuperMutant (gore etc), 3 = Predator Mutant/Animal (dead bodies etc). If ID passed is None in this array, will be ignored. }
-
-	Bool Property bSpreadSpawnsToChildPoints Auto Const
-	{ If set true, spawned Actors will be placed at random ChildPoints (which must be defined) around the SpawnPoint, so they are spread apart.
-ChildPoints should be placed in same cell as this SP, use at own risk otherwise. Causes bRandomiseStartLoc override and iNumPackageLocs
-for Package Mode 0 (Sandbox/Hold) and Package Mode 2 (Patrols) to be ignored. }
-
 	Int Property iChanceToSpawn = 100 Auto Mandatory ;AUTO so can be modified at runtime, particularly if made a Property of a Menu. 
 	{ Use this define an extra chance/dice roll for this SP or set 100 for always. Default is 100
 in case user forgets to se this. Property is non-const as can be changed, particularly if the
@@ -160,6 +134,57 @@ point is configurable from Menu (i.e Interior Points.) }
 EndGroup
 
 
+
+Group PackageData
+
+	ReferenceAlias Property kPackage Auto Const
+	{ Fill with required Package for the set Mode. Not required for Mode 3 (uses Rush Package for those). }
+	
+	Package Property kMultiTravelPackageBase Auto Const
+	{ If using multiple travel locations (iNumPackageLocsRequired > 1), fill this with the same base Package that is used on the Alias set above. 
+This has to be done so we can reliably receive OnPackageEnd events from spawns. }
+	
+	ReferenceAlias Property kPackageRush Auto Const Mandatory
+	{ Fill with SOTC_RushPackage01. This gets filled the same on EVERY instance of this marker. Used for Ramapage/Random Ambush features. }
+	
+	Keyword[] Property kPackageKeywords Auto Const Mandatory
+	{ Fill with SOTC_PackageKeywords (10 by default). Add more if needed. Used for linking to package marker(s). }
+	
+	Spell Property kEvalPackageSpell Auto Const Mandatory
+	{ Fill with SOTC_EvalPackageSpell on the base form. Forces EvaluatePackage on spawns in own thread. }
+	
+	Int Property iNumPackageLocsRequired Auto Const Mandatory
+	{ If using Travel Package (Mode 1), set to the number of travel locations desired. Note that using more than 1 location invokes extra functionality
+that will be harder on Papyrus (due to having to hand-hold the AI). You may also consider setting the bIgnoreExpiry flag true so that Actors
+aren't disabled midway through their travel. You can also use this with Sandbox(Mode 0) by setting to 1 and giving the SP a single ChildPoint 
+to use as an external spawn location. Ignored if using bRandomiseStartLoc = true for Mode 0. }
+
+	ObjectReference[] Property kChildPoints Auto ;AUTO so can be modified at runtime.
+	{ If using child markers, fill with these from render window. This is used for Patrols/Interiors/MultiPoints/Randomised Start Locs or if we 
+want to define a Sandbox location away from this SpawnPoint. Do not use this for other purposes unless you know what you are doing. If using the
+iForceGroupsToSpawn override, must have that many ChildPoints. Length of this array doubles as maximum no. of Groups for MultiPoint otherwise. }
+
+	Bool Property bSpreadSpawnsToChildPoints Auto Const
+	{ If set true, spawned Actors will be placed at random ChildPoints (which must be defined) around the SpawnPoint, so they are spread apart.
+ChildPoints should be placed in same cell as this SP, use at own risk otherwise. Causes bRandomiseStartLoc override and iNumPackageLocs
+for Package Mode 0 (Sandbox/Hold) and Package Mode 2 (Patrols) to be ignored. }
+
+	Bool Property bRandomiseStartLoc Auto Const
+	{ This can be used to randomise the initial placement of entire spawned groups with certain Package Modes (0, 1 and 2). It is different from
+the setting bSpreadSpawnsToChildPoints as this applies to whole group, not individuals. One must define a number of ChildPoints around
+this SP in order for this to work. ChildPoints should be placed in same cell as this SP, use at own risk otherwise. For Mode 0 (Sandbox/Hold),
+overrides iNumPackageLocs if set. This is somewhat the equivalent of Interior Mode's spawn method for Modes 0-2. Ignored in MultiPoint Mode. }
+
+	Float Property fNextLocationTimerClock = 180.0 Auto Const
+	{ Default value of 180.0 (3 Minutes). Time Actors will Sandbox at travel destination before moving on. }
+
+	Float Property fAmbushDistance = 800.0 Auto Const
+	{ Pacakge Mode 3 only. Default of 800.0 units, distance target from Player before Ambush activates. Enter override value if desired. }
+
+EndGroup
+
+
+
 Group Overrides
 { Read descs. of each as to which modes these overrides apply. }
 
@@ -171,20 +196,13 @@ Group Overrides
 	
 	Bool Property bBlockLocalRandomEvents Auto Const
 	{ All Modes except Package Mode 3. Set true to ignore local events, such as Swarm, Rampage and Ambush. This will be slightly faster as 
-forces the use of a function that does not include these checks.	}
+forces the use of a function that does not include these checks. }
 
-	Bool Property bRandomiseStartLoc Auto Const
-	{ This can be used to randomise the initial placement of entire spawned groups with certain Package Modes (0, 1 and 2.
-It is different from the primary setting bSpreadSpawnsToChildPoints as this applies to whole group, not individuals.
-One must define a number of ChildPoints around this SP in order for this to work. ChildPoints should be placed
-in same cell as this SP, use at own risk otherwise. For Mode 0 (Sandbox/Hold), overrides iNumPackageLocs if set.
-This is somehwat the equivalent of Interior Mode's spawn method for Modes 0-2. Ignored in MultiPoint Mode. }
+	Bool Property bIgnoreExpiry Auto Const
+	{ If this flag is set true then SP will never start expiry tiemrs, only resetting when full reset timer expires. }
 
 	Float Property fSafeDistanceFromPlayer = 8192.0 Auto Const
 	{ All modes. Default value of 8192.0 (2 exterior cell lengths), safe distance to spawn from Player. Change if desired. }
-
-	Float Property fAmbushDistance = 800.0 Auto Const
-	{ Pacakge Mode 3 only. Default of 800.0 units, distance target from Player before Ambush activates. Enter override value if desired. }
 
 	Int Property iForceUseRarityList Auto Const
 	{ Spawn Mode 0 only. Fill this 1-3, if wanting to force grab a certain "rarity" of actor in this Region (i.e force use Rarity list). }
@@ -225,6 +243,17 @@ Be careful with this value if not using with Interior/Patrol modes. }
 EndGroup
 
 
+Group BonusStuff
+
+	ObjectReference[] Property kPropParents Auto Const
+	{ Default value of None on each member. If using an Enable Parent object to enable any Props, fill this with any of those objects according to index IDs as follows: 
+ID relates to primary Race/Type of the Actor as per GroupLoadout script). ID's are: 0 = Always None (required for checks), 1 = Human (camp/furniture etc),
+2 = SuperMutant (gore etc), 3 = Predator Mutant/Animal (dead bodies etc), 4 = Robots/machines (parts, scrapped bots/machines etc. 
+If ID passed is None in this array, will be ignored. }
+	
+EndGroup
+
+
 Group MenuGlobals
 { Can be used for Menu and future functions. }
 
@@ -235,7 +264,7 @@ Group MenuGlobals
 	GlobalVariable Property SOTC_Global03 Auto Const Mandatory
 	{ Auto-fill }
 	
-	;Added 3 Globals, sop in the event we actually need more, won't have to stress so much about adding more. 
+	;Added 3 Globals, so in the event we actually need more, won't have to stress so much about adding more. 
 	
 EndGroup
 
@@ -247,16 +276,13 @@ EndGroup
 ;TimerIDs
 Int iStaggerStartupTimerID = 1 Const
 Int iFailedSpCooldownTimerID = 2 Const
-
 Int iSpShortExpiryTimerID = 3
-Int iSpLongExpiryTimerID = 4
-;These timers are for disabling or deleting spawns when the Point is no longer in the loaded area. Should only be used for spawns staying close to SP. 
+Int iSpResetTimerID = 4
+Int iNextLocationTimerID = 5 
 
-Bool bSubjectToExpiry
 Bool bShortExpiryTimerRunning
-Bool bLongExpiryTimerRunning
 Bool bShortExpiryTimerExpired
-;Bool bLongExpiryTimerExpired
+Bool bFailTimerRunning ;This has to exist so things don't confused if we force a Reset Event etc. 
 ;These bools are for checking and flagging Expiry timers for functions that need this info.
 Bool bIsInLoadedArea
 ;Flag for CellAttach/Detach status. 
@@ -264,15 +290,12 @@ Bool bIsInLoadedArea
 Int iPropsEnabled
 ;Set to the value of iActorRaceTypeID if Props are enabled, for cleaning up later. 0 is None.
 
-Bool bSpawnpointActive ;Condition check. Once SP is activated this is set true.
+Bool bSpawnpointActive ; Main condition check. Once SP is activated this is set true.
 
 SOTC:ThreadControllerScript ThreadController
 ;{ Init None, fills OnCellAttach. }
 
 SOTC:RegionManagerScript RegionManager
-;{ Init None, fills OnCellAttach. }
-	
-SOTC:RegionTrackerScript CleanupManager
 ;{ Init None, fills OnCellAttach. }
 	
 SOTC:SpawnTypeRegionalScript SpawnTypeScript
@@ -285,19 +308,32 @@ ActorClassPresetScript ActorParamsScript
 ;NOTE: We never get the ActorManagerScript first, we go straight for the ClassPresetScript in order to get parameters.
 ;We can and will still access the ActorManagerScript from here. 
 
-Actor[] kGrouplist ;Stores all Actors spawned on this instance
+Actor[] kGrouplist ;Stores all Actors spawned on this instance until cleaned up.
+Actor[] kTravelLocGroupList ;For travelling Actors (ver. 0.19.01). When these Actors reach a travel loc, they Sandbox (if Package used is setup for this properly) 
+;and this point will receive their OnPackageEnd event and add them to this array. The first to reach the location will trigger a 3 minute timer. When this timer
+;expires, all Actors who made it to the location within the 3 minutes are assinged the next location (if alive). If some Actors strggle outside the 3 minutes, they
+;will simply stay at the first destination until killed or cleaned up. Only used if iNumPackageLocsRequired > 1 with iPackageMode = 1 (travel package).
+
+ObjectReference[] kPackageLocs ;Now tracked in empty state. Used for storing locations, in the event we use multiple travel locations, this needs to be
+;looked at for tracking purposes, and also for Prop purposes as these now have PropParents tied to them for use with Sandboxing. 
+
+Int iCurrentLocation ;Used for tracking which location of the travel loc list Actors are currently at. 
+Bool bPackageEventLockEngaged ;For use with multi-destination travel. Triggered by the first Actor to reach the Travel location, locks some functionality from
+;running again unnecessarily. 
+
 ;DEV NOTE: GROUP LEADERSHIP. 
 ;It could be considered to add another variable here for a "Group Leader" of sorts. At this time (version 0.13.01), there is no plan in place for this.
-Int iLosCounter ;This will be incremented whenever a Line of sight check to Player fails. If reaches 25, spawning aborts. As we at least spawn 1 actor
-;to start with, this remains safe to use (however Player may see that one actor being spawned. its just easier to live with). 
+
+Int iLosCounter ;This will be incremented whenever a Line of sight check to Player fails. If reaches 25 (2.5 secs), spawning aborts. As we at least spawn
+;1 actor to start with, this remains safe to use (however Player may see that one actor being spawned. its just easier to live with). 
 
 ;Multipoint/Interior variables
-ObjectReference[] kActiveChildren ;Temp list of all child markers used to delegate spawns to
+ObjectReference[] kActiveChildren ;Temp list of all child markers used to delegate spawns to.
 Bool bChildrenActive ;This will be checked and save reinitializing above array later.
-ObjectReference[] kActiveHelpers ;Actual SpawnHelper instances placed at child markers
+ObjectReference[] kActiveHelpers ;Actual SpawnHelper instances placed at child markers.
 
-;Spawn Info, listed in expect order of setting. Not all are required, depending on SpawnType etc
-Bool bRandomiseEZs ;Used in spawn loop to check if random EZ needs to be randomised (iEzApplyMode = 2)
+;Spawn Info, listed in expect order of setting. Not all are required, depending on SpawnType etc.
+Bool bRandomiseEZs ;Used in spawn loop to check if random EZ needs to be randomised (iEzApplyMode = 2).
 
 Bool bApplyRushPackage ;If flagged, will Apply the Rush package, used for Rampages/Random Ambush features.
 
@@ -306,22 +342,25 @@ Bool bApplyRushPackage ;If flagged, will Apply the Rush package, used for Rampag
 ;PRE-SPAWN EVENTS & FUNCTIONS
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
+
 Event OnCellAttach()
 
 	bIsInLoadedArea = true
 	
 	;Inital check, is not active, chance is not None (as could be nulled by Menu for example).
-	if (!bSpawnpointActive) && (iChanceToSpawn as Bool) 
+	if (!bSpawnpointActive) && bFailTimerRunning && (iChanceToSpawn as Bool) 
 		;Staggering the startup might help to randomise SPs in an area when Threads are scarce
 		StartTimer((Utility.RandomFloat(0.15,0.35)), iStaggerStartupTimerID)
 	
 	elseif bSpawnpointActive ;Check current expiry timer status if is Active. 
 		
-		if bShortExpiryTimerExpired && bLongExpiryTimerRunning		
+		if bShortExpiryTimerExpired	
 			EnableActorRefs()
-			CancelTimer(iSpLongExpiryTimerID)
+			bShortExpiryTimerExpired = false
 		elseif bShortExpiryTimerRunning
 			CancelTimer(iSpShortExpiryTimerID)
+			bShortExpiryTimerRunning = false
+			bShortExpiryTimerExpired = false
 		endif
 		
 	endif
@@ -333,8 +372,10 @@ Event OnCellDetach()
 
 	bIsInLoadedArea = false
 	
-	if iPackageMode != 1 && !bIsMultiPoint ;Expiry timers do not apply to travelling Actors, or currently MultiPoints. 
-		StartSpExpiryTimers()
+	if !bIgnoreExpiry && !bIsMultiPoint ;Expiry timers do not apply MultiPoints yet. 
+		StartTimer(ThreadController.fSpShortExpiryTimerClock, iSpShortExpiryTimerID)
+		bShortExpiryTimerRunning = true
+		bShortExpiryTimerExpired = false
 	endif
 	
 EndEvent
@@ -343,64 +384,78 @@ EndEvent
 Event OnTimer(int aiTimerID)
 
 	if aiTimerID == iStaggerStartupTimerID
-
-		;Initial checks - If Interior continue, else check distance from Player is greater than bSafeDistance Property and Player level restriction is exceeded.  
-		if (bIsInteriorPoint) || ((GetDistance(MasterScript.PlayerRef)) > fSafeDistanceFromPlayer) && ((MasterScript.PlayerRef.GetLevel()) >= iPlayerLevelRestriction)
-		;DEV NOTE: GetDistance check is only safe when comparing Object (namely this self object in this case) to Actor as parameter (namely Player in this case). 
+	
+		if (ThreadController.GetThread(iThreadsRequired)) ;Make sure we can get a thread first. 
 		
-			;NOTE: Master and Regional checks are done before GetThread, so it is possible for an event to intercept before ThreadController can deny
-			;Events are usually exempt from ThreadController checks, although they do count towards any of the limits.
+			;Initial checks - If Interior continue, else check distance from Player is greater than bSafeDistance Property and Player level restriction is exceeded.  
+			if ( bIsInteriorPoint && (Self as ObjectReference).GetCurrentLocation().IsCleared() ) || ((GetDistance(MasterScript.PlayerRef)) > fSafeDistanceFromPlayer) \
+			&& ((MasterScript.PlayerRef.GetLevel()) >= iPlayerLevelRestriction)
+			;DEV NOTE: GetDistance check is only safe when comparing Object (namely this self object in this case) to Actor as parameter (namely Player in this case). 
 			
-			Debug.Trace("SpawnPoint firing, setting script links")
-			SetSpScriptLinks()
-		
-			;Master Level checks/intercepts
-			if MasterScript.MasterSpawnCheck(Self, bAllowVanilla, bEventSafe) ;MASTER CHECK: If true, denied
-				;Master script assuming control, kill this thread and disable
-				Debug.Trace("SpawnPoint denied by Master check")
-				InitFailProcedure()			
-				return ;Nip in the bud
-			endif
-			
-			Debug.Trace("SpawnPoint passed Master Check")
-			
-			;Region Level checks/intercept. This will send in local spawn parameters if no intercept takes place.
-			;NOTE: as of version 0.06.01, no events are defined on RegionManager, will always return false. 
-			if RegionManager.RegionSpawnCheck(Self, iPresetRestriction) ;REGION CHECK: If true, denied
-				;Region script assuming control, kill this thread and disable
-				Debug.Trace("SpawnPoint denied by Region check")
-				InitFailProcedure()
-				return ;Nip in the bud
-			endif
-			
-			Debug.Trace("SpawnPoint passed Region Check")
-			
-			;Check SpawnType or Actor if enabled
-			if (iSpawnMode == 0) && (SpawnTypeScript.bSpawnTypeEnabled) && (ThreadController.GetThread(iThreadsRequired)) && \
-			((Utility.RandomInt(1,100)) <= ((iChanceToSpawn) + (RegionManager.GetRegionSpPresetChanceBonus()))) ;LOCAL CHECK
-				Debug.Trace("SpawnPoint Spawning")
-				PrepareLocalSpawn() ;Do Spawning
-				Debug.Trace("SpawnPoint successfully spent")
+				;NOTE: Master and Regional checks are done before GetThread, so it is possible for an event to intercept before ThreadController can deny
+				;Events are usually exempt from ThreadController checks, although they do count towards any of the limits.
 				
-			elseif (iSpawnMode == 1) && (ActorManager.bActorEnabled) && (ThreadController.GetThread(iThreadsRequired)) && \
-			((Utility.RandomInt(1,100)) <= ((iChanceToSpawn) + (RegionManager.GetRegionSpPresetChanceBonus()))) ;LOCAL CHECK
-				Debug.Trace("SpawnPoint Spawning")
-				PrepareLocalSpawn() ;Do Spawning
-				Debug.Trace("SpawnPoint successfully spent")
+				Debug.Trace("SpawnPoint firing, setting script links")
+				SetSpScriptLinks()
+			
+				;Master Level checks/intercepts
+				if MasterScript.MasterSpawnCheck(Self, bAllowVanilla, bEventSafe) ;MASTER CHECK: If true, denied
+					;Master script assuming control, kill this thread and disable
+					Debug.Trace("SpawnPoint denied by Master check")
+					InitFailProcedure()			
+					return ;Nip in the bud
+				endif
+				
+				Debug.Trace("SpawnPoint passed Master Check")
+				
+				;Region Level checks/intercept. This will send in local spawn parameters if no intercept takes place.
+				;NOTE: as of version 0.19.01, there are no Regional events that would make this return true, so should always succeed. 
+				if RegionManager.RegionSpawnCheck(Self, iPresetRestriction) ;REGION CHECK: If true, denied
+					;Region script assuming control, kill this thread and disable
+					Debug.Trace("SpawnPoint denied by Region check")
+					InitFailProcedure()
+					return ;Nip in the bud
+				endif
+				
+				Debug.Trace("SpawnPoint passed Region Check")
+				
+				;Check SpawnType or Actor if enabled
+				if (iSpawnMode == 0) && (SpawnTypeScript.bSpawnTypeEnabled) && ((Utility.RandomInt(1,100)) <= ((iChanceToSpawn) + (RegionManager.GetRegionSpPresetChanceBonus()))) ;LOCAL CHECK
+					Debug.Trace("SpawnPoint Spawning")
+					PrepareLocalSpawn() ;Do Spawning
+					Debug.Trace("SpawnPoint successfully spent")
+					
+				elseif (iSpawnMode == 1) && (ActorManager.bActorEnabled) && ( (Utility.RandomInt(1,100)) <= ((iChanceToSpawn) + (RegionManager.GetRegionSpPresetChanceBonus())) ) ;LOCAL CHECK
+					Debug.Trace("SpawnPoint Spawning")
+					PrepareLocalSpawn() ;Do Spawning
+					Debug.Trace("SpawnPoint successfully spent")
+					
+				else
+					;Denied by dice, Disable and wait some time before trying again.
+					Debug.Trace("SpawnPoint denied by dice or Spawntype/Actor disabled")
+					InitFailProcedure()
+				endif
 				
 			else
-				;Denied by dice, Disable and wait some time before trying again.
-				Debug.Trace("SpawnPoint denied by dice or Spawntype/Actor disabled")
+				;Failed initial checks.
 				InitFailProcedure()
 			endif
 			
-		;else
-			;Do nothing
+		else
+			
+			;Could not GetThread, check if cooldown needs to be activated. 
+			if ThreadController.fFailedSpCooldownTimerClock > 0.0
+				StartTimer(ThreadController.fFailedSpCooldownTimerClock, iFailedSpCooldownTimerID)
+				bFailTimerRunning = true
+				;DEV NOTE: If the Fail Cooldown Timer is off, Point will continuously try to spawn every CellAttach Event it receives.
+			endif
+			
 		endif
+		
 
 	elseif aiTimerID == iFailedSpCooldownTimerID
 	
-		bSpawnpointActive = false ;Return to armed state. 
+		bFailTimerRunning = false
 		
 	elseif aiTImerID == iSpShortExpiryTimerID
 		
@@ -408,41 +463,33 @@ Event OnTimer(int aiTimerID)
 			bShortExpiryTimerRunning = false
 			bShortExpiryTimerExpired = true
 			DisableActorRefs()
-			StartTimer(ThreadController.fSpLongExpiryTimerClock, iSpLongExpiryTimerID)
-			bLongExpiryTimerRunning = true
-		;esle do nothing, detach event will refire the timers. 
+
+		;else do nothing, detach event will refire the timers. 
 		endif
 		
-	elseif iSpLongExpiryTimerID
+	elseif aiTImerID == iSpResetTimerID
 	
-		bLongExpiryTimerRunning = false
-		bSubjectToExpiry = false
-		FactoryReset()
+		if FactoryReset(false) ;Not forcing reset. If returns false, restart timers. If true/successfully reset, re-arm the point. 
+			bSpawnpointActive = false
+		else ;Assume false/failed to reset due to conditions
+			StartTimer(RegionManager.fSpResetTimerClock, iSpResetTimerID)
+		endif
+		
+	elseif aiTImerID == iNextLocationTimerID
+	
+		PrepareNextTravelLocation()
 	
 	endif
 	
 EndEvent
 
-;Added in version 0.16.01. Simply calls the ThreadController to see if fail cooldown timer needs to be run. 
-Function InitFailProcedure()
 
-	if ThreadController.fFailedSpCooldownTimerClock > 0.0
-		bSpawnpointActive = true
-		StartTimer(ThreadController.fFailedSpCooldownTimerClock, iFailedSpCooldownTimerID)
-		Debug.Trace("SpawnPoint cooling off before next attempt allowed")
-		;DEV NOTE: If the Fail Cooldown Timer is off, this will spam if constantly in and out of the cell.
-	endif
-
-EndFunction
-	
-	
 
 Function SetSpScriptLinks()
 	
 	;Since patch 0.10.01, all instances are created at runtime (first install). Necessary evil.
 	ThreadController = MasterScript.ThreadController
 	RegionManager = MasterScript.Worlds[iWorldID].Regions[iRegionID]
-	CleanupManager = RegionManager.CleanupManager
 	
 	if iSpawnMode == 0 ;Random actor from SpawnType
 		
@@ -454,6 +501,13 @@ Function SetSpScriptLinks()
 		
 	elseif iSpawnMode == 1 ;Specific Actor from Master
 		ActorManager = MasterScript.SpawntypeMasters[0].ActorList[iSpawnTypeOrActorID]
+		
+	elseif iSpawnMode == 2 ;Use predefined list, get random Actor from that
+		
+		Int iSize = (iModeTwoActorList.Length) - 1
+		Int iActorToSpawn = iModeTwoActorList[(Utility.RandomInt(0,iSize))]
+		ActorManager = MasterScript.SpawntypeMasters[0].ActorList[iActorToSpawn]
+		
 	endif
 	
 EndFunction
@@ -464,27 +518,20 @@ Function PrepareLocalSpawn() ;Determine how to proceed
 	
 	;Check set Package Mode is expected. Shouldn't be required but I made this mistake once. 
 	if iPackageMode > 4 || iPackageMode < 0;FAILURE
-		Debug.Trace("Unexpected Package mode detected on SpawnPoint, returning immediately, function FAILED. Mode was set to: " +iPackageMode)
-		bSpawnpointActive = true
-		CleanupManager.AddSpentPoint(Self)
-		;Cleanup will be handled by the CleanupManager upon Region reset timer firing.
-		ThreadController.ReleaseThreads(iThreadsRequired) ;Spawning done, threads can be released.
+		Debug.Trace("Unexpected Package mode detected on SpawnPoint, returning immediately, function FAILED. Mode was set to: " +iPackageMode +" " + Self)
+		InitFailProcedure()
 		return
 	endif
 	
 	;Proceed if above passes. 
-	Debug.Trace("Preparing Local Spawn")
 	MasterScript.ShowSpawnWarning() ;Only displays if enabled, this is quicker than "check and/then do".
 	
 	
 	if bIsMultiPoint ;Uses helper objects to create multi-group spawns.  
 
-		Debug.Trace("MultiPoint Spawning")
 		PrepareMultiGroupSpawn()
 		
 	elseif iPackageMode < 3 ;Start spawning single group at/on this Point. Modes 0, 1 and 2. 
-	
-		Debug.Trace("SpawnPoint spawning single group. SpawnMode and ID are: " +iSpawnMode +iSpawnTypeOrActorID)
 		
 		if bBlockLocalRandomEvents 
 			PrepareSingleGroupNoEventSpawn()
@@ -499,39 +546,23 @@ Function PrepareLocalSpawn() ;Determine how to proceed
 	
 	elseif iPackageMode == 4 ;Interior mode, distributes the group across different parts of the Interior.
 	;DEV NOTE - Master Random Events framework needs an update for interiors.
-		
-		if (Self as ObjectReference).GetCurrentLocation().IsCleared()
-			
-			Debug.Trace("SpawnPoint Interior spawning")
-			if bBlockLocalRandomEvents 
-				PrepareSingleGroupNoEventSpawn()
-			else
-				PrepareSingleGroupSpawn()
-			endif
-			
-		else ;Nip it in the bud
-			
-			if ThreadController.fFailedSpCooldownTimerClock > 0.0
-				bSpawnpointActive = true
-				StartTimer(ThreadController.fFailedSpCooldownTimerClock, iFailedSpCooldownTimerID)
-			endif
-			;DEV NOTE: If the Fail Cooldown Timer is off, this will spam if constantly in and out of the cell.
-			Debug.Trace("Interior SpawnPoint denied due to location not being cleared")
-			ThreadController.ReleaseThreads(iThreadsRequired)
-			
-			return
-			
+
+		if bBlockLocalRandomEvents 
+			PrepareSingleGroupNoEventSpawn()
+		else
+			PrepareSingleGroupSpawn()
 		endif
 
-		
 	endif
 	
 	bSpawnpointActive = true
-	CleanupManager.AddSpentPoint(Self)
-	;Cleanup will be handled by the CleanupManager upon Region reset timer firing.
+	ThreadController.IncrementActiveSpCount(1)
+	ThreadController.IncrementActiveNpcCount(kGroupList.Length)
 	ThreadController.ReleaseThreads(iThreadsRequired) ;Spawning done, threads can be released.
 	
-	Debug.Trace("SpawnPoint spawning complete")
+	StartTimer(RegionManager.fSpResetTimerClock, iSpResetTimerID)
+	
+	Debug.Trace("A SP has successfully fired: " +Self)
 	
 EndFunction
 
@@ -539,24 +570,30 @@ EndFunction
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;CLEANUP FUNCTIONS
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
-;NOTE - We should not have to remove linked refs as only Marker remains persistent
-;NOTE - Remove Alias Data regardless.
 
-;If applicable, start the Short and Long expiry Timers to disable or cleanup Actors that have been inactive for a long time. 
-Function StartSpExpiryTimers()
-	
-	bSubjectToExpiry = true
-	
-	if bLongExpiryTimerRunning
-		CancelTimer(iSpLongExpiryTimerID)
-		bLongExpiryTimerRunning = false
+;Added in version 0.16.01. Simply calls the ThreadController to see if fail cooldown timer needs to be run. 
+Function InitFailProcedure()
+
+	if ThreadController.fFailedSpCooldownTimerClock > 0.0
+		StartTimer(ThreadController.fFailedSpCooldownTimerClock, iFailedSpCooldownTimerID)
+		bFailTimerRunning = true
+		;DEV NOTE: If the Fail Cooldown Timer is off, Point will continuously try to spawn every CellAttach Event it receives. 
 	endif
 	
-	StartTimer(ThreadController.fSpShortExpiryTimerClock, iSpShortExpiryTimerID)
-	bShortExpiryTimerRunning = true
-	bShortExpiryTimerExpired = false
+	ThreadController.ReleaseThreads(iThreadsRequired)
+
+EndFunction
+
+
+Function CancelAllTimers()
 	
-	;Moved long expiry timer start to Event block of short timer when it expires to reduce number of simultaneous timers. 
+	;WARNING: ONLY USE WHEN RESETTING MANUALLY.
+	
+	CancelTimer(iSpResetTimerID)
+	
+	if bShortExpiryTimerRunning
+		CancelTimer(iSpShortExpiryTimerID)
+	endif
 	
 EndFunction
 
@@ -595,14 +632,33 @@ Function EnableActorRefs()
 EndFunction
 
 
-;Cleanup all active data produced by this SP
-Function FactoryReset()
+;Event from MAster script, force a Reset. 
+Event SOTC:MasterQuestScript.ResetAllActiveSps(SOTC:MasterQuestScript akSender, Var[] akArgs)
 
-	if !bSpawnpointActive || (bSubjectToExpiry && bIsInLoadedArea)
-		return
+	if FactoryReset((akArgs[0] as Bool), true) ;IF returns true/successfully reset. akArgs is "Force" parameter, "true" is to mark as Event reset. 
+		bSpawnpointActive = false
+		CancelAllTimers() ;Shitcan any running timers
 	endif
-	;This is a little workaround for version 0.18.01 with new Expiry timers. If SP has been deactivated by expiry, return.
-	;If the point is in loaded area and is using Expiry Timers, CleanupManager can safely avoid cleanup. 
+
+EndEvent
+
+
+;Cleanup all active data produced by this SP.
+Bool Function FactoryReset(Bool abForceReset = false, Bool abSendEventFlag = false)
+	
+	if !bSpawnpointActive
+		return true ;Return true as we are inactive and should be clean. 
+	endif
+	
+	if !abForceReset ;Force will ignore ANY current conditions (except the above).
+		
+		if bIsInLoadedArea || (iPackageMode == 1 && TestActorsInLoadedArea()) ;Currently loaded, leave it be, restart reset timer. 
+			return false
+			;Next call should be to restart timers etc if necessary (depending where called from). 
+		endif
+		
+	endif
+	
 	
 	if bIsMultiPoint ;No groups stored here.
 		
@@ -611,11 +667,14 @@ Function FactoryReset()
 		
 	else ;Single and Interior modes can both use this.
 		
-		if bApplyRushPackage
-			CleanupActorRefs(kPackageRush)
-		else
-			CleanupActorRefs(kPackage)
-		endif
+		CleanupActorRefs(None)
+		
+		;Commented out in 0.19.01, as this data doesn't persist the Actor, data should be cleaned with Delete below.
+		;if bApplyRushPackage
+			;CleanupActorRefs(kPackageRush)
+		;else
+			;CleanupActorRefs(kPackage)
+		;endif
 		
 	endif
 	
@@ -627,16 +686,47 @@ Function FactoryReset()
 	ActorManager = None
 	SpawnTypeScript = None
 	RegionManager = None
-	CleanupManager = None
+	
+	if abSendEventFlag ;Notify ThreadController the reset event for this SP has completed
+		ThreadController.iEventFlagCount += 1
+	endif
 	
 	ThreadController.IncrementActiveSpCount(-1)
 	ThreadController = None
+	
 	iLosCounter = 0
-	bSpawnpointActive = false
+	kPackageLocs.Clear() ;Needs to be done everytime now that it's a variable in empty state. 
+	
+	;bSpawnpointActive = false
+	;This is now reset upon SpResetTimer/Force Reset only, since RegionalTrackerScript/CleanupManager has been scrapped. (version 0.19.01)
+	
+	return true ;Flag that we successfully reset. 
+	
+EndFunction
+
+
+
+;Used for travelling groups only, if Actors are in loaded area, we'll restart all timers. 
+Bool Function TestActorsInLoadedArea()
+
+	int iCounter = 0
+	int iSize = kGroupList.Length
+	
+	while iCounter < iSize
+		
+		if kGroupList[iCounter].Is3dLoaded() ;If true, Actor is loaded and we will return immediately flagging unsafe to reset.
+			return true
+		endif
+		
+		iCounter += 1
+		
+	endwhile
+	
+	return false ;Safe to reset if we got this far. 
 
 EndFunction
- 
 
+ 
 Function CleanupActorRefs(ReferenceAlias akPackage) ;Decided to pass the package in here. 
 
 	int iCounter = 0
@@ -644,15 +734,18 @@ Function CleanupActorRefs(ReferenceAlias akPackage) ;Decided to pass the package
         
 	while iCounter < iSize
 
-		akPackage.RemoveFromRef(kGroupList[iCounter]) ;Remove package data. Perhaps not necessary?
-		;NOTE; Removed code that removes linked refs. Unnecesary.
+		;akPackage.RemoveFromRef(kGroupList[iCounter]) ;Remove package data. Commented out in 0.19.01, as this data doesn't persist the Actor, data should be cleaned with Delete below.
+		;NOTE; Removed code that removes linked refs. Unnecessary.
+		
+		;Actors may already be disabled due to Short Expiry timer. Either way we won't do that here. 
 		kGroupList[iCounter].Delete()
 		iCounter += 1
 	
 	endwhile
 	
 	ThreadController.IncrementActiveNpcCount(-iSize)
-	kGroupList.Clear()
+	kTravelLocGroupList.Clear() ;De-persist so Delete can succeed.
+	kGroupList.Clear() ;De-persist so Delete can succeed. 
 	
 EndFunction
 
@@ -671,7 +764,7 @@ Function CleanupHelperRefs()
 		
 	endwhile
 
-	kActiveHelpers.Clear()
+	kActiveHelpers.Clear() ;De-persist so Delete can finish. 
 	
 EndFunction
 
@@ -722,6 +815,10 @@ EndFunction
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;SINGLE GROUP SPAWN EVENTS & FUNCTIONS
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
+;DEV NOTE: Currently the below function are a catch all for any mode, but this involves having to do some local checks a few times either. This is mainly
+;for shortening the code and making it a bit more readable, however this may change in future and each Package Mode divided into own blocks. Speed is not
+;currently a concern however. (V.0.19.01).
+
 
 Function PrepareSingleGroupSpawn()
 	
@@ -741,13 +838,8 @@ Function PrepareSingleGroupSpawn()
 		else ;Use debug preset if above failed. 
 			ActorParamsScript = SpawnTypeScript.GetRandomActor(0, bForceClassPreset, iForcedClassPreset) ;returns ActorClassPresetScript
 		endif
-		
+
 		;Create direct links to ActorManagerScript and ClassDetailsStruct
-		
-		if ActorParamsScript == None
-			Debug.Trace("WARNING: Actor Params was NONE, Mode, Pacakge and ID is: " +iSpawnMode +iPackageMode +iSpawnTypeOrActorID)
-		endif
-		
 		ActorManager = ActorParamsScript.ActorManager
 		;We'll get this now as it will have to be passed to the loop as well as various other work which makes this essential
 		
@@ -763,13 +855,12 @@ Function PrepareSingleGroupSpawn()
 		endwhile
 		
 		
-	elseif iSpawnMode == 1 ;Specific Actor
+	else ;Must be specific Actor. This was set correctly in SetSpScriptLinks function. 
 	
 		;Link with ClassPresetScript to use. 
 		ActorParamsScript = ActorManager.GetClassPreset(iClassToSpawn) ;If ClassToSpawn entered is not defined for the Actor, returns the debug preset.
-	
+
 	endif
-		
 	
 	;Now we get the spawn parameters according to Preset & Difficulty
 	;-----------------------------------------------------------------
@@ -802,7 +893,6 @@ Function PrepareSingleGroupSpawn()
 		iDifficulty = RegionManager.iCurrentDifficulty
 	endif
 
-
 	;Organise the ActorBase arrays/Get GroupLoadout.
 	;------------------------------------------------
 	
@@ -813,6 +903,7 @@ Function PrepareSingleGroupSpawn()
 	Bool bBossAllowed ;Later used as parameter.
 	if (ActorParams.iChanceBoss as Bool) && (GroupLoadout.kBossGroupUnits[0] != None) ;Check if Boss allowed and there is actually Boss on this GL.
 		kBossUnits = (GroupLoadout.kBossGroupUnits) as ActorBase[] ;Cast to copy locally
+		bBossAllowed = true
 	endif
 	
 	;Check if the GroupLoadout has any Props to use at this SP based on the iActorRaceTypeID value, and enable them via enable parent here. 
@@ -823,7 +914,6 @@ Function PrepareSingleGroupSpawn()
 		iPropsEnabled = 0 ;Reset to 0 if SP does not have. 
 	endif
 	;We've done it this way to avoid multiple calls to GroupLoadout script, keeping checks faster locally. 
-	
 	
 	;Check and setup EncounterZone data
 	;-----------------------------------
@@ -840,21 +930,18 @@ Function PrepareSingleGroupSpawn()
 		kEzList = RegionManager.GetRegionCurrentEzList() ;Look directly at the Regions Ez list, based on current mode.
 	endif
 	
-	
 	;Check for bonus local events
 	;-----------------------------
 	
-	ObjectReference[] kPackageLocs = new ObjectReference[1] ;Create it, even if it is unused later.
+	kPackageLocs = new ObjectReference[1] ;Create it, even if it is unused later. Now a variable in empty state as of version 0.19.01
 	;Initialised with one member for security reasons. This member of None is removed later, if required.
-	Int iStartLoc = -1 ;Used if randomising the ChildPoint to spawn at. Default value = Self.
-	
+	Int iStartLoc = -1 ;Used if randomising the ChildPoint to spawn at. Default value of -1 = Self.
 	
 	;Roll on Swarm feature if supported
 	Bool bApplySwarmBonus
 	if (ActorManager.bSupportsSwarm) && (RegionManager.RollForSwarm(iPointSwarmBonus))
 		bApplySwarmBonus = true
 	endif
-	
 	
 	;Roll on Rampage feature if supported, and Ambush feature if hostile group.
 	Bool bRushThePlayer
@@ -934,93 +1021,55 @@ Function PrepareSingleGroupSpawn()
 	endif
 
 	
-	;Finally, start the correct Spawn Loop for the Package Mode selected.
-	;--------------------------------------------------------------------
-	
-	;DEV NOTE: Most of the below could be consolidated into one function at the cost of repeated checks during SpawnActor while loops on the
-	;Package mode. I would much prefer having indivdiual functions that just do what they need to instead of running this check each loop.
-	
-	;DEV NOTE 2: From this point on, things can get confusing quick as some functions are reused for some Package Modes and are mixed and matched. 
+	;Finally, begin spawning.
+	;------------------------
+	;DEV NOTE: From this point on, things can get confusing quick as some functions are reused for some Package Modes and are mixed and matched. 
 	;Basically it works like this:
-	; - Sandbox/Hold use SpawnActorSingleLocLoop, and uses ApplyPackageSingleLocData()
-	; - Travel Package and Patrol Package use same SpawnLoop, but both have their own Package Loops.
-	; - Interior Mode has it's own SpawnLoop, but uses ApplyPackageSingleLocData() (during the SpawnLoop)
-	; - Rush Package is always checked first as it supports a few modes (and overrides them), uses same SpawnLoop as Travel/Patrol, but uses ApplyPackageSingleLocData()
-	; - Mode 3 Ambush (Distance based) uses ApplyPackageSingleLocData() from it's event block.
-	; - Mode 5 Ambush does not use an ApplyPackage loop at all, but uses SpawnActorNoPackageRandomChildLoop to spawn.
-	
+	; - Sandbox/Hold use SpawnActorSingleLocLoop, which uses ApplyPackageSingleLocData() during loop.
+	; - Travel Package and Patrol Package use same loop, but Patrol uses its own loop.
+	; - Ambush (Mode 3) starts off same as Sandbox, but uses same loops as Travel Package when Player is in range. 
+	; - If Rampage/Random Ambush is rolled by dice during spawn procedure for another Package Mode, will use same methods as Travel. 
+	; - Interior Mode uses SpawnActorSingleLocRandomChildLoop, which uses ApplyPackageSingleLocData() (during the spawn loop).
 	
 	Int iRegularActorCount ;Required for loot system
-
-;-------------------------------------------------------------------------------------------------------------------------------------------------------
 	
-	if bApplyRushPackage ;Check this first.
-	;DEV NOTE: Although this effectively uses same code as Travel/Patrol below, it is supported in other modes so easier to check first.
-	;and encapsulate like so.
-	
-		if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
-
-			SpawnActorNoPackageLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-			kRegularUnits, kEz, bApplySwarmBonus, iStartLoc, false, iDifficulty)
-			
-			iRegularActorCount = (kGroupList.Length) ;Required for loot system
-
-			if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
-				SpawnActorNoPackageLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-				kBossUnits, kEz, bApplySwarmBonus, iStartLoc, true, iDifficulty)
-			endif
-
-		else ;Randomise the Ez
-
-			SpawnActorRandomEzNoPackageLoop(ActorParams.iMaxAllowed, ActorParams.iChance, kRegularUnits, \
-			kEzList, bApplySwarmBonus, iStartLoc, false, iDifficulty)
-			
-			iRegularActorCount = (kGroupList.Length) ;Required for loot system
-
-			if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
-				SpawnActorRandomEzNoPackageLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-				kBossUnits, kEzList, bApplySwarmBonus, iStartLoc, true, iDifficulty)
-			endif
-
+	if iPackageMode < 4 || bApplyRushPackage
+	;DEV NOTES: 
+	; - Sandbox Package is applied DURING the Spawn loop (not after), as this allows each Actor to get comfortable first. It also somewhat prevents the user 
+	;from seeing a mob huddled together when first starting sandboxing.
+	; - Travel/Patrol/Ambush Pacakge is applied after spawn loops, in quick succession. This keeps Actors closer together initially during travel/movement.
+		
+		;Check if we will be applying the package during or after the spawnloop. 
+		Bool bApplyPackage
+		if iPackageMode != 0 || bApplyRushPackage ;Only Sandbox package is applied during loop.
+			bApplyPackage = true
 		endif
 		
 		
-		iSize = kGroupList.Length
-		while iCounter < iSize
-			ApplyPackageSingleLocData(kPackageRush, kGroupList[iCounter], kPackageLocs[0]) ;Parameter should have been set above.
-			iCounter += 1
-		endwhile
-	
-;-------------------------------------------------------------------------------------------------------------------------------------------------------	
-	
-	elseif iPackageMode == 0 ;Sandbox Mode
-	;DEV NOTE: Sandbox Package is applied DURING the Spawn loop (not after), as this allows each Actor to get comfortable first. It also somewhat
-	;prevents the user from seeing a mob huddled together when first starting sandboxing. 
-		
-		If !bSpreadSpawnsToChildPoints ;More likely false
+		If !bSpreadSpawnsToChildPoints || (iPackageMode == 2) ;More likely false/Force if Patrolling.
 			
 			if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
 					
 				SpawnActorSingleLocLoop(ActorParams.iMaxAllowed, ActorParams.iChance, kRegularUnits, \
-				kEz, bApplySwarmBonus, iStartLoc, false, iDifficulty)
+				kEz, bApplySwarmBonus, iStartLoc, false, iDifficulty, bApplyPackage)
 				
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
 					
 				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
 					SpawnActorSingleLocLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEz, bApplySwarmBonus, iStartLoc, true, iDifficulty)
+					kBossUnits, kEz, bApplySwarmBonus, iStartLoc, true, iDifficulty, bApplyPackage)
 				endif
 
 			else ;Randomise the Ez
 
 				SpawnActorRandomEzSingleLocLoop(ActorParams.iMaxAllowed, ActorParams.iChance, kRegularUnits, \
-				kEzList, bApplySwarmBonus, iStartLoc, false, iDifficulty)
+				kEzList, bApplySwarmBonus, iStartLoc, false, iDifficulty, bApplyPackage)
 				
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
 
 				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
 					SpawnActorRandomEzSingleLocLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEzList, bApplySwarmBonus, iStartLoc, true, iDifficulty)
+					kBossUnits, kEzList, bApplySwarmBonus, iStartLoc, true, iDifficulty, bApplyPackage)
 				endif
 					
 			endif
@@ -1030,116 +1079,61 @@ Function PrepareSingleGroupSpawn()
 			if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
 
 				SpawnActorSingleLocRandomChildLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-				kRegularUnits, kEz, bApplySwarmBonus, false, iDifficulty, false)
+				kRegularUnits, kEz, bApplySwarmBonus, false, iDifficulty, false, bApplyPackage)
 				
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
 
 				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
 					SpawnActorSingleLocRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEz, bApplySwarmBonus, true, iDifficulty, false)
+					kBossUnits, kEz, bApplySwarmBonus, true, iDifficulty, false, bApplyPackage)
 				endif
 
 			else ;Randomise the Ez
 
 				SpawnActorRandomEzSingleLocRandomChildLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-				kRegularUnits, kEzList, bApplySwarmBonus, false, iDifficulty, false)
+				kRegularUnits, kEzList, bApplySwarmBonus, false, iDifficulty, false, bApplyPackage)
 				
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
 					
 				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
 					SpawnActorRandomEzSingleLocRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEzList, bApplySwarmBonus, true, iDifficulty, false)
-				endif
-
-			endif
-			
-		endif
-	
-;-------------------------------------------------------------------------------------------------------------------------------------------------------
-	
-	elseif iPackageMode < 4 ;Travel/Patrol Mode, can assume above failed. 
-	;DEV NOTE: As of version 0.13.01, ApplyPackage Travel/Patrol loops are done after spawn placement as this seems to allow groups to travel closer together.
-	;Also improves performance of SpawnLoops as latent calls are done after in quick succession. Both of these use the NoPackage Spawn Loop. 
-	
-		if (!bSpreadSpawnsToChildPoints) || (iPackageMode == 2)	;More likely false, unsupported for Patrols. 
-			
-			if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
-
-				SpawnActorNoPackageLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-				kRegularUnits, kEz, bApplySwarmBonus, iStartLoc, false, iDifficulty)
-				
-				iRegularActorCount = (kGroupList.Length) ;Required for loot system
-					
-				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
-					SpawnActorNoPackageLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEz, bApplySwarmBonus, iStartLoc, true, iDifficulty)
-				endif
-
-			else ;Randomise the Ez
-
-				SpawnActorRandomEzNoPackageLoop(ActorParams.iMaxAllowed, ActorParams.iChance, kRegularUnits, \
-				kEzList, bApplySwarmBonus, iStartLoc, false, iDifficulty)
-				
-				iRegularActorCount = (kGroupList.Length) ;Required for loot system
-					
-				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
-					SpawnActorRandomEzNoPackageLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEzList, bApplySwarmBonus, iStartLoc, true, iDifficulty)
-				endif
-
-			endif
-			
-			
-		else ;Assume true and Package Mode 1/3. 
-		
-			if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
-
-				SpawnActorNoPackageRandomChildLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-				kRegularUnits, kEz, bApplySwarmBonus, false, iDifficulty, false)
-				
-				iRegularActorCount = (kGroupList.Length) ;Required for loot system
-					
-				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
-					SpawnActorNoPackageRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEz, bApplySwarmBonus, true, iDifficulty, false)
-				endif
-
-			else ;Randomise the Ez
-
-				SpawnActorRandomEzNoPackageRandomChildLoop(ActorParams.iMaxAllowed, ActorParams.iChance, kRegularUnits, \
-				kEzList, bApplySwarmBonus, false, iDifficulty, false)
-				
-				iRegularActorCount = (kGroupList.Length) ;Required for loot system
-					
-				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
-					SpawnActorRandomEzNoPackageRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEzList, bApplySwarmBonus, true, iDifficulty, false)
+					kBossUnits, kEzList, bApplySwarmBonus, true, iDifficulty, false, bApplyPackage)
 				endif
 
 			endif
 			
 		endif
 		
+		;Set the Package on all actors in quick succession if required.
+		;---------------------------------------------------------------
 		
-		;Finally, set the Package on all actors in quick succession.
-		;------------------------------------------------------------
-		
-		iSize = kGroupList.Length
-		
-		if iPackageMode == 1 
+		if iPackageMode == 1 ;Travel Mode
 			
 			iSize = kGroupList.Length
 			while iCounter < iSize
-				ApplyPackageTravelData(kGroupList[iCounter], kPackageLocs)
+				ApplyPackageSingleLocData(kPackage, kGroupList[iCounter], kPackageLocs[0])
 				iCounter += 1
 			endwhile
+			
+			if iNumPackageLocsRequired > 1
+				PrepareForMultipleTravelLocs()
+			endif
 				
-		elseif iPackageMode == 2
+		elseif iPackageMode == 2 ;Patrol Mode
 
 			;Apply loop
 			iSize = kGroupList.Length
 			while iCounter < iSize
 				ApplyPackagePatrolData(kGroupList[iCounter], iStartLoc)
+				iCounter += 1
+			endwhile
+			
+		elseif bApplyRushPackage || iPackageMode == 3 ;Ambush/Rampage Mode. 
+		;MODE 3 SHOULD NOT USE THIS FUNCTION BLOCK, but this is checked for security. In which case Actors will get Packages immediately. 
+
+			iSize = kGroupList.Length
+			while iCounter < iSize
+				ApplyPackageSingleLocData(kPackageRush, kGroupList[iCounter], kPackageLocs[0]) ;Location was set correctly above.
 				iCounter += 1
 			endwhile
 
@@ -1149,38 +1143,37 @@ Function PrepareSingleGroupSpawn()
 	
 	elseif iPackageMode == 4 ;Interior Mode
 	;DEV NOTE: Package application for Interior Mode must be done during Spawn loop, same as Sandbox/Hold Mode. Uses SpawnActorSingleLocRandomChildLoop()
-	;DEV NOTE 2: Interior Mode does not Expend ChildPoints by design. 
+	;DEV NOTE 2: Interior Mode does not expend ChildPoints by design. 
 	
 		if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
 	
 			SpawnActorSingleLocRandomChildLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-			kRegularUnits, kEz, bApplySwarmBonus, false, iDifficulty, false)
+			kRegularUnits, kEz, bApplySwarmBonus, false, iDifficulty, false, true)
 			
 			iRegularActorCount = (kGroupList.Length) ;Required for loot system
 				
 			if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
 				SpawnActorSingleLocRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-				kBossUnits, kEz, bApplySwarmBonus, true, iDifficulty, false)
+				kBossUnits, kEz, bApplySwarmBonus, true, iDifficulty, false, true)
 			endif
 
 		else ;Randomise the Ez
 
 			SpawnActorRandomEzSingleLocRandomChildLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-			kRegularUnits, kEzList, bApplySwarmBonus, false, iDifficulty, false)
+			kRegularUnits, kEzList, bApplySwarmBonus, false, iDifficulty, false, true)
 			
 			iRegularActorCount = (kGroupList.Length) ;Required for loot system
 	
 			if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
 				SpawnActorRandomEzSingleLocRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-				kBossUnits, kEzList, bApplySwarmBonus, true, iDifficulty, false)
+				kBossUnits, kEzList, bApplySwarmBonus, true, iDifficulty, false, true)
 			endif
 				
 		endif
 
 	
 	endif
-	
-;-------------------------------------------------------------------------------------------------------------------------------------------------------
+
 
 	;Check for loot pass, inform ThreadController of the spawned numbers.
 	;---------------------------------------------------------------------
@@ -1189,20 +1182,16 @@ Function PrepareSingleGroupSpawn()
 		Int iBossCount = (kGroupList.Length) - iRegularActorCount ;Also required for loot system
 		ActorManager.DoLootPass(kGroupList, iBossCount)
 	endif
-	
-	;Lastly, we tell Increment the Active NPC and SP on the Thread Controller
-	ThreadController.IncrementActiveNpcCount(kGroupList.Length)
-	ThreadController.IncrementActiveSpCount(1)
-	
-	;GTFO
 
+	;GTFO
+	
 EndFunction
 
 
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
-;Similar to the above function, but simpler. Skips random events and other intricacies. This is the only function that supports Package Mode 5. 
+;Similar to the above function, but faster/simpler. Skips random events and other intricacies. This is the only function that supports Package Mode 5. 
 ;DEV NOTE: This function may not really be necessary and an extra check could be added to the above. However, I enjoy the idea of having it anyway. 
 Function PrepareSingleGroupNoEventSpawn()
 
@@ -1222,13 +1211,8 @@ Function PrepareSingleGroupNoEventSpawn()
 		else 
 			ActorParamsScript = SpawnTypeScript.GetRandomActor(0, bForceClassPreset, iForcedClassPreset) ;returns ActorClassPresetScript
 		endif
-		
-		if ActorParamsScript == None
-			Debug.Trace("WARNING: Actor Params was NONE, Mode, Pacakge and ID is: " +iSpawnMode +iPackageMode +iSpawnTypeOrActorID)
-		endif
-		
+
 		;Create direct links to ActorManagerScript and ClassDetailsStruct
-		
 		ActorManager = ActorParamsScript.ActorManager
 		;We'll get this now as it will have to be passed to the loop as well as various other work which makes this essential
 		
@@ -1244,13 +1228,12 @@ Function PrepareSingleGroupNoEventSpawn()
 		endwhile
 		
 		
-	elseif iSpawnMode == 1 ;Specific Actor
+	else ;Must be specific Actor. This was set correctly in SetSpScriptLinks function. 
 	
 		;Link with ClassPresetScript to use. Remember, ActorManager was set in SetSpScriptLinks() block. 
 		ActorParamsScript = ActorManager.GetClassPreset(iClassToSpawn) ;If ClassToSpawn entered is not defined for the Actor, returns the debug preset.
 	
 	endif
-		
 	
 	;Now we get the spawn parameters according to Preset & Difficulty
 	;-----------------------------------------------------------------
@@ -1283,7 +1266,6 @@ Function PrepareSingleGroupNoEventSpawn()
 		iDifficulty = RegionManager.iCurrentDifficulty
 	endif
 
-
 	;Organise the ActorBase arrays/Get GroupLoadout.
 	;------------------------------------------------
 	
@@ -1294,9 +1276,12 @@ Function PrepareSingleGroupNoEventSpawn()
 	Bool bBossAllowed ;Later used as parameter.
 	if (ActorParams.iChanceBoss as Bool) && (GroupLoadout.kBossGroupUnits[0] != None) ;Check if Boss allowed and there is actually Boss on this GL.
 		kBossUnits = (GroupLoadout.kBossGroupUnits) as ActorBase[] ;Cast to copy locally
+		bBossAllowed = true
 	endif
 	
-	;Check if the GroupLoadout has any Props to use at this SP based on the iActorRaceTypeID value, and enable them via enable parent here. 
+	;Check if the GroupLoadout has any Props to use at this SP based on the iActorRaceTypeID value, and enable them via enable parent here.
+	;---------------------------------------------------------------------------------------------------------------------------------------
+	
 	iPropsEnabled = GroupLoadout.iActorRaceTypeID
 	if kPropParents[iPropsEnabled] != None ;If The value above was returned 0 (None) this is still safe. 
 		kPropParents[iPropsEnabled].Enable()
@@ -1304,7 +1289,6 @@ Function PrepareSingleGroupNoEventSpawn()
 		iPropsEnabled = 0 ;Reset to 0 if SP does not have. 
 	endif
 	;We've done it this way to avoid multiple calls to GroupLoadout script, keeping checks faster locally. 
-	
 	
 	;Check and setup EncounterZone data
 	;-----------------------------------
@@ -1321,11 +1305,10 @@ Function PrepareSingleGroupNoEventSpawn()
 		kEzList = RegionManager.GetRegionCurrentEzList() ;Look directly at the Regions Ez list, based on current mode.
 	endif
 	
-	
 	;Set PackageLocs if required
 	;----------------------------
 	
-	ObjectReference[] kPackageLocs = new ObjectReference[1] ;Create it, even if it is unused later.
+	kPackageLocs = new ObjectReference[1] ;Create it, even if it is unused later. Now a variable in empty state as of version 0.19.01
 	;Initialised with one member for security reasons. This member of None is removed later, if required.
 	Int iStartLoc = -1 ;Used if randomising the ChildPoint to spawn at. Default value = Self.
 	
@@ -1370,163 +1353,102 @@ Function PrepareSingleGroupNoEventSpawn()
 
 	
 	;Finally, begin spawning.
-	;-------------------------------------------------------------------------------
-	
-	;DEV NOTE: Most of the below could be consolidated into one function at the cost of repeated checks during SpawnActor while loops on the
-	;Package mode. I would much prefer having indivdiual functions that just do what they need to instead of running this check each loop.
-	
-	;DEV NOTE 2: From this point on, things can get confusing quick as some functions are reused for some Package Modes and are mixed and matched. 
+	;------------------------
+	;DEV NOTE: From this point on, things can get confusing quick as some functions are reused for some Package Modes and are mixed and matched. 
 	;Basically it works like this:
-	; - Sandbox/Hold use SpawnActorSingleLocLoop, and uses ApplyPackageSingleLocData()
-	; - Travel Package and Patrol Package use same SpawnLoop, but both have their own Package Loops.
-	; - Interior Mode has it's own SpawnLoop, but uses ApplyPackageSingleLocData() (during the SpawnLoop)
-	; - Rush Package is always checked first as it supports a few modes (and overrides them), uses same SpawnLoop as Travel/Patrol, but uses ApplyPackageSingleLocData()
-	; - Mode 3 Ambush (Distance based) uses ApplyPackageSingleLocData() from it's event block.
-	; - Mode 5 Ambush does not use an ApplyPackage loop at all, but uses SpawnActorNoPackageRandomChildLoop to spawn.
-	
+	; - Sandbox/Hold use SpawnActorSingleLocLoop, which uses ApplyPackageSingleLocData() during loop.
+	; - Travel Package and Patrol Package use same loop, but Patrol uses its own loop.
+	; - Ambush (Mode 3) starts off same as Sandbox, but uses same loops as Travel Package when Player is in range. 
+	; - If Rampage/Random Ambush is rolled by dice during spawn procedure for another Package Mode, will use same methods as Travel. 
+	; - Interior Mode uses SpawnActorSingleLocRandomChildLoop, which uses ApplyPackageSingleLocData() (during the spawn loop).
 	
 	Int iRegularActorCount ;Required for loot system
 	
-	
-	if iPackageMode == 0 ;Sandbox Mode
-	;DEV NOTE: Sandbox Package is applied DURING the Spawn loop (not after), as this allows each Actor to get comfortable first. It also somewhat
-	;prevents the user from seeing a mob huddled together when first starting sandboxing. 
+	if iPackageMode < 4 
+	;DEV NOTES: 
+	; - Sandbox Package is applied DURING the Spawn loop (not after), as this allows each Actor to get comfortable first. It also somewhat prevents the user 
+	;from seeing a mob huddled together when first starting sandboxing.
+	; - Travel/Patrol/Ambush Pacakge is applied after spawn loops, in quick succession. This keeps Actors closer together initially during travel/movement.
 		
-		if !bSpreadSpawnsToChildPoints ;More likely false
+		;Check if we will be applying the package during or after the spawnloop. 
+		Bool bApplyPackage
+		if iPackageMode != 0 ;Only Sandbox package is applied during loop.
+			bApplyPackage = true
+		endif
 		
+		
+		If !bSpreadSpawnsToChildPoints || (iPackageMode == 2) ;More likely false/Force if Patrolling.
+			
 			if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
-
-				SpawnActorSingleLocLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-				kRegularUnits, kEz, false, iStartLoc, false, iDifficulty)
+					
+				SpawnActorSingleLocLoop(ActorParams.iMaxAllowed, ActorParams.iChance, kRegularUnits, \
+				kEz, false, iStartLoc, false, iDifficulty, bApplyPackage)
 				
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
-
+					
 				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
 					SpawnActorSingleLocLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEz, false, iStartLoc, true, iDifficulty)
+					kBossUnits, kEz, false, iStartLoc, true, iDifficulty, bApplyPackage)
 				endif
 
 			else ;Randomise the Ez
 
-				SpawnActorRandomEzSingleLocLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-				kRegularUnits, kEzList, false, iStartLoc, false, iDifficulty)
+				SpawnActorRandomEzSingleLocLoop(ActorParams.iMaxAllowed, ActorParams.iChance, kRegularUnits, \
+				kEzList, false, iStartLoc, false, iDifficulty, bApplyPackage)
 				
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
 
 				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
 					SpawnActorRandomEzSingleLocLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEzList, false, iStartLoc, true, iDifficulty)
+					kBossUnits, kEzList, false, iStartLoc, true, iDifficulty, bApplyPackage)
 				endif
-
+					
 			endif
-			
 			
 		else ;Assume true
 		
 			if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
-			
+
 				SpawnActorSingleLocRandomChildLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-				kRegularUnits, kEz, false, false, iDifficulty, false)
+				kRegularUnits, kEz, false, false, iDifficulty, false, bApplyPackage)
 				
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
 
 				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
 					SpawnActorSingleLocRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEz, false, true, iDifficulty, false)
+					kBossUnits, kEz, false, true, iDifficulty, false, bApplyPackage)
 				endif
 
 			else ;Randomise the Ez
 
 				SpawnActorRandomEzSingleLocRandomChildLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-				kRegularUnits, kEzList, false, false, iDifficulty, false)
+				kRegularUnits, kEzList, false, false, iDifficulty, false, bApplyPackage)
 				
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
-
+					
 				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
 					SpawnActorRandomEzSingleLocRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEzList, false, true, iDifficulty, false)
-				endif
-
-			endif
-			
-		endif
-	
-;-------------------------------------------------------------------------------------------------------------------------------------------------------
-	
-	elseif iPackageMode < 4 ;Travel/Patrol/Ambush(distance-based) Modes, can assume above failed.
-	;DEV NOTE: As of version 0.13.01, ApplyPackage Travel/Patrol loops are done after spawn placement as this seems to allow groups to travel closer together.
-	;Also improves performance of SpawnLoops as latent calls are done after in quick succession. Both of these use the NoPackage Spawn Loop. 
-	
-		if (!bSpreadSpawnsToChildPoints) || (iPackageMode == 2)	;More likely false, unsupported for Patrols.
-	
-			if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
-
-				SpawnActorNoPackageLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-				kRegularUnits, kEz, false, iStartLoc, false, iDifficulty)
-				
-				iRegularActorCount = (kGroupList.Length) ;Required for loot system
-	
-				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
-					SpawnActorNoPackageLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEz, false, iStartLoc, true, iDifficulty)
-				endif
-
-			else ;Randomise the Ez
-
-				SpawnActorRandomEzNoPackageLoop(ActorParams.iMaxAllowed, ActorParams.iChance, kRegularUnits, \
-				kEzList, false, iStartLoc, false, iDifficulty)
-				
-				iRegularActorCount = (kGroupList.Length) ;Required for loot system
-
-				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
-					SpawnActorRandomEzNoPackageLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEzList, false, iStartLoc, true, iDifficulty)
-				endif
-
-			endif
-			
-			
-		else ;Assume true and Package Mode 1/3. 
-		
-			if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
-
-				SpawnActorNoPackageRandomChildLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-				kRegularUnits, kEz, false, false, iDifficulty, false)
-				
-				iRegularActorCount = (kGroupList.Length) ;Required for loot system
-
-				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
-					SpawnActorNoPackageRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEz, false, true, iDifficulty, false)
-				endif
-
-			else ;Randomise the Ez
-
-				SpawnActorRandomEzNoPackageRandomChildLoop(ActorParams.iMaxAllowed, ActorParams.iChance, kRegularUnits, \
-				kEzList, false, false, iDifficulty, false)
-				
-				iRegularActorCount = (kGroupList.Length) ;Required for loot system
-	
-				if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
-					SpawnActorRandomEzNoPackageRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEzList, false, true, iDifficulty, false)
+					kBossUnits, kEzList, false, true, iDifficulty, false, bApplyPackage)
 				endif
 
 			endif
 			
 		endif
 		
-		
-		;Finally, set the Package on all actors in quick succession.
-		iSize = kGroupList.Length
+		;Set the Package on all actors in quick succession if required.
+		;---------------------------------------------------------------
 		
 		if iPackageMode == 1 
 			
 			iSize = kGroupList.Length
 			while iCounter < iSize
-				ApplyPackageTravelData(kGroupList[iCounter], kPackageLocs)
+				ApplyPackageSingleLocData(kPackage, kGroupList[iCounter], kPackageLocs[0])
 				iCounter += 1
 			endwhile
+			
+			if iNumPackageLocsRequired > 1
+				PrepareForMultipleTravelLocs()
+			endif
 
 		elseif iPackageMode == 2
 
@@ -1537,13 +1459,9 @@ Function PrepareSingleGroupNoEventSpawn()
 				iCounter += 1
 			endwhile
 			
-		elseif iPackageMode == 3
+		elseif iPackageMode == 3 ;Ambush Mode. Should always use this function and not the above Event inclusive one. 
 			
-			iSize = kGroupList.Length
-			while iCounter < iSize
-				ApplySneakState(kGroupList[iCounter])
-				iCounter += 1
-			endwhile
+			ApplyGroupSneakState()
 			RegisterForDistanceLessThanEvent(MasterScript.PlayerRef, Self as ObjectReference, fAmbushDistance) ;Possibly faster then Game.GetPlayer()
 
 		endif
@@ -1556,32 +1474,30 @@ Function PrepareSingleGroupNoEventSpawn()
 		if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
 	
 			SpawnActorSingleLocRandomChildLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-			kRegularUnits, kEz, false, false, iDifficulty, false)
+			kRegularUnits, kEz, false, false, iDifficulty, false, true)
 			
 			iRegularActorCount = (kGroupList.Length) ;Required for loot system
 
 			if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
 				SpawnActorSingleLocRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-				kBossUnits, kEz, false, true, iDifficulty, false)
+				kBossUnits, kEz, false, true, iDifficulty, false, true)
 			endif
 
 		else ;Randomise the Ez
 
 			SpawnActorRandomEzSingleLocRandomChildLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-			kRegularUnits, kEzList, false, false, iDifficulty, false)
+			kRegularUnits, kEzList, false, false, iDifficulty, false, true)
 			
 			iRegularActorCount = (kGroupList.Length) ;Required for loot system
 	
 			if bBossAllowed ;Check again if Boss spawns allowed for this Actors preset
 				SpawnActorRandomEzSingleLocRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-				kBossUnits, kEzList, false, true, iDifficulty, false)
+				kBossUnits, kEzList, false, true, iDifficulty, false, true)
 			endif
 
 		endif
 		
 	endif
-	
-;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 	;Check for loot pass, inform ThreadController of the spawned numbers.
@@ -1593,9 +1509,6 @@ Function PrepareSingleGroupNoEventSpawn()
 	endif
 	
 	;Lastly, we tell Increment the Active NPC and SP on the Thread Controller
-	ThreadController.IncrementActiveNpcCount(kGroupList.Length)
-	ThreadController.IncrementActiveSpCount(1)
-	
 
 EndFunction
 
@@ -1604,18 +1517,13 @@ EndFunction
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;SPAWN LOOPS
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
-;DEV NOTE: Most of the below can be consolidated into one function at the cost of repeated checks during SpawnActor while loops on the Package mode. 
-;I would much prefer having indivdiual functions that just do what they need to instead of running this check each loop.
-
-;DEV NOTE 2: From this point on, things can get confusing quick as some functions are reused for some Package Modes and are mixed and matched. 
+;DEV NOTE: From this point on, things can get confusing quick as some functions are reused for some Package Modes and are mixed and matched. 
 ;Basically it works like this:
 ; - Sandbox/Hold use SpawnActorSingleLocLoop, which uses ApplyPackageSingleLocData() during loop.
-; - Travel Package and Patrol Package use same SpawnLoop, but both have their own Package Loops.
-; - Interior Mode uses SpawnActorSingleLocRandomChildLoop, which uses ApplyPackageSingleLocData() (during the SpawnLoop).
-; - Rush Package is always checked first as it supports a few modes (and overrides them), uses same SpawnLoop as Travel/Patrol, but uses ApplyPackageSingleLocData().
-; - Mode 3 Ambush (Distance based) uses ApplyPackageSingleLocData() from it's event block.
-; - Mode 5 Ambush does not use an ApplyPackage loop at all, but uses SpawnActorNoPackageRandomChildLoop to spawn. 
-
+; - Travel Package and Patrol Package use same loop, but Patrol uses its own loop.
+; - Ambush (Mode 3) starts off same as Sandbox, but uses same loops as Travel Package when Player is in range. 
+; - If Rampage/Random Ambush is rolled by dice during spawn procedure for another Package Mode, will use same methods as Travel. 
+; - Interior Mode uses SpawnActorSingleLocRandomChildLoop, which uses ApplyPackageSingleLocData() (during the spawn loop).
 
 
 ;SINGLE LOCATION LOOPS W/ PACKAGE APPLICATION INCLUDED ("SingleLoc" refers to the type of Package Application really)
@@ -1624,7 +1532,7 @@ EndFunction
 ;prevents the user from seeing a mob huddled together when first starting sandboxing. 
 
 Function SpawnActorSingleLocLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, EncounterZone akEz, \
-Bool abApplySwarmBonus, Int aiStartLoc, Bool abIsBossSpawn, Int aiDifficulty) ;aiStartLoc default value = Self
+Bool abApplySwarmBonus, Int aiStartLoc, Bool abIsBossSpawn, Int aiDifficulty, Bool abApplyPackage) ;aiStartLoc default value = Self
 	
 	if abApplySwarmBonus ;Apply Swarm bonus settings if true, else skip
 	
@@ -1640,10 +1548,11 @@ Bool abApplySwarmBonus, Int aiStartLoc, Bool abIsBossSpawn, Int aiDifficulty) ;a
 	
 	;Determine initial location to spawn at
 	ObjectReference kStartLoc
+
 	if aiStartLoc == -1 ;Use Self
 		kStartLoc = Self as ObjectReference
 	else ;Use ChildPoint location
-		kStartLoc = kChildPoints[aiStartLoc]
+		kStartLoc = kChildPoints[aiStartLoc] ;This number was randomised earlier. 
 	endif
 	
 	;Start placing Actors.
@@ -1661,6 +1570,10 @@ Bool abApplySwarmBonus, Int aiStartLoc, Bool abIsBossSpawn, Int aiDifficulty) ;a
 	kSpawned = kStartLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
 	kGroupList.Add(kSpawned) ;Add to Group tracker
 	
+	if abApplyPackage ;ONLY IF PACKAGE WILL BE TIED TO STARTLOC!
+		ApplyPackageSingleLocData(kPackage, kSpawned, kStartLoc)
+	endif
+	
 	;Begin chance based placement loop for the rest of the Group
 	while iCounter <= aiMaxCount
 		
@@ -1675,9 +1588,14 @@ Bool abApplySwarmBonus, Int aiStartLoc, Bool abIsBossSpawn, Int aiDifficulty) ;a
 		
 		;Else continue to place Actor.	
 		if (Utility.RandomInt(1,100)) <= aiChance
+			
 			kSpawned = kStartLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
 			kGroupList.Add(kSpawned) ;Add to Group tracker
-			ApplyPackageSingleLocData(kPackage, kSpawned, kStartLoc)
+			
+			if abApplyPackage ;ONLY IF PACKAGE WILL BE TIED TO STARTLOC!
+				ApplyPackageSingleLocData(kPackage, kSpawned, kStartLoc)
+			endif
+			
 		endif
 		
 		iCounter +=1
@@ -1689,7 +1607,7 @@ EndFunction
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Function SpawnActorRandomEzSingleLocLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, EncounterZone[] akEzList, \
-Bool abApplySwarmBonus, Int aiStartLoc, Bool abIsBossSpawn, Int aiDifficulty) ;aiStartLoc default value = Self
+Bool abApplySwarmBonus, Int aiStartLoc, Bool abIsBossSpawn, Int aiDifficulty, Bool abApplyPackage) ;aiStartLoc default value = Self
 
 	if abApplySwarmBonus ;Apply Swarm bonus settings if true, else skip
 	
@@ -1703,12 +1621,13 @@ Bool abApplySwarmBonus, Int aiStartLoc, Bool abIsBossSpawn, Int aiDifficulty) ;a
 		
 	endif
 	
-	;Determine initial location to spawn at
+	;Determine initial location to spawn or link to.
 	ObjectReference kStartLoc
+
 	if aiStartLoc == -1 ;Use Self
 		kStartLoc = Self as ObjectReference
 	else ;Use ChildPoint location
-		kStartLoc = kChildPoints[aiStartLoc]
+		kStartLoc = kChildPoints[aiStartLoc] ;This number was randomised earlier.
 	endif
 	
 	;Start placing Actors.
@@ -1727,6 +1646,9 @@ Bool abApplySwarmBonus, Int aiStartLoc, Bool abIsBossSpawn, Int aiDifficulty) ;a
 	;Spawn the first guaranteed Actor
 	kSpawned = kStartLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;akEz can be None
 	kGroupList.Add(kSpawned) ;Add to Group tracker
+	if abApplyPackage ;ONLY IF PACKAGE WILL BE TIED TO STARTLOC!
+		ApplyPackageSingleLocData(kPackage, kSpawned, kStartLoc)
+	endif
 	
 	;Begin chance based placement loop for the rest of the Group
 	while iCounter <= aiMaxCount
@@ -1742,10 +1664,15 @@ Bool abApplySwarmBonus, Int aiStartLoc, Bool abIsBossSpawn, Int aiDifficulty) ;a
 		
 		;Else continue to place Actor.	
 		if (Utility.RandomInt(1,100)) <= aiChance
+			
 			kEz = akEzList[(Utility.RandomInt(0,iEzListSize))] ;Randomise EZ each loop
 			kSpawned = kStartLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;akEz can be None
 			kGroupList.Add(kSpawned) ;Add to Group tracker
-			ApplyPackageSingleLocData(kPackage, kSpawned, kStartLoc)
+
+			if abApplyPackage ;ONLY IF PACKAGE WILL BE TIED TO STARTLOC!
+				ApplyPackageSingleLocData(kPackage, kSpawned, kStartLoc)
+			endif
+			
 		endif
 		
 		iCounter +=1
@@ -1762,7 +1689,7 @@ EndFunction
 ;ChildPoints available if using this option).
 
 Function SpawnActorSingleLocRandomChildLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, EncounterZone akEz, \
-Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint)
+Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint, Bool abApplyPackage)
 
 	if (abApplySwarmBonus) && (!abExpendPoint) ;Apply Swarm bonus settings if true AND Not expending ChildPoints, else skip.
 	
@@ -1800,9 +1727,11 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint
 	kSpawnLoc = GetChildPoint(abExpendPoint) ;Place at a random marker in the cell/child cell (if exists)
 	kSpawned = kSpawnLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
 	kGroupList.Add(kSpawned) ;Add to Group tracker
-	ApplyPackageSingleLocData(kPackage, kSpawned, kSpawnLoc)
+	if abApplyPackage ;ONLY IF PACKAGE WILL BE TIED TO STARTLOC!
+		ApplyPackageSingleLocData(kPackage, kSpawned, kSpawnLoc)
+	endif
 	
-	;Begin chance based placement loop for the rest of the Group
+	;Begin chance based placement loop for the rest of the Group.
 	while iCounter <= aiMaxCount
 		
 		kSpawnLoc = GetChildPoint(abExpendPoint) ;Place at a random marker in the cell/child cell (if exists)
@@ -1821,7 +1750,10 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint
 			
 			kSpawned = kSpawnLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
 			kGroupList.Add(kSpawned) ;Add to Group tracker
-			ApplyPackageSingleLocData(kPackage, kSpawned, kSpawnLoc)
+			
+			if abApplyPackage ;ONLY IF PACKAGE WILL BE TIED TO STARTLOC!
+				ApplyPackageSingleLocData(kPackage, kSpawned, kSpawnLoc)
+			endif
 			
 		endif
 		
@@ -1834,7 +1766,7 @@ EndFunction
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Function SpawnActorRandomEzSingleLocRandomChildLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, EncounterZone[] akEzList, \ 
-Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint) ;For lack of better name :D
+Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint, Bool abApplyPackage) ;For lack of better name :D
 
 	if (abApplySwarmBonus) && (!abExpendPoint) ;Apply Swarm bonus settings if true AND Not expending ChildPoints, else skip.
 	
@@ -1875,9 +1807,11 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint
 	kSpawnLoc = GetChildPoint(abExpendPoint) ;Place at a random marker in the cell/child cell (if exists)
 	kSpawned = kSpawnLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;kEz can be None
 	kGroupList.Add(kSpawned) ;Add to Group tracker
-	ApplyPackageSingleLocData(kPackage, kSpawned, kSpawnLoc)
+	if abApplyPackage ;ONLY IF PACKAGE WILL BE TIED TO STARTLOC!
+		ApplyPackageSingleLocData(kPackage, kSpawned, kSpawnLoc)
+	endif
 	
-	;Begin chance based placement loop for the rest of the Group
+	;Begin chance based placement loop for the rest of the Group.
 	while iCounter <= aiMaxCount
 		
 		kSpawnLoc = GetChildPoint(abExpendPoint) ;Place at a random marker in the cell/child cell (if exists)
@@ -1897,7 +1831,10 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint
 			kEz = akEzList[(Utility.RandomInt(0,iEzListSize))] ;Randomise each loop
 			kSpawned = kSpawnLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;kEz can be None
 			kGroupList.Add(kSpawned) ;Add to Group tracker
-			ApplyPackageSingleLocData(kPackage, kSpawned, kSpawnLoc)
+			
+			if abApplyPackage ;ONLY IF PACKAGE WILL BE TIED TO STARTLOC!
+				ApplyPackageSingleLocData(kPackage, kSpawned, kSpawnLoc)
+			endif
 			
 		endif
 		
@@ -1908,284 +1845,7 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint
 EndFunction
 
 
-
-;PACKAGELESS LOOPS - USE FOR TRAVEL/PATROL/STATIC PLACEMENT
-;-------------------------------------------------------------------------------------------------------------------------------------------------------
-;DEV NOTE: These loops do not apply any package, they simply drop the Actor. It is expected the calling function will run ApplyPackage loop after this.
-
-Function SpawnActorNoPackageLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, EncounterZone akEz, \
-Bool abApplySwarmBonus, Int aiStartLoc, Bool abIsBossSpawn, Int aiDifficulty) ;aiStartLoc default value = Self
-	
-	if abApplySwarmBonus ;Apply Swarm bonus settings if true, else skip
-	
-		if !abIsBossSpawn 
-			aiMaxCount += ActorManager.iSwarmMaxCountBonus
-			aiChance += ActorManager.iSwarmChanceBonus
-		else
-			aiMaxCount += ActorManager.iSwarmMaxCountBossBonus
-			aiChance += ActorManager.iSwarmChanceBossBonus
-		endif
-		
-	endif
-	
-	;Determine initial location to spawn at
-	ObjectReference kStartLoc
-	if aiStartLoc == -1 ;Use Self
-		kStartLoc = Self as ObjectReference
-	else ;Use ChildPoint location
-		kStartLoc = kChildPoints[aiStartLoc]
-	endif
-	
-	;Start placing Actors
-	
-	if !abIsBossSpawn ;As SPs are designed to only spawn one group each, only init this list the first time. 
-		kGroupList = new Actor[0] ;Needs to be watched for errors with arrays getting trashed when init'ed 0 members.
-	endif
-	
-	Int iCounter = 1 ;Guarantee the first Actor
-	Int iActorListSize = (akActorList.Length) - 1 ;Need actual size
-	Actor kSpawned
-	Actor kPlayerRef = MasterScript.PlayerRef ;Grab for LoS checks.
-	
-	;Spawn the first guaranteed Actor
-	kSpawned = kStartLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
-	kGroupList.Add(kSpawned) ;Add to Group tracker
-	
-	;Begin chance based placement loop for the rest of the Group
-	while iCounter <= aiMaxCount
-		
-		;Check Line of sight to Player. 
-		while kPlayerRef.HasDetectionLos(kStartLoc)
-			iLosCounter += 1 ;Line of sight fail counter will return this function if hits 25 (2.5 seconds wasted).
-			if iLosCounter >= 25 ;Better to check now.
-				return ;Stop spawning and kill the function. Player is looking too frequently.
-			endif
-			Utility.Wait(0.1)
-		endwhile
-		
-		;Else continue to place Actor.	
-		if (Utility.RandomInt(1,100)) <= aiChance
-			kSpawned = kStartLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
-			kGroupList.Add(kSpawned) ;Add to Group tracker
-		endif
-		
-		iCounter +=1
-	
-	endwhile
-
-EndFunction
-
-;-------------------------------------------------------------------------------------------------------------------------------------------------------
-
-Function SpawnActorRandomEzNoPackageLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, EncounterZone[] akEzList, \
-Bool abApplySwarmBonus, Int aiStartLoc, Bool abIsBossSpawn, Int aiDifficulty) ;aiStartLoc default value = Self
-
-	if abApplySwarmBonus ;Apply Swarm bonus settings if true, else skip
-	
-		if !abIsBossSpawn
-			aiMaxCount += ActorManager.iSwarmMaxCountBonus
-			aiChance += ActorManager.iSwarmChanceBonus
-		else
-			aiMaxCount += ActorManager.iSwarmMaxCountBossBonus
-			aiChance += ActorManager.iSwarmChanceBossBonus
-		endif
-		
-	endif
-	
-	;Determine initial location to spawn at
-	ObjectReference kStartLoc
-	if aiStartLoc == -1 ;Use Self
-		kStartLoc = Self as ObjectReference
-	else ;Use ChildPoint location
-		kStartLoc = kChildPoints[aiStartLoc]
-	endif
-	
-	;Start placing Actors
-
-	if !abIsBossSpawn ;As SPs are designed to only spawn one group each, only init this list the first time. 
-		kGroupList = new Actor[0] ;Needs to be watched for errors with arrays getting trashed when init'ed 0 members.
-	endif
-	
-	Int iCounter = 1 ;Guarantee the first Actor
-	Int iEzListSize = (akEzList.Length) - 1 ;Need actual size
-	Int iActorListSize = (akActorList.Length) - 1 ;Need actual size
-	EncounterZone kEz
-	Actor kSpawned
-	Actor kPlayerRef = MasterScript.PlayerRef ;Grab for LoS checks.
-	
-	;Spawn the first guaranteed Actor
-	kSpawned = kStartLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;akEz can be None
-	kGroupList.Add(kSpawned) ;Add to Group tracker
-	
-	;Begin chance based placement loop for the rest of the Group
-	while iCounter <= aiMaxCount
-		
-		;Check Line of sight to Player. 
-		while kPlayerRef.HasDetectionLos(kStartLoc)
-			iLosCounter += 1 ;Line of sight fail counter will return this function if hits 25 (2.5 seconds wasted).
-			if iLosCounter >= 25 ;Better to check now.
-				return ;Stop spawning and kill the function. Player is looking too frequently.
-			endif
-			Utility.Wait(0.1)
-		endwhile
-		
-		;Else continue to place Actor.	
-		if (Utility.RandomInt(1,100)) <= aiChance
-			kEz = akEzList[(Utility.RandomInt(0,iEzListSize))] ;Randomise EZ each loop
-			kSpawned = kStartLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;akEz can be None
-			kGroupList.Add(kSpawned) ;Add to Group tracker
-		endif
-		
-		iCounter +=1
-	
-	endwhile
-
-EndFunction
-
-;-------------------------------------------------------------------------------------------------------------------------------------------------------
-
-;The following 2 functions are refactors of the above 2, and used to spread placement of Actors out to ChildPoints. Slower due to randomising the marker 
-;to spawn at. Can optionally "expend" the marker being spawned at, in order to prevent other spawns dropping at the same marker again (will cut group Max 
-;Count to number of ChildPoints available if using this option).
- 
-Function SpawnActorNoPackageRandomChildLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, \
-EncounterZone akEz, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint)
-	
-	if (abApplySwarmBonus) && (!abExpendPoint) ;Apply Swarm bonus settings if true AND Not expending ChildPoints, else skip.
-	
-		if !abIsBossSpawn
-			aiMaxCount += ActorManager.iSwarmMaxCountBonus
-			aiChance += ActorManager.iSwarmChanceBonus
-		else
-			aiMaxCount += ActorManager.iSwarmMaxCountBossBonus
-			aiChance += ActorManager.iSwarmChanceBossBonus
-		endif
-		
-	endif
-
-	;Start placing Actors.
-	
-	if !abIsBossSpawn ;As SPs are designed to only spawn one group each, only init this list the first time. 
-		kGroupList = new Actor[0] ;Needs to be watched for errors with arrays getting trashed when init'ed 0 members.
-	endif
-	
-	Int iCounter = 1 ;Guarantee the first Actor
-	Int iActorListSize = (akActorList.Length) - 1 ;Need actual size
-	Actor kSpawned
-	ObjectReference kSpawnLoc
-	Actor kPlayerRef = MasterScript.PlayerRef ;Grab for LoS checks.
-	
-	;First we must ensure the MaxCount received does not exceed number of ChildPoints, if we expending Points each Spawn.
-	if abExpendPoint
-		
-		if aiMaxCount > (kChildPoints.Length)
-			aiMaxCount = (kChildPoints.Length)
-		endif
-	endif
-	
-	;Spawn the first guaranteed Actor
-	kSpawnLoc = GetChildPoint(abExpendPoint) ;Place at a random marker in the cell/child cell (if exists)
-	kSpawned = kSpawnLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
-	kGroupList.Add(kSpawned) ;Add to Group tracker
-	
-	;Begin chance based placement loop for the rest of the Group
-	while iCounter <= aiMaxCount
-		
-		kSpawnLoc = GetChildPoint(abExpendPoint) ;Place at a random marker in the cell/child cell (if exists)
-		
-		;Check Line of sight to Player. 
-		while kPlayerRef.HasDetectionLos(kSpawnLoc)
-			iLosCounter += 1 ;Line of sight fail counter will return this function if hits 25 (2.5 seconds wasted).
-			if iLosCounter >= 25 ;Better to check now.
-				return ;Stop spawning and kill the function. Player is looking too frequently.
-			endif
-			Utility.Wait(0.1)
-		endwhile
-		
-		;Else continue to place Actor.	
-		if (Utility.RandomInt(1,100)) <= aiChance
-			kSpawned = kSpawnLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
-			kGroupList.Add(kSpawned) ;Add to Group tracker
-		endif
-		
-		iCounter +=1
-	
-	endwhile
-
-EndFunction
-
-;-------------------------------------------------------------------------------------------------------------------------------------------------------
-
-Function SpawnActorRandomEzNoPackageRandomChildLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, \
-EncounterZone[] akEzList, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint) ;Worlds Best function type.
-
-	if (abApplySwarmBonus) && (!abExpendPoint) ;Apply Swarm bonus settings if true AND Not expending ChildPoints, else skip.
-	
-		if !abIsBossSpawn
-			aiMaxCount += ActorManager.iSwarmMaxCountBonus
-			aiChance += ActorManager.iSwarmChanceBonus
-		else
-			aiMaxCount += ActorManager.iSwarmMaxCountBossBonus
-			aiChance += ActorManager.iSwarmChanceBossBonus
-		endif
-		
-	endif
-
-	;Start placing Actors.
-	
-	if !abIsBossSpawn ;As SPs are designed to only spawn one group each, only init this list the first time. 
-		kGroupList = new Actor[0] ;Needs to be watched for errors with arrays getting trashed when init'ed 0 members.
-	endif
-	
-	Int iCounter = 1 ;Guarantee the first Actor
-	Int iActorListSize = (akActorList.Length) - 1 ;Need actual size
-	Int iEzListSize = (akEzList.Length) - 1 ;Need actual size
-	Actor kSpawned
-	ObjectReference kSpawnLoc
-	EncounterZone kEz
-	Actor kPlayerRef = MasterScript.PlayerRef ;Grab for LoS checks.
-	
-	;First we must ensure the MaxCount received does not exceed number of ChildPoints, if we expending Points each Spawn.
-	if abExpendPoint
-		
-		if aiMaxCount > (kChildPoints.Length)
-			aiMaxCount = (kChildPoints.Length)
-		endif
-	endif
-	
-	;Spawn the first guaranteed Actor
-	kSpawnLoc = GetChildPoint(abExpendPoint) ;Place at a random marker in the cell/child cell (if exists)
-	kSpawned = kSpawnLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;akEz can be None
-	kGroupList.Add(kSpawned) ;Add to Group tracker
-	
-	;Begin chance based placement loop for the rest of the Group
-	while iCounter <= aiMaxCount
-		
-		kSpawnLoc = GetChildPoint(abExpendPoint) ;Place at a random marker in the cell/child cell (if exists)
-		
-		;Check Line of sight to Player. 
-		while kPlayerRef.HasDetectionLos(kSpawnLoc)
-			iLosCounter += 1 ;Line of sight fail counter will return this function if hits 25 (2.5 seconds wasted).
-			if iLosCounter >= 25 ;Better to check now.
-				return ;Stop spawning and kill the function. Player is looking too frequently.
-			endif
-			Utility.Wait(0.1)
-		endwhile
-		
-		;Else continue to place Actor.	
-		if (Utility.RandomInt(1,100)) <= aiChance
-		
-			kEz = akEzList[(Utility.RandomInt(0,iEzListSize))] ;Randomise each loop
-			kSpawned = kSpawnLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;akEz can be None
-			kGroupList.Add(kSpawned) ;Add to Group tracker
-		endif
-		
-		iCounter +=1
-	
-	endwhile
-
-EndFunction
-
+;DEV NOTE: PACKAGE LOOPS REMOVED IN 0.19.01. NO LONGER NECESSARY. PARAMETER ADDED TO SINGLELOC TYPE FUNCTIONS INSTEAD. 
 
 
 ;-----------------------------------------------------------------------------------------------------------------------------------------
@@ -2199,31 +1859,7 @@ Function ApplyPackageSingleLocData(ReferenceAlias akPackage, Actor akActor, Obje
 
 	akActor.SetLinkedRef(akPackageLoc, kPackageKeywords[0])
 	akPackage.ApplyToRef(akActor) ;Finally apply the data alias with package
-	
 	;As of version 0.16.02, cast spell to Actor to run EvaluatePacakge call in own thread. 
-	;akActor.EvaluatePackage() ;And evaluate so no delay
-	kEvalPackageSpell.Cast(akActor, akActor)
-	
-EndFunction
-
-
-;Link Actor to travel locs and send on their merry way
-Function ApplyPackageTravelData(Actor akActor, ObjectReference[] akPackageLocs)
-	
-	Int iCounter
-	Int iSize = akPackageLocs.Length
-		
-	while iCounter < iSize
-			
-		akActor.SetLinkedRef(akPackageLocs[iCounter], kPackageKeywords[iCounter])
-		iCounter += 1
-		
-	endwhile
-
-	kPackage.ApplyToRef(akActor) ;Finally apply the data alias with package
-	
-	;As of version 0.16.02, cast spell to Actor to run EvaluatePacakge call in own thread. 
-	;akActor.EvaluatePackage() ;And evaluate so no delay
 	kEvalPackageSpell.Cast(akActor, akActor)
 	
 EndFunction
@@ -2266,6 +1902,87 @@ Function ApplyPackagePatrolData(Actor akActor, Int aiStartLoc)
 EndFunction
 
 
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+;MULTI-DESTINATION TRAVEL FUNCTIONS & EVENTS
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+;Added in version 0.19.01. This area deals with Actors travelling to multiple locations. Due to the sheer latency of the AI engine, we will now hold its
+;hand throughout this entire process. It should be noted that multi-destination travelling spawns should be kept to a limit throughout the entire mod as
+;these are the most expensive Papyrus wise. What we will do is issue a basic, single-location, travel destination to begin with, and then register for
+;OnPackageEnd for each Actor. When the Actors arrive at the location they will be given a basic Sandbox package. The first Actor to reach the location 
+;will trigger a timer here, with each Actor that makes it being added to a separate/new array from the GroupList. When the Timer expires, those that made
+;it and now being tracked in this new array, will be assigned a new travel location and all evaluated via the scripted spell method (used above) as usual.
+;This process then repeats infinitely. 
+
+Function PrepareForMultipleTravelLocs()
+
+	Int iSize = kGroupList.Length
+	Int iCounter
+	
+	while iCounter < iSize
+		RegisterForRemoteEvent(kGroupList[iCounter], "OnPackageEnd")
+		iCounter += 1
+	endwhile
+	
+EndFunction
+
+
+Function PrepareNextTravelLocation() ;Send all Actors that made it to last destination, to new destination, if alive now. 
+	
+	Int iSize = kTravelLocGroupList.Length
+	Int iCounter
+	
+	while iCounter < iSize
+		
+		if !kTravelLocGroupList[iCounter].IsDead() ;Ignore if dead.
+		
+			kTravelLocGroupList[iCounter].SetLinkedRef(kPackageLocs[iCurrentLocation], kPackageKeywords[0])
+			
+		endif
+		
+		iCounter += 1
+		
+	endwhile
+	
+	kTravelLocGroupList.Clear()
+	bPackageEventLockEngaged = false 
+
+EndFunction
+
+
+Event Actor.OnPackageEnd(Actor akSender, Package akOldPackage)
+
+	if akOldPackage == kMultiTravelPackageBase && !bPackageEventLockEngaged ;If false, this is the first Actor to make it. 
+		
+		bPackageEventLockEngaged = true
+		kTravelLocGroupList = new Actor[1] ;Init with one member to avoid false array errors.
+		kTravelLocGroupList[0] = akSender
+		StartTimer(fNextLocationTimerClock, iNextLocationTimerID)
+		
+		if (iCurrentLocation + 1) == iNumPackageLocsRequired ;If so we've been to all locs, restart from start of location list.
+			iCurrentLocation = 0
+		else
+			iCurrentLocation += 1
+		endif
+		
+	elseif akOldPackage == kMultiTravelPackageBase ;Need to be certain getting right Package (assume bool was true). 
+		
+		kTravelLocGroupList.Add(akSender)
+		
+	endif
+
+
+EndEvent
+
+
+;Created and obsoleted in 0.19.01, left for reference/future use. 
+Function SwapActorPackageData(Actor akActor, ReferenceAlias akPackageAliasToRemove, ReferenceAlias akPackageAliasToApply)
+
+	akPackageAliasToRemove.RemoveFromRef(akActor)
+	akPackageAliasToApply.ApplyToRef(akActor)
+	kEvalPackageSpell.Cast(akActor, akActor) ;Force Evaluate in own thread.
+
+EndFunction
+
 
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;DISTANCE-BASED AMBUSH FUNCTIONS & EVENTS
@@ -2277,21 +1994,30 @@ Event OnDistanceLessThan(ObjectReference akObj1, ObjectReference akObj2, float a
 	
 	Int iCounter
 	Int iSize = kGroupList.Length
-	ObjectReference kPlayer = (MasterScript.PlayerRef) as ObjectReference ;Possibly faster than Game.GetPlayer()
+	ObjectReference kPlayer = (MasterScript.PlayerRef) as ObjectReference ;Possibly faster than Game.GetPlayer(), cast for linking. 
+	
+	ApplyGroupSneakState() ;Removes sneak state previously set. 
 	
 	while iCounter < iSize
-		ApplyPackageSingleLocData(kPackageRush, kGroupList[iCounter], kPlayer) ;Parameter should have been set above.
+		ApplyPackageSingleLocData(kPackageRush, kGroupList[iCounter], kPlayer)
 		iCounter += 1
 	endwhile
 	
 EndEvent
 
 
-;Sets all Actors in the Group to start sneaking, while waiting for trigger above.
-Function ApplySneakState(Actor akActor)
-;DEV NOTE: This function is currently in TEST PHASE. The Package applied after this later, may not return from sneaking. =
-
-	akActor.StartSneaking()
+;Sets all Actors in the Group to start sneaking (or not if called again after).
+Function ApplyGroupSneakState()
+	
+	Int iSize
+	Int iCounter
+	
+	while iCounter < iSize
+		
+		kGroupList[iCounter].StartSneaking()
+		iCounter += 1
+		
+	endwhile
 	
 EndFunction
 
@@ -2365,13 +2091,14 @@ Function PrepareMultiGroupSpawn()
 	;Now check/get Package locations if required
 	;--------------------------------------------
 	
-	ObjectReference[] kPackageLocs = new ObjectReference[0] ;Create it, because even if we skip it, it still has to be passed to loop
+	Bool bExpendPoint = false
+	kPackageLocs = new ObjectReference[1] ;Create it, even if it is unused later. Now a variable in empty state as of version 0.19.01
 	;Need to keep an eye on this in case it spits errors about being an empty array/Papyrus trashing it. 
 
-	if (bSpreadSpawnsToChildPoints) || (iPackageMode == 2) ;Patrol Mode, use ChildPoints array.
+	if iPackageMode == 1
+		kPackageLocs[0] = RegionManager.GetRandomTravelLoc()
+	elseif (bSpreadSpawnsToChildPoints) || (iPackageMode == 2) ;Patrol Mode, use ChildPoints array.
 		kPackageLocs = kChildPoints
-	elseif iNumPackageLocsRequired < 0
-		kPackageLocs = RegionManager.GetRandomTravelLocs(iNumPackageLocsRequired)
 	endif ;If nothing returned here, we must be using Sandbox package (Helpers will use Self as loc). If not weird things may happen.
 	
 	
@@ -2382,8 +2109,6 @@ Function PrepareMultiGroupSpawn()
 	ObjectReference kSpawnPoint
 	ObjectReference kHelper
 	kActiveHelpers = new ObjectReference[1] ;Init with one member, as Papyrus may trash it if not and we take too long.
-	Bool bExpendPoint = false
-	
 	
 	if (!bSpreadSpawnsToChildPoints) && (iPackageMode != 2)	;Expends Points if NOT spreading spawns and Patrol Mode.
 		bExpendPoint = true ;Saves more expensive check in loops below.
@@ -2408,14 +2133,14 @@ Function PrepareMultiGroupSpawn()
 			kSpawnPoint = GetChildPoint(bExpendPoint)
 			if iPackageMode == 2 ;We will need to determine the Int index of the ChildPoint received if in Patrol Mode, so Helper can link in correct order.
 				iStartLoc = kChildPoints.Find(kSpawnPoint)
-			elseif iPackageMode == 3 ;We will send AMbush Distance setting as the iStartLoc instead
+			elseif iPackageMode == 3 ;We will send Ambush Distance setting as the iStartLoc instead
 				iStartLoc = fAmbushDistance as Int
 			endif
 			
 			kHelper = kSpawnPoint.PlaceAtMe(kMultiPointHelper) ;Place worker
 			;Will auto fire after this function in it's own thread via timer
 			(kHelper as SOTC:SpHelperScript).SetHelperSpawnParams(RegionManager, ActorParamsScriptList[iCounter], iPackageMode, \
-			kPackageToSend, kPackageKeywords, kPackageLocs, bSpreadSpawnsToChildPoints, iPreset, iDifficulty, iStartLoc)
+			kPackageToSend, kPackageLocs, bSpreadSpawnsToChildPoints, iPreset, iDifficulty, iStartLoc)
 			;NOTE: Calling this function activates the trigger timer on the helper.
 			;DEV NOTE: Passing of ThreadController was removed in version 0.13.01 to free up a parameter slot. Gets from Region now.
 			
@@ -2438,7 +2163,7 @@ Function PrepareMultiGroupSpawn()
 			kHelper = kSpawnPoint.PlaceAtMe(kMultiPointHelper) ;Place worker
 			;Will auto fire after this function in it's own thread via timer
 			(kHelper as SOTC:SpHelperScript).SetHelperSpawnParams(RegionManager, ActorParamsScriptList[0], iPackageMode, \
-			kPackageToSend, kPackageKeywords, kPackageLocs, bSpreadSpawnsToChildPoints, iPreset, iDifficulty, iStartLoc)
+			kPackageToSend, kPackageLocs, bSpreadSpawnsToChildPoints, iPreset, iDifficulty, iStartLoc)
 			;NOTE: Calling this function activates the trigger timer on the helper.
 			;DEV NOTE: Passing of ThreadController was removed in version 0.13.01 to free up a parameter slot. Gets from Region now. 
 			
@@ -2453,9 +2178,6 @@ Function PrepareMultiGroupSpawn()
 	if kActiveHelpers[0] == None ; Security measure removes first member of None. See notes on Master as to why we do this.
 		kActiveHelpers.Remove(0)
 	endif
-	
-	;Still need to inform ThreadController of this particular SP. 
-	ThreadController.IncrementActiveSpCount(1)
 	
 	;GTFO
 

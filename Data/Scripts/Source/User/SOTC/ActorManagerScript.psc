@@ -70,7 +70,7 @@ Group Config
 	
 	Int Property iActorRaceTypeID Auto Const
 	{ Set the primary Race/Type ID of this Actor for use with Prop system. ID's are: 0 = Disabled, 1 = Human (camp/furniture etc), 
-2 = SuperMutant (gore etc), 3 = Predator Mutant/Animal (dead bodies etc). }
+2 = SuperMutant (gore etc), 3 = Predator Mutant/Animal (dead bodies etc), 4 = Robots/machines (parts, scrapped bots/machines etc. }
 	
 	Bool Property bIsOversizedActor Auto Mandatory
 	{ Set true if this Actor is unsafe to spawn in confined areas. }

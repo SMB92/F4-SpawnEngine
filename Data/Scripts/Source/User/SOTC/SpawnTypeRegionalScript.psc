@@ -49,9 +49,6 @@ Group Dynamic
 	
 	Int Property iCurrentPreset Auto
 	{ Initialise 0. Set by Menu/Preset. Determines each Actors Rarity in this Spawntype/Region }
-	
-	Bool Property bCustomSettingsActive Auto
-	{ Init False. Set by Menu when custom settings have been applied. }
 
 	SOTC:ActorManagerScript[] Property CommonActorList Auto
 	{ Initialise one member of None. Fills dynamically. }
@@ -165,16 +162,9 @@ EndFunction
 
 
 ;Usually called by Region script during Preset changes
-Function ReshuffleDynActorLists(Bool abForceReset, int aiPreset)
+Function ReshuffleDynActorLists(int aiPreset) ;Param optionally sets the new preset value locally.
 
-	;This function can be called directly from menu to set a custom preset choice. Set parameters
-	;(true, preset) and then flag bCustomSettingsActive as true. No need for checks as user is
-	;intending for this to happen. Menu can also force a reset by passing (true, 0) to this function.
-
-	if (bCustomSettingsActive) && (!abForceReset)
-		return ;DENIED, return immediately. 
-	endif
-	;else continue.
+	;This function can be safely called directly from menu.
 	
 	if aiPreset > 0 ;If 0, just reshuffle as normal. While likely unused, exists if needed.
 		iCurrentPreset = aiPreset ;Set the Preset here

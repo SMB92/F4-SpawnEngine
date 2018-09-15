@@ -30,12 +30,16 @@ Group Dynamic
 	
 	Int Property iActiveRegionsCount Auto 
 	{ Incremented when a Region Quest starts for the first time. }
+	
 	Int Property iActiveThreadCount Auto 
 	{ Current Active Spawnpoints spawning right now if any. }
-	Int Property iActiveSPCount Auto 
+	
+	Int Property iActiveSpCount Auto 
 	{ Number of active SpawnPoints. }
+	
 	Int Property iActiveNpcCount Auto 
 	{ Number of currently managed NPCs. }
+	
 	Int Property iEventFlagCount Auto
 	{ Init 0. Used for Master Events, instances can use this to flag themselves as completed event blocks. }
 	
@@ -44,29 +48,26 @@ EndGroup
 
 Group Settings
 
-	Int Property iMaxAllowedThreads = 8 Auto
-	{ Initialise 8 (Default). Set in Menu. Max no of Spawnpoints allowed to be working simultaneously. }
+	Int Property iMaxAllowedThreads = 4 Auto
+	{ Initialise 4 (Default). Set in Menu. Max no of Spawnpoints allowed to be working simultaneously. }
 
-	Int Property iMaxNumActiveSps = 1000 Auto
-	{ Initialise 1000 (Default). Set in Menu. Max no of Spawnpoints allowed to be active at any one time. }
+	Int Property iMaxNumActiveSps = 300 Auto
+	{ Initialise 300 (Default). Set in Menu. Max no of Spawnpoints allowed to be active at any one time. }
 
-	Int Property iMaxNumActiveNPCs = 5000 Auto
-	{ Initialise 5000 (Default). Set in Menu. Max no of spawned NPCs allowed to be active at any one time. }
+	Int Property iMaxNumActiveNPCs = 1000 Auto
+	{ Initialise 1000 (Default). Set in Menu. Max no of spawned NPCs allowed to be active at any one time. }
 
 	Float Property fNextSpCooldownTimerClock = 0.0 Auto
-	{ Init 0 by default (Disabled). Set in Menu. Limit before another SP can fire. Has major effect on balance. }
+	{ Init 0 by default (Disabled). Set in Menu. Limit before another SP can fire. Has major effect on balance.
+Effectively this is equal to MaxThreads of 1 with a timer to expire before another SP thread is allowed.	}
 
 	Float Property fFailedSpCooldownTimerClock = 300.0 Auto ;Moved to ThreadController
-	{ Initialise 300.0 (5 Mins), can be set in Menu. Time to cooldown before failed point retry }
+	{ Initialise 300.0 (5 Mins), can be set in Menu. Time to cooldown before failed point attempts to retry another spawn. }
 	
 	Float Property fSpShortExpiryTimerClock = 180.0 Auto
 	{ Default value of 180.0 (3 Minutes). This Timer on the SpawnPoint will disable all spawned Actors if the SP
 is no longer in the loaded area. If the Player re-enters before the Long Timer below, Actors will be re-enabled. }
-	
-	Float Property fSpLongExpiryTimerClock = 180.0 Auto
-	{ Default value of 180.0 (3 Minutes). If this Timer expires on the SpawnPoint, all Actors will be cleaned up.
-This Timer is started after the Short Expiry Timer if it expires. }
-	
+
 EndGroup
 
 
@@ -127,6 +128,22 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 		
 		SOTC_Global01.SetValue(fNextSpCooldownTimerClock)
 		
+	elseif asSetting == "SpShortExpiryClock"
+	
+		if abSetValues
+			fSpShortExpiryTimerClock = aiValue01 as Float
+		endif
+		
+		SOTC_Global01.SetValue(fSpShortExpiryTimerClock)
+		
+	elseif asSetting == "SpLongExpiryClock"
+	
+		if abSetValues
+			fNextSpCooldownTimerClock = aiValue01 as Float
+		endif
+		
+		SOTC_Global01.SetValue(fNextSpCooldownTimerClock)
+
 	endif
 	
 EndFunction
@@ -170,6 +187,17 @@ Event OnTimer(Int aiTimerID)
 EndEvent
 
 
+;DEV NOTE: All of the below functions exist mainly for better tracking/readability of workflow concerning this script in other scripts. 
+
+
+;Emergency stop
+Function ToggleThreadKiller(bool abToggle)
+
+	bThreadKillerActive = abToggle
+	
+EndFunction
+
+
 ;This function is used to force active threads, mainly by SpHelperScript. This is because of the
 ;'random" number of groups spawning at a Multipoint. This deliberately can exceed iMaxThreadsCount.
 Function ForceAddThreads(Int aiThreadsToAdd)
@@ -187,30 +215,24 @@ Function ReleaseThreads(int aiThreadsToRelease)
 EndFunction
 
 
-;Emergency stop
-Function ToggleThreadKiller(bool abToggle)
-
-	bThreadKillerActive = abToggle
-	
-EndFunction
-
-
-;Increment Active NPC count
-Function IncrementActiveNpcCount(Int aiIncrement) ;Increment 0 to simply return the value. 
+Int Function IncrementActiveNpcCount(Int aiIncrement) ;Increment 0 to simply return the value. 
 
 	iActiveNpcCount +=  aiIncrement
+	return iActiveNpcCount
+	;Functions calling this do not explicitly need to do anything with return value.
 	
 EndFunction
 
 
-;Increment Active SP count
-Function IncrementActiveSpCount(Int aiIncrement) ;Increment 0 to simply return the value. 
+Int Function IncrementActiveSpCount(Int aiIncrement) ;Increment 0 to simply return the value. 
 
 	iActiveSpCount +=  aiIncrement
+	return iActiveSPCount
+	;Functions calling this do not explicitly need to do anything with return value.
 	
 EndFunction
 
-;Increment Active Regions Count
+
 Int Function IncrementActiveRegionsCount(int aiIncrement) ;Increment 0 to simply return the value. 
 
 	iActiveRegionsCount += aiIncrement
@@ -235,6 +257,7 @@ EndFunction
 Bool Function ActiveThreadCheck()
 	
 	if iActiveThreadCount > 0
+	;Notify the user that they need to wait for threads to finish before continuing with the function they were trying to invoke. 
 		Debug.MessageBox("WARNING: Spawn Threads are currently active, it is recommended you exit this menu now and wait for them to finish before continuing (about 10 seconds should be fine). Current Active Thread Count is" +iActiveThreadCount)
 		return true
 	else
