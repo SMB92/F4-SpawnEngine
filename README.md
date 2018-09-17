@@ -152,6 +152,7 @@ Please be patient while work continues on both a working test file and official 
 - Add 5 more SpawnPoints along border edge near Robotics scrap yard. Need to keep expanding Region 1 out to Tenpines. 
 - Add craftable versions of holotapes to chem workbench, under Utility, at no cost. 
 - Plugin converted to ESM. 
+- Fixed Info/Help Menus to display text properly by turning them into options/categories that display the contents of the info/help item. 
 
 ------
 ##### [15/09/2018] SpawnEngine updated to version 0.19.01.180915
