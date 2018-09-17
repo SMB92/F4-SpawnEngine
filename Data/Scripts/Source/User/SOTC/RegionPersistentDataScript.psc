@@ -1,4 +1,4 @@
-Scriptname SOTC:RegionPersistentDataScript extends MiscObject
+Scriptname SOTC:RegionPersistentDataScript extends ObjectReference
 { Stores all SpawnPoints, Travel Location Markers and EncounterZone arrays for a Region. }
 ;Written by SMB92
 ;Special thanks to J. Ostrus [BigandFlabby] for code contributions that made this mod possible.

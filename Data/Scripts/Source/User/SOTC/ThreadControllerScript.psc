@@ -135,14 +135,6 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 		endif
 		
 		SOTC_Global01.SetValue(fSpShortExpiryTimerClock)
-		
-	elseif asSetting == "SpLongExpiryClock"
-	
-		if abSetValues
-			fNextSpCooldownTimerClock = aiValue01 as Float
-		endif
-		
-		SOTC_Global01.SetValue(fNextSpCooldownTimerClock)
 
 	endif
 	

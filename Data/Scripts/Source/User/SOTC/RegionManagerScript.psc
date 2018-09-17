@@ -110,8 +110,8 @@ Group FeatureSettings
 { Settings for various features supported on the Regional level. }
 
 	Int[] Property iSpPresetChanceBonusList Auto ;Can be modified from Menu
-	{ Members 1-3 (0 ignored) can be set from Menu to apply a bonus "chance to fire" percent value to all SpawnPoints in the Region.
-Init 4 members with default values of 0 = 0, 1 = 0, 2 = 5, 3 = 10.	}
+	{ Members 1-3 (0 is debug) can be set from Menu to apply a bonus "chance to fire" percent value to all SpawnPoints in the Region.
+Init 4 members with default values of 0 = 100, 1 = 5, 2 = 10, 3 = 20.	}
 
 	Int Property iRandomSwarmChance Auto
 	{ Initialise 0, set in Menu. If any value above 0, there is a chance of a random swarm/infestation. }
@@ -143,14 +143,13 @@ SOTC:SpawnPointScript kEventPoint ;When an event fires, this will set with the i
 ;DEV NOTE: Init events/functions now handled by Masters creating the instances.
 
 Function PerformFirstTimeSetup(SOTC:WorldManagerScript aWorldManager, SOTC:ThreadControllerScript aThreadController, \
-ObjectReference akMasterMarker, Int aiWorldID, Int aiRegionID, Int aiPresetToSet, SOTC:RegionPersistentDataScript aRegionPersistentDataStore) 
+ObjectReference akMasterMarker, Int aiWorldID, Int aiRegionID, Int aiPresetToSet, MiscObject akRegionPersistentDataObject) 
 ;DEV NOTE: As of version 0.19.01 EZ arrays have moved to the new RegionPersistentDataScript and are filled via editor.
-;Accessing this data will be done via this new instance passed and stored here.
+;Accessing this data will be done via this new instance passed. created and stored here.
 	
 	if !bInit
 		
-		ThreadController = aThreadController
-		RegionPersistentDataStore = aRegionPersistentDataStore ;New in version 0.19.01, this contains all TravelLocs, EZ data and SpawnPoints for this Region. 
+		ThreadController = aThreadController 
 		
 		iWorldID = aiWorldID
 		iRegionID = aiRegionID
@@ -164,6 +163,11 @@ ObjectReference akMasterMarker, Int aiWorldID, Int aiRegionID, Int aiPresetToSet
 		
 		;Create instances of spawntype objectreferences and set them up
 		ObjectReference kNewInstance
+		
+		;New in version 0.19.01, this contains all TravelLocs, EZ data and SpawnPoints for this Region.
+		kNewInstance = akMasterMarker.PlaceAtMe(akRegionPersistentDataObject, 1 , false, false, false)
+		RegionPersistentDataStore = kNewInstance as SOTC:RegionPersistentDataScript
+		
 		Int iCounter
 		Int iSize = MasterScript.SpawnTypeMasters.Length
 		
@@ -174,6 +178,7 @@ ObjectReference akMasterMarker, Int aiWorldID, Int aiRegionID, Int aiPresetToSet
 			kNewInstance = akMasterMarker.PlaceAtMe(kSpawnTypeObject, 1 , false, false, false)
 			(kNewInstance as SOTC:SpawnTypeRegionalScript).PerformFirstTimeSetup(Self, iRegionID, iWorldID, \
 			ThreadController, iCounter, iCurrentPreset)
+			;Object self sets onto tracking array on this instance. 
 			
 			iCounter += 1
 			
@@ -294,8 +299,11 @@ Function MasterFactoryReset()
 		Debug.Trace("SpawnTypeRegional instance destroyed")
 	endwhile
 	
+	RegionPersistentDataStore.Disable()
+	RegionPersistentDataStore.Delete()
+	RegionPersistentDataStore = None ;De-persist
+	
 	ThreadController = None
-	RegionPersistentDataStore = None
 	
 	Debug.Trace("Region instance ready for destruction")
 	;WorldManager will destory this script instance once returned.

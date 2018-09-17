@@ -19,7 +19,7 @@ EndFunction
 ;BEGIN FRAGMENT Fragment_Terminal_02
 Function Fragment_Terminal_02(ObjectReference akTerminalRef)
 ;BEGIN CODE
-(AuxQuest as SOTC:AuxilleryQuestScript).PrepareToInitSpawnEngine(3)
+(AuxQuest as SOTC:AuxiliaryQuestScript).PrepareToInitSpawnEngine(3)
 ;END CODE
 EndFunction
 ;END FRAGMENT

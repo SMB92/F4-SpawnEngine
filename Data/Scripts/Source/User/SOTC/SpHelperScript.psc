@@ -54,7 +54,8 @@ Int iHelperFireTimerID = 3 Const
 ;DEV NOTE: The Helper does have the ability to "expend" ChildPoints, however this should be seldom used.
 ObjectReference[] kActiveChildren ;Temp list of all child markers used to delegate spawns to
 Bool bChildrenActive ;This will be checked and save reinitializing above array later.
-
+Int[] iChildPointElectionTracker ;Tracks the elected ChildPoints when using bSpreadSpawnsToChildPoints. Integers stored are used to correlate to correct
+;ChildPoint to link to when applying Packages. Necessary evil now that Packages are all applied after spawn loops. 
 
 
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -78,7 +79,7 @@ ReferenceAlias akPackage, ObjectReference[] akPackageLocs, Bool abSpreadSpawns, 
 	iPreset = aiPreset ;Preset is passed from Spawntype script as it can be configured to be different from Region.
 	iDifficulty = aiDifficulty
 	
-	iStartLoc = aiStartLoc ;Pretty much only used for Patrol mode from this script, to set the link order correctly. 
+	iStartLoc = aiStartLoc ;Used only for Patrol Mode to set the link order correctly or Ambush Mode for Distance setting. 
 	
 	StartTimer(0.2, iHelperFireTimerID) ;Ready to start own thread
 
@@ -94,6 +95,10 @@ EndFunction
 Function HelperFactoryReset()
 
 	HelperCleanupActorRefs()
+	
+	if bSpreadSpawnsToChildPoints
+		iChildPointElectionTracker.Clear()
+	endif
 	
 	RegionManager = None
 	ActorParamsScript = None
@@ -116,7 +121,7 @@ Function HelperCleanupActorRefs()
         
 	while iCounter < iSize
 
-		kPackage.RemoveFromRef(kGroupList[iCounter]) ;Remove package data. Perhaps not necessary either?
+		;No longer removing alias data, should be deleted with Actor. 
 		;NOTE: Removed code that removes linked refs. Unnecesary.
 		kGroupList[iCounter].Delete()
 		iCounter += 1
@@ -200,7 +205,7 @@ Function HelperPrepareSingleGroupSpawn()
 	
 	Bool bApplySwarmBonus ;Whether or not Swarm bonuses are applied
 	;Now lets roll the dice on it
-	if (ActorManager.bSupportsSwarm) && (RegionManager.RollForSwarm())
+	if iPackageMode != 4 && (ActorManager.bSupportsSwarm) && (RegionManager.RollForSwarm()) ;Not supported for HoldPosition Mode. 
 		bApplySwarmBonus = true
 	endif
 	
@@ -208,40 +213,35 @@ Function HelperPrepareSingleGroupSpawn()
 	;Finally, start the correct Spawn Loop for the Package Mode selected.
 	;--------------------------------------------------------------------
 	
+	Int i ;Used as needed.
 	Int iRegularActorCount ;Required for loot system
+
+	if iPackageMode < 5 ;Sandbox/Travel/Patrol/Ambush
 	
-	;Check if we will be applying the package during or after the spawnloop. 
-	Bool bApplyPackage
-	if iPackageMode != 0 ;Only Sandbox package is applied during loop.
-		bApplyPackage = true
-	endif
-	
-	if iPackageMode < 4 ;Sandbox/Travel/Patrol/Ambush
-	
-		if !bSpreadSpawnsToChildPoints|| (iPackageMode == 2)	;More likely false/Patrols must use this method.
+		if !bSpreadSpawnsToChildPoints || iPackageMode == 2 || iPackageMode == 3 ;More likely false/Patrols and Ambushes must use this method.
 	
 			if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
 
 				HelperSpawnActorSingleLocLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-				kRegularUnits, kEz, bApplySwarmBonus, false, iDifficulty, bApplyPackage)
+				kRegularUnits, kEz, bApplySwarmBonus, false, iDifficulty)
 		
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
 					
 				if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
 					HelperSpawnActorSingleLocLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEz, bApplySwarmBonus, true, iDifficulty, bApplyPackage)
+					kBossUnits, kEz, bApplySwarmBonus, true, iDifficulty)
 				endif
 
 			else ;Randomise the Ez
 
 				HelperSpawnActorRandomEzSingleLocLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-				kRegularUnits, kEzList, bApplySwarmBonus, false, iDifficulty, bApplyPackage)
+				kRegularUnits, kEzList, bApplySwarmBonus, false, iDifficulty)
 				
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
 					
 				if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
 					HelperSpawnActorRandomEzSingleLocLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEzList, bApplySwarmBonus, true, iDifficulty, bApplyPackage)
+					kBossUnits, kEzList, bApplySwarmBonus, true, iDifficulty)
 				endif
 						
 			endif
@@ -249,38 +249,64 @@ Function HelperPrepareSingleGroupSpawn()
 			
 		else ;Assume true
 		
+			iChildPointElectionTracker = new Int [1] ;Necessary evil so linking of Package can be done correctly.
+		
 			if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
 					
 				HelperSpawnActorSingleLocRandomChildLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-				kRegularUnits, kEz, bApplySwarmBonus, false, iDifficulty, false, bApplyPackage)
+				kRegularUnits, kEz, bApplySwarmBonus, false, iDifficulty, false)
 				
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
 					
 				if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
 					HelperSpawnActorSingleLocRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEz, bApplySwarmBonus, true, iDifficulty, false, bApplyPackage)
+					kBossUnits, kEz, bApplySwarmBonus, true, iDifficulty, false)
 				endif
 
 			else ;Randomise the Ez
 
 				HelperSpawnActorRandomEzSingleLocRandomChildLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-				kRegularUnits, kEzList, bApplySwarmBonus, false, iDifficulty, false, bApplyPackage)
+				kRegularUnits, kEzList, bApplySwarmBonus, false, iDifficulty, false)
 				
 				iRegularActorCount = (kGroupList.Length) ;Required for loot system
 					
 				if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
 					HelperSpawnActorRandomEzSingleLocRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-					kBossUnits, kEzList, bApplySwarmBonus, true, iDifficulty, false, bApplyPackage)
+					kBossUnits, kEzList, bApplySwarmBonus, true, iDifficulty, false)
 				endif
 					
 			endif
 			
 		endif
 		
-		;Set the Package on all actors in quick succession if required.
-		;---------------------------------------------------------------
+		;Set the Package on all actors in quick succession.
+		;--------------------------------------------------
+		iCounter = 0 ;To be sure to be sure.
+		iSize = kGroupList.Length 
 		
-		if iPackageMode == 1 
+		if iPackageMode == 0 || iPackageMode == 4 ;Sandbox/Hold
+		
+			if bSpreadSpawnsToChildPoints
+			
+				iChildPointElectionTracker.Remove(0) ;Remove the first member used for initialising. 
+				
+				while iCounter < iSize
+					i = iChildPointElectionTracker[iCounter]
+					HelperApplyPackageSingleLocData(kGroupList[iCounter], kPackageLocs[i])
+					iCounter += 1
+				endwhile
+				
+			else ;Use Self. 
+			
+				while iCounter < iSize
+					HelperApplyPackageSingleLocData(kGroupList[iCounter], Self as ObjectReference)
+					iCounter += 1
+				endwhile
+				
+			endif
+		
+		
+		elseif iPackageMode == 1 
 			
 			iSize = kGroupList.Length
 			while iCounter < iSize
@@ -288,7 +314,7 @@ Function HelperPrepareSingleGroupSpawn()
 				iCounter += 1
 			endwhile
 			
-			;DEV NOTE: MultPoint mode does not support multiple travel locs. Only one is passed. 
+			;DEV NOTE: MultPoint mode does not support multiple travel locs. Only one is passed and linked. 
 
 		elseif iPackageMode == 2
 
@@ -308,36 +334,47 @@ Function HelperPrepareSingleGroupSpawn()
 	
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
-	elseif iPackageMode == 4 ;Interior Mode
-	;DEV NOTE: Package application for Interior Mode must be done during Spawn loop, same as Sandbox/Hold Mode. Uses SpawnActorSingleLocRandomChildLoop()
+	elseif iPackageMode == 5 ;Interior Mode
 	;DEV NOTE 2: Interior Mode does not Expend ChildPoints by design. 
+	
+		iChildPointElectionTracker = new Int [1] ;Necessary evil so linking of Package can be done correctly.
 	
 		if iEzMode != 2 ;If NOT Randomising EZ - this is maybe more likely
 	
 			HelperSpawnActorSingleLocRandomChildLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-			kRegularUnits, kEz, bApplySwarmBonus, false, iDifficulty, false, true)
+			kRegularUnits, kEz, bApplySwarmBonus, false, iDifficulty, false)
 			
 			iRegularActorCount = (kGroupList.Length) ;Required for loot system
 				
 			if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
 				HelperSpawnActorSingleLocRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-				kBossUnits, kEz, bApplySwarmBonus, true, iDifficulty, false, true)
+				kBossUnits, kEz, bApplySwarmBonus, true, iDifficulty, false)
 			endif
 
 		else ;Randomise the Ez
 
 			HelperSpawnActorRandomEzSingleLocRandomChildLoop(ActorParams.iMaxAllowed, ActorParams.iChance, \
-			kRegularUnits, kEzList, bApplySwarmBonus, false, iDifficulty, false, true)
+			kRegularUnits, kEzList, bApplySwarmBonus, false, iDifficulty, false)
 			
 			iRegularActorCount = (kGroupList.Length) ;Required for loot system
 	
 			if bBossAllowed && iLosCounter != 25 ;Check again if Boss spawns allowed for this Actors preset and LoS counter hasn't maxed.
 				HelperSpawnActorRandomEzSingleLocRandomChildLoop(ActorParams.iMaxAllowedBoss, ActorParams.iChanceBoss, \
-				kBossUnits, kEzList, bApplySwarmBonus, true, iDifficulty, false, true)
+				kBossUnits, kEzList, bApplySwarmBonus, true, iDifficulty, false)
 			endif
-				
-		endif
 
+		endif
+		
+		iCounter = 0 ;To be sure to be sure.
+		iSize = kGroupList.Length 
+		;Set Linked refs and Packages. 
+		iChildPointElectionTracker.Remove(0) ;Remove the first member used for initialising. 
+		
+		while iCounter < iSize
+			i = iChildPointElectionTracker[iCounter]
+			HelperApplyPackageSingleLocData(kGroupList[iCounter], kPackageLocs[i])
+			iCounter += 1
+		endwhile
 	
 	endif
 
@@ -359,47 +396,13 @@ Function HelperPrepareSingleGroupSpawn()
 EndFunction
 
 
-
-;-------------------------------------------------------------------------------------------------------------------------------------------------------
-;DISTANCE-BASED AMBUSH FUNCTIONS & EVENTS
-;-------------------------------------------------------------------------------------------------------------------------------------------------------
-;Package Mode 3 Handlers.
-
-;In the case of this Helper script, Rush Package will be passed as kPackage. 
-Event OnDistanceLessThan(ObjectReference akObj1, ObjectReference akObj2, float afDistance)
-;DEV NOTE: Supports Ambush from this script only, no initial checks will take place.
-	
-	Int iCounter
-	Int iSize = kGroupList.Length
-	ObjectReference kPlayerRef = MasterScript.PlayerRef ;Possibly faster than Game.GetPlayer()
-	
-	HelperApplyGroupSneakState() ;Removes sneak state previously set. 
-	
-	while iCounter < iSize
-		HelperApplyPackageSingleLocData(kGroupList[iCounter], kPlayerRef) ;Parameter should have been set above.
-		iCounter += 1
-	endwhile
-	
-EndEvent
-
-
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;SPAWN LOOPS - HELPER SCRIPT
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
-;DEV NOTE 2: From this point on, things can get confusing quick as some functions are reused for some Package Modes and are mixed and matched. 
-;Basically the MultiPoint works like this:
-; - Sandbox/Hold use HelperSpawnActorSingleLocLoop, which uses HelperApplyPackageSingleLocData() during loop.
-; - Travel Package and Patrol Package use same SpawnLoop, but both have their own Package loops.
-; - Interior Mode uses HelperSpawnActorSingleLocRandomChildLoop, which uses HelperApplyPackageSingleLocData() (during the SpawnLoop).
-
-
-;SINGLE LOCATION LOOPS W/ PACKAGE APPLICATION INCLUDED ("SingleLoc" refers to the type of Package Application really)
-;-------------------------------------------------------------------------------------------------------------------------------------------------------
-;DEV NOTE: kPackage/ApplyData is applied DURING these Spawn loops, as this allows each Actor to get comfortable first (i.e Sandbox/Hold). It also somewhat
-;prevents the user from seeing a mob huddled together when first starting sandboxing. 
+;DEV NOTE: From version 0.20.01 onwards, all Packages are applied after spawning.
 
 Function HelperSpawnActorSingleLocLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, \ 
-EncounterZone akEz, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abApplyPackage)
+EncounterZone akEz, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty)
 	
 	if abApplySwarmBonus ;Apply Swarm bonus settings if true, else skip
 	
@@ -427,9 +430,6 @@ EncounterZone akEz, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty
 	;Spawn the first guaranteed Actor
 	kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
 	kGroupList.Add(kSpawned) ;Add to Group tracker
-	if abApplyPackage ;ONLY IF PACKAGE WILL BE TIED TO STARTLOC!
-		HelperApplyPackageSingleLocData(kSpawned, Self as ObjectReference) ;MultiPoint helper does not use randomisation of StartLoc
-	endif
 	
 	;Begin chance based placement loop for the rest of the Group
 	while iCounter <= aiMaxCount
@@ -447,10 +447,6 @@ EncounterZone akEz, Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty
 		if (Utility.RandomInt(1,100)) <= aiChance
 			kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
 			kGroupList.Add(kSpawned) ;Add to Group tracker
-			
-			if abApplyPackage ;ONLY IF PACKAGE WILL BE TIED TO STARTLOC!
-				HelperApplyPackageSingleLocData(kSpawned, Self as ObjectReference) ;MultiPoint helper does not use randomisation of StartLoc
-			endif
 		endif
 		
 		iCounter +=1
@@ -462,7 +458,7 @@ EndFunction
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Function HelperSpawnActorRandomEzSingleLocLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, EncounterZone[] akEzList, \
-Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abApplyPackage) ;aiStartLoc default value = Self
+Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty) ;aiStartLoc default value = Self
 
 	if abApplySwarmBonus ;Apply Swarm bonus settings if true, else skip
 	
@@ -493,10 +489,6 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abApplyPackag
 	kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;akEz can be None
 	kGroupList.Add(kSpawned) ;Add to Group tracker
 	
-	if abApplyPackage ;ONLY IF PACKAGE WILL BE TIED TO STARTLOC!
-		HelperApplyPackageSingleLocData(kSpawned, Self as ObjectReference) ;MultiPoint helper does not use randomisation of StartLoc
-	endif
-	
 	;Begin chance based placement loop for the rest of the Group
 	while iCounter <= aiMaxCount
 		
@@ -515,9 +507,6 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abApplyPackag
 			kSpawned = Self.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;akEz can be None
 			kGroupList.Add(kSpawned) ;Add to Group tracker
 			
-			if abApplyPackage ;ONLY IF PACKAGE WILL BE TIED TO STARTLOC!
-				HelperApplyPackageSingleLocData(kSpawned, Self as ObjectReference) ;MultiPoint helper does not use randomisation of StartLoc
-			endif
 		endif
 		
 		iCounter +=1
@@ -534,7 +523,7 @@ EndFunction
 ;ChildPoints available if using this option).
 
 Function HelperSpawnActorSingleLocRandomChildLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, EncounterZone akEz, \
-Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint, Bool abApplyPackage)
+Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint)
 
 	if (abApplySwarmBonus) && (!abExpendPoint) ;Apply Swarm bonus settings if true AND Not expending ChildPoints, else skip.
 	
@@ -563,7 +552,6 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint
 	
 	;First we must ensure the MaxCount received does not exceed number of ChildPoints, if we expending Points each Spawn.
 	if abExpendPoint
-		
 		if aiMaxCount > (kPackageLocs.Length)
 			aiMaxCount = (kPackageLocs.Length)
 		endif
@@ -573,9 +561,6 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint
 	kSpawnLoc = HelperGetChildPoint(abExpendPoint) ;Place at a random marker in the cell/child cell (if exists)
 	kSpawned = kSpawnLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
 	kGroupList.Add(kSpawned) ;Add to Group tracker
-	if abApplyPackage ;ONLY IF PACKAGE WILL BE TIED TO STARTLOC!
-		HelperApplyPackageSingleLocData(kSpawned, kSpawnLoc)
-	endif
 	
 	;Begin chance based placement loop for the rest of the Group
 	while iCounter <= aiMaxCount
@@ -597,10 +582,6 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint
 			kSpawned = kSpawnLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, akEz) ;akEz can be None
 			kGroupList.Add(kSpawned) ;Add to Group tracker
 			
-			if abApplyPackage ;ONLY IF PACKAGE WILL BE TIED TO STARTLOC!
-				HelperApplyPackageSingleLocData(kSpawned, kSpawnLoc)
-			endif
-			
 		endif
 		
 		iCounter +=1
@@ -612,7 +593,7 @@ EndFunction
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Function HelperSpawnActorRandomEzSingleLocRandomChildLoop(Int aiMaxCount, Int aiChance, ActorBase[] akActorList, EncounterZone[] akEzList, \
-Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint, Bool abApplyPackage)
+Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint)
 
 	if (abApplySwarmBonus) && (!abExpendPoint) ;Apply Swarm bonus settings if true AND Not expending ChildPoints, else skip.
 	
@@ -643,7 +624,6 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint
 	
 	;First we must ensure the MaxCount received does not exceed number of ChildPoints, if we expending Points each Spawn.
 	if abExpendPoint
-		
 		if aiMaxCount > (kPackageLocs.Length)
 			aiMaxCount = (kPackageLocs.Length)
 		endif
@@ -654,9 +634,6 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint
 	kSpawnLoc = HelperGetChildPoint(abExpendPoint) ;Place at a random marker in the cell/child cell (if exists)
 	kSpawned = kSpawnLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;kEz can be None
 	kGroupList.Add(kSpawned) ;Add to Group tracker
-	if abApplyPackage ;ONLY IF PACKAGE WILL BE TIED TO STARTLOC!
-		HelperApplyPackageSingleLocData(kSpawned, kSpawnLoc)
-	endif
 	
 	;Begin chance based placement loop for the rest of the Group
 	while iCounter <= aiMaxCount
@@ -678,9 +655,6 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint
 			kEz = akEzList[(Utility.RandomInt(0,iEzListSize))] ;Randomise each loop
 			kSpawned = kSpawnLoc.PlaceActorAtMe(akActorList[Utility.RandomInt(0,iActorListSize)], aiDifficulty, kEz) ;kEz can be None
 			kGroupList.Add(kSpawned) ;Add to Group tracker
-			if abApplyPackage ;ONLY IF PACKAGE WILL BE TIED TO STARTLOC!
-				HelperApplyPackageSingleLocData(kSpawned, kSpawnLoc)
-			endif
 			
 		endif
 		
@@ -742,6 +716,29 @@ Function HelperApplyPackagePatrolData(Actor akActor)
 EndFunction
 
 
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+;DISTANCE-BASED AMBUSH FUNCTIONS & EVENTS
+;-------------------------------------------------------------------------------------------------------------------------------------------------------
+;Package Mode 3 Handlers.
+
+;In the case of this Helper script, Rush Package will be passed as kPackage. 
+Event OnDistanceLessThan(ObjectReference akObj1, ObjectReference akObj2, float afDistance)
+;DEV NOTE: Supports Ambush from this script only, no initial checks will take place.
+	
+	Int iCounter
+	Int iSize = kGroupList.Length
+	ObjectReference kPlayerRef = MasterScript.PlayerRef ;Possibly faster than Game.GetPlayer()
+	
+	HelperApplyGroupSneakState() ;Removes sneak state previously set. 
+	
+	while iCounter < iSize
+		HelperApplyPackageSingleLocData(kGroupList[iCounter], kPlayerRef) ;Parameter should have been set above.
+		kGroupList[iCounter].SetLinkedRef(Self as ObjectReference, kPackageKeywords[1]) ;Sets sandbox link to spawn loc so if Player escapes, Actors return here. 
+		iCounter += 1
+	endwhile
+	
+EndEvent
+
 
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;UTILITY FUNCTIONS & EVENTS
@@ -778,10 +775,12 @@ ObjectReference Function HelperGetChildPoint(Bool abExpendPoint) ;Parameter adde
 			bChildrenActive = true
 		endif
 	
-		kActiveChildren.Add(kPackageLocs[i]) ;Add selected marker to active array
+		kActiveChildren.Add(kPackageLocs[i]) ;Add selected marker to active array (this array is non-const).
 		kPackageLocs.Remove(i) ;Remove from original array, guaranteeing it won't be selected again this session.
 		;We will move it back/reset later
-		;DEV NOTE: This works on Array Properties that are non-const only.
+		
+	else ;We track the index of each elected ChildPoint for later linking of Packages
+		iChildPointElectionTracker.Add(i) ;should have been initialised before this function was called. First member of None to be removed later.	
 	endif
 	
 	return kMarkerToReturn ;Return the temp set from earlier

@@ -5,6 +5,10 @@
 
 ## NEWS
 
+### Version 0.20.01.180917.RC14A the new Alpha candidate.
+
+[17/09/2018] Topping off the major updates in 0.19.01 with a number of fixes and future-proofings after a few flaws were realised while updating the plugin file, we are now (mostly) back to working on the front end in the CK. As such a new Alpha plugin has been released, and while there is still not a whole great dea lof content in there, it is a proud milestone.  
+
 ### Major backend update, new features and more fixes in version 0.19.01.
 
 [15/09/2018] This update brings many of the planned/realised performance/quality of life improvements needed after the observations made over the last 2 public alpha demo versions, as well as some new major features, the effect of which will be realised over the course of development. More features are coming, but this should be the final major performance update aside from new menus which will be added next minor version. Please be advised the plugin update (when ready) will require a fresh save that is SOTC free, or weird stuff may happen. 
@@ -97,6 +101,59 @@ Please be patient while work continues on both a working test file and official 
 
 ## UPDATE LOG
 
+##### [17/09/2018] SpawnEngine updated to version 0.20.01.180917, Alpha candidate updated to RC14A
+
+###### HOUSEKEEPING:
+- Property desc fix on RegionManager.
+- More commentary additions/changes etc. 
+- Added a note/group description to SpawnPointScript Primary and PackageData Property groups explaining why not all Mandatory Properties are required.
+
+###### MAJOR/MINOR FEATURE UPDATES/CHANGES/ADDITIONS:
+- [MINOR] Made HoldPosition Package its own Mode (now Mode 4, Interior Mode moved to Mode 5). This will use the NoEvent spawn function as it is mostly intended for Snipers.
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Fixed instancing of new RegionPersistentDataStore. 
+- Somewhat revamped AI procedures again on SpawnPointScript. Removed kPackage Property, and now all required Packages are set o nthe base instance. This should make things a bit more future proof. As for Sandbox packages, can now define a new Integer Property for the "level" of Sandbox radius to apply (0 = 512, 1 = 1024, 2 = 2048, 3 = 3072). iNumPackageLocsRequired is used to grab correct Patrol Package as well when using that mode. HoldPosition mode has been assigned to Package Mode 4 and Interior Mode moved to Mode 5. 
+- Removed confusing use of iNumPackageLocsRequired when using Package Mode 0 (Sandbox). Likely be never used and as mentioned, adds confusion. 
+- New measures added to send Actors back to spawn loc after rushing the Player in an Ambush, if player escapes etc. Previously they would just keep following the Player regardless. 
+- No longer removing Package Alias Data on SpawnPointScript or SpHelperScript when cleaning up. Data should be deleted along with the Actors so fairly pointless to have been doing this anyway. 
+- Fix SpHelperScript Ambush Mode (3) potentially not working properly. 
+- Gave iNumPackageLocsRequired value on SpawnPointScript a default value of 1 in case it is ever forgotten to be set.
+- Made a couple more Properties on SpawnPointScript Mandatory.
+- Removed/optimized a check on SpawnPointScript PrepareLocalSpawn() function.
+- Fix/update sending of Package for MultiPoint mode (added new Hold Package Mode check and missing check for Mode 5 Interiors).
+- Have been forced to add a new method for tracking ChildPoints when using bSpreadSpawns method (spawning Actors at randomly placed markers around the main SP). This had to be done so that Packages could be linked correctly in a number of Modes. It isn't the prettiest method and may be replaced in future.
+- Optimized/removed bad duplicate check of PackageMode/bSpreadSpawns in PrepareMultiGroupSpawn() function on SpawnPointScript.
+- Merged multiple, unnecessary, setting of iSize value before Applying packages.
+- Added/Fix Package application for Interior Mode and update to use new method for tracking ChildPoints. 
+- Add/fix missing setting/refreshing of variables right before applying packages on SpHelperScript. 
+- Fix old/mispelt type of AuxiliaryQuestScript in ConfirmPreset Menu fragments. 
+- Remove obsolete setting "SpLongExpiryClock" from ThreadController's SetMenuVars() function block. 
+
+###### PLUGIN CHANGES:
+- Mod is now fully aware of new game status. May not be compatible with alternate start mods. 
+- Updated all Properties on instance base objects and Quests. 
+- Deleted PointPersistStore and RegionTracker base objects (obsoleted after 0.19.01).
+- Updated Package Alias editor IDs. 
+- Updated script attached to all TravelLocationMarker ObjectReferences. 
+- Deleted EZ Formlists and filled new arrays on RegionPersistentDataStore base object instead.
+- Fix default values for SP Preset Bonus on RegionManager base object. 
+- Updated all SpawnPoints for new AI procedures, including updating Sandbox radiuses and Travel points.
+- Started giving all SpawnPoint references unique editor IDs. This will enable better bug tracking and organisation for future changes. 
+- Moved a few SpawnPoints that were in sus positions. 
+- Rebalanced a number of Actor spawn values/parameters. Mostly nerfed for performance reasons (numbers were a bit generous anyway).
+- Fix mispelling of Auxiliary in Menus.
+- Added Info/Help Menu for Performance Menu.
+- Reodered Performance Menu.
+- Rename "Max Simultaneous Thread Count" Menu option to "Max Simultaneous Spawns" for better clarity. 
+- Rename "Next SP Cooldown Timer" Menu option to "Spawn Cooldown Timer" for extra clarity. 
+- Add "SP Short Expiry Timer" Menu to Performance Menu. 
+- Added Info/Help Menu regarding overall Menu structure to Main Menu page. 
+- Add 5 more SpawnPoints along border edge near Robotics scrap yard. Need to keep expanding Region 1 out to Tenpines. 
+- Add craftable versions of holotapes to chem workbench, under Utility, at no cost. 
+- Plugin converted to ESM. 
+
+------
 ##### [15/09/2018] SpawnEngine updated to version 0.19.01.180915
 
 ###### HOUSEKEEPING:

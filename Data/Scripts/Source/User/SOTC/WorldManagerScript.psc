@@ -78,7 +78,7 @@ Function PerformFirstTimeSetup(SOTC:ThreadControllerScript aThreadController, Ob
 			Regions[iCounter] = (kNewInstance as SOTC:RegionManagerScript) ;Moved back here from RegionManager so thread doesn't have to bounce back and forth. 
 			
 			(kNewInstance as SOTC:RegionManagerScript).PerformFirstTimeSetup(Self, aThreadController, akMasterMarker, \ 
-			iWorldID, iCounter, aiPresetToSet, (kRegionPersistentDataObjects[iCounter] as SOTC:RegionPersistentDataScript))
+			iWorldID, iCounter, aiPresetToSet, kRegionPersistentDataObjects[iCounter])
 			
 			iCounter += 1
 			
