@@ -184,6 +184,7 @@ ObjectReference akMasterMarker, Int aiWorldID, Int aiRegionID, Int aiPresetToSet
 			
 		endwhile
 		
+		ThreadController.IncrementActiveRegionsCount(1)
 		bInit = true
 		
 		Debug.Trace("Region creation complete")

@@ -5,6 +5,10 @@
 
 ## NEWS
 
+### Quick patch to 0.20.02/RC15A
+
+[19/09/2018] During my rush to get a few last things changed, I forgot a few simple lines of code that needed to be added, and a few simple fixes for the Menus. This, at worst, resulted in no spawns! This patch fixes that. 
+
 ### Version 0.20.01.180917.RC14A the new Alpha candidate.
 
 [17/09/2018] Topping off the major updates in 0.19.01 with a number of fixes and future-proofings after a few flaws were realised while updating the plugin file, we are now (mostly) back to working on the front end in the CK. As such a new Alpha plugin has been released, and while there is still not a whole great dea lof content in there, it is a proud milestone.  
@@ -101,6 +105,19 @@ Please be patient while work continues on both a working test file and official 
 
 ## UPDATE LOG
 
+##### [19/09/2018] SpawnEngine updated to version 0.20.02.180917, Alpha candidate updated to RC15A
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Fix SpawnPointScript not being able to access the ThreadController duting initial checks. Was an oversight when changing order of checks. 
+- Fix SpawnPointScript spamming Papyrus errors OnCellDetach() when ThreadController isn't set yet. This wasn't actually checking if SP was active first. Another oversight.
+- Fix RegionManager not incrementing Active Region Count on ThreadController. Code was non-existant for some reason, maybe I accidentally deleted it when cleaning other parts of the setup function. 
+
+###### PLUGIN CHANGES:
+- Fix another mispelling of Auxiliary, namely the name of the holotape. 
+- Fix Set Preset sub menu for COTC not showing menu options.
+- Add conditions to new Info/Help Menu item on Main Menu page to prevent it from appearing when Menu locks. 
+
+------
 ##### [17/09/2018] SpawnEngine updated to version 0.20.01.180917, Alpha candidate updated to RC14A
 
 ###### HOUSEKEEPING:

@@ -366,7 +366,7 @@ Event OnCellAttach()
 	bIsInLoadedArea = true
 	
 	;Inital check, is not active, chance is not None (as could be nulled by Menu for example).
-	if (!bSpawnpointActive) && bFailTimerRunning && (iChanceToSpawn as Bool) 
+	if (!bSpawnpointActive) && (!bFailTimerRunning) && (iChanceToSpawn as Bool) 
 		;Staggering the startup might help to randomise SPs in an area when Threads are scarce
 		StartTimer((Utility.RandomFloat(0.15,0.35)), iStaggerStartupTimerID)
 	
@@ -390,7 +390,7 @@ Event OnCellDetach()
 
 	bIsInLoadedArea = false
 	
-	if !bIgnoreExpiry && !bIsMultiPoint ;Expiry timers do not apply MultiPoints yet. 
+	if bSpawnpointActive && !bIgnoreExpiry && !bIsMultiPoint ;Expiry timers do not apply MultiPoints yet. 
 		StartTimer(ThreadController.fSpShortExpiryTimerClock, iSpShortExpiryTimerID)
 		bShortExpiryTimerRunning = true
 		bShortExpiryTimerExpired = false
@@ -402,6 +402,8 @@ EndEvent
 Event OnTimer(int aiTimerID)
 
 	if aiTimerID == iStaggerStartupTimerID
+	
+		ThreadController = MasterScript.ThreadController; Link to Thread Controller now. 
 	
 		if (ThreadController.GetThread(iThreadsRequired)) ;Make sure we can get a thread first. 
 		
@@ -506,7 +508,6 @@ EndEvent
 Function SetSpScriptLinks()
 	
 	;Since patch 0.10.01, all instances are created at runtime (first install). Necessary evil.
-	ThreadController = MasterScript.ThreadController
 	RegionManager = MasterScript.Worlds[iWorldID].Regions[iRegionID]
 	
 	if iSpawnMode == 0 ;Random actor from SpawnType
