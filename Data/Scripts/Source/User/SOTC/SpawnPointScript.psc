@@ -68,8 +68,8 @@ Enter 777 to randomise main 1-3 rarity-based Class Presets, 0 is debug, 1-3 Rari
 Actor must have this Class Preset defined or this will return Debug Preset (0). }
 	
 	Int Property iPackageMode Auto Const Mandatory
-	{ 0 = Sandbox, 1 = Travel, 2 = Patrol, 3 = Ambush (distance based), 4 = HoldPosition (Sniper etc) 5 = Interior(Random ChildPoint Sandbox) ). 
-See Package legend in script for details. }
+	{ 0 = Sandbox, 1 = Travel, 2 = Patrol, 3 = Ambush (distance based), 4 = HoldPosition (Sniper etc) 5 = Interior(Random ChildPoint Sandbox, 
+can be used in exteriors, check bIsInterior flag if using in Interior). See Package legend in script/docs for details. }
 
 	;LEGEND - PACKAGE MODES (added version 0.13.01, replaces previous notes.)
 	;A number of different package modes are available. User must provide correct package that matches the data
@@ -149,7 +149,7 @@ This can also be used for Package Mode 5 (Interiors/Spread), will use Level 0 by
 	Int Property iNumPackageLocsRequired = 1 Auto Const Mandatory
 	{ If using Travel or Patrol Package Modes (1/2), set to the number of travel/patrol locations desired. Note that using more than 1 location in
 Travel mode will be harder on Papyrus (due hand-holding the AI). You may also consider setting the bIgnoreExpiry flag true so that Actors
-aren't disabled midway through their travel. Default value of 1 in case it is forgotten.}
+aren't disabled midway through their travel. Default value of 1 in case it is forgotten. }
 	
 	ReferenceAlias[] Property kSandboxPackages Auto Const Mandatory
 	{ Fill with SOTC_SandboxPackage Aliases. 0 = 512, 1 = 1024, 2 = 2048, 3 = 3072 Sanboxing radiuses. }
@@ -166,14 +166,18 @@ aren't disabled midway through their travel. Default value of 1 in case it is fo
 	Package Property SOTC_TravelPackageBasic Auto Const Mandatory 
 	{ Auto-fill on base. Required for multi-destination travel procedures. }
 	
-	ReferenceAlias Property kPackageRush Auto Const Mandatory
-	{ Fill with SOTC_RushPackage01. This gets filled the same on EVERY instance of this marker. Used for Ramapage/Random Ambush features. }
+	ReferenceAlias Property SOTC_RushPackageAlias_Basic Auto Const Mandatory
+	{ Auto-fills on base. Used for Rampage/Random Ambush features. }
 	
 	Keyword[] Property kPackageKeywords Auto Const Mandatory
 	{ Fill with SOTC_PackageKeywords (10 by default). Add more if needed. Used for linking to package marker(s). }
 	
-	Spell Property kEvalPackageSpell Auto Const Mandatory
-	{ Fill with SOTC_EvalPackageSpell on the base form. Forces EvaluatePackage on spawns in own thread. }
+	Spell Property SOTC_EvalPackageSpell Auto Const Mandatory
+	{ Auto-fills on the base form. Forces EvaluatePackage on spawns in own thread. }
+	
+	Spell Property SOTC_EvalPkgTrackLoadStatusSpell Auto Const Mandatory
+	{ Auto-fills on the base form. Forces EvaluatePackage on spawns in own thread and then tracks the Actors OnCellAttach/Detach events
+so they can be disabled when unloaded for some time/enabled when reloaded. May help AI performance. }
 	
 	ObjectReference[] Property kChildPoints Auto ;AUTO so can be modified at runtime.
 	{ If using child markers, fill with these from render window. This is used for Patrols/Interiors/MultiPoints/Randomised Start Locs or if we 
@@ -215,10 +219,11 @@ Group Overrides
 forces the use of a function that does not include these checks. }
 
 	Bool Property bIgnoreExpiry Auto Const
-	{ If this flag is set true then SP will never start expiry tiemrs, only resetting when full reset timer expires. }
+	{ If this flag is set true then SP will never start expiry timers/Actor will not use tracking Package (if roaming etc), 
+only resetting when full reset timer expires. }
 
-	Float Property fSafeDistanceFromPlayer = 8192.0 Auto Const
-	{ All modes. Default value of 8192.0 (2 exterior cell lengths), safe distance to spawn from Player. Change if desired. }
+	Float Property fSafeDistanceFromPlayer = 4096.0 Auto Const
+	{ All modes. Default value of 4096.0 (2 exterior cell lengths), safe distance to spawn from Player. Change if desired. }
 
 	Int Property iForceUseRarityList Auto Const
 	{ Spawn Mode 0 only. Fill this 1-3, if wanting to force grab a certain "rarity" of actor in this Region (i.e force use Rarity list). }
@@ -296,15 +301,19 @@ Int iSpShortExpiryTimerID = 3
 Int iSpResetTimerID = 4
 Int iNextLocationTimerID = 5 
 
-Bool bShortExpiryTimerRunning
-Bool bShortExpiryTimerExpired
+Bool bUseTravelSpellOrIgnoreExpiry = false ;Flags SP not to use local expiry timer, as either we are using Travel spell for this purpose or is MultiPoint. 
+;Also used to notify ThreadController to increment Travelling NPC count. As of version 0.21.01 this is safe to use as no function uses this in a way that
+;would affecct this functionality. MultiPoint mode will pass a count of 0 from this script. 
+
+;Bool bShortExpiryTimerRunning ;Exists to stop log spam when cancelling a timer thats not running. May not be necessary.
+
+Bool bGroupIsDisabled ;Faster then running latent check of similar type. 
+
 Bool bFailTimerRunning ;This has to exist so things don't confused if we force a Reset Event etc. 
 ;These bools are for checking and flagging Expiry timers for functions that need this info.
-Bool bIsInLoadedArea
-;Flag for CellAttach/Detach status. 
 
 Int iPropsEnabled
-;Set to the value of iActorRaceTypeID if Props are enabled, for cleaning up later. 0 is None.
+;Set to the value of iActorRaceTypeID if Props are enabled, for cleaning up later. 0 is None/Disabled.
 
 Bool bSpawnpointActive ; Main condition check. Once SP is activated this is set true.
 
@@ -349,10 +358,6 @@ Bool bChildrenActive ;This will be checked and save reinitializing above array l
 ObjectReference[] kActiveHelpers ;Actual SpawnHelper instances placed at child markers.
 Int[] iChildPointElectionTracker ;Tracks the elected ChildPoints when using bSpreadSpawnsToChildPoints. Integers stored are used to correlate to correct
 ;ChildPoint to link to when applying Packages. Necessary evil now that Packages are all applied after spawn loops. 
-
-;Spawn Info, listed in expect order of setting. Not all are required, depending on SpawnType etc.
-Bool bRandomiseEZs ;Used in spawn loop to check if random EZ needs to be randomised (iEzApplyMode = 2).
-
 Bool bApplyRushPackage ;If flagged, will Apply the Rush package, used for Rampages/Random Ambush features.
 
 
@@ -363,22 +368,18 @@ Bool bApplyRushPackage ;If flagged, will Apply the Rush package, used for Rampag
 
 Event OnCellAttach()
 
-	bIsInLoadedArea = true
-	
 	;Inital check, is not active, chance is not None (as could be nulled by Menu for example).
 	if (!bSpawnpointActive) && (!bFailTimerRunning) && (iChanceToSpawn as Bool) 
 		;Staggering the startup might help to randomise SPs in an area when Threads are scarce
-		StartTimer((Utility.RandomFloat(0.15,0.35)), iStaggerStartupTimerID)
+		StartTimer((Utility.RandomFloat(0.015,0.035)), iStaggerStartupTimerID)
 	
-	elseif bSpawnpointActive ;Check current expiry timer status if is Active. 
+	elseif bSpawnpointActive
 		
-		if bShortExpiryTimerExpired	
+		if bGroupIsDisabled	;Timer has expired. 
 			EnableActorRefs()
-			bShortExpiryTimerExpired = false
-		elseif bShortExpiryTimerRunning
+		else ;if bShortExpiryTimerRunning
 			CancelTimer(iSpShortExpiryTimerID)
-			bShortExpiryTimerRunning = false
-			bShortExpiryTimerExpired = false
+			;bShortExpiryTimerRunning = false
 		endif
 		
 	endif
@@ -388,12 +389,11 @@ EndEvent
 
 Event OnCellDetach()
 
-	bIsInLoadedArea = false
-	
-	if bSpawnpointActive && !bIgnoreExpiry && !bIsMultiPoint ;Expiry timers do not apply MultiPoints yet. 
+	if bIgnoreExpiry || bUseTravelSpellOrIgnoreExpiry ;Latter is reused for a number of modes. 
+		return ;Ignore local expiry timer
+	else
 		StartTimer(ThreadController.fSpShortExpiryTimerClock, iSpShortExpiryTimerID)
-		bShortExpiryTimerRunning = true
-		bShortExpiryTimerExpired = false
+		;bShortExpiryTimerRunning = true
 	endif
 	
 EndEvent
@@ -408,34 +408,35 @@ Event OnTimer(int aiTimerID)
 		if (ThreadController.GetThread(iThreadsRequired)) ;Make sure we can get a thread first. 
 		
 			;Initial checks - If Interior continue, else check distance from Player is greater than bSafeDistance Property and Player level restriction is exceeded.  
-			if ( bIsInteriorPoint && (Self as ObjectReference).GetCurrentLocation().IsCleared() ) || ((GetDistance(MasterScript.PlayerRef)) > fSafeDistanceFromPlayer) \
-			&& ((MasterScript.PlayerRef.GetLevel()) >= iPlayerLevelRestriction)
+			if ((GetDistance(MasterScript.PlayerRef)) > fSafeDistanceFromPlayer) && ((MasterScript.PlayerRef.GetLevel()) >= iPlayerLevelRestriction)
 			;DEV NOTE: GetDistance check is only safe when comparing Object (namely this self object in this case) to Actor as parameter (namely Player in this case). 
-			
-				;NOTE: Master and Regional checks are done before GetThread, so it is possible for an event to intercept before ThreadController can deny
-				;Events are usually exempt from ThreadController checks, although they do count towards any of the limits.
 				
-				Debug.Trace("SpawnPoint firing, setting script links")
-				SetSpScriptLinks()
-			
+				if bIsInteriorPoint && !CheckSpLocationSafe()
+					;Trace will be done by function if it fails.
+					InitFailProcedure()			
+					return ;Nip in the bud
+				endif
+				;else continue
+				
 				;Master Level checks/intercepts
 				if MasterScript.MasterSpawnCheck(Self, bAllowVanilla, bEventSafe) ;MASTER CHECK: If true, denied
-					;Master script assuming control, kill this thread and disable
+					;Master script dice roll failed or is assuming control with an Event, kill this thread.
 					Debug.Trace("SpawnPoint denied by Master check")
 					InitFailProcedure()			
 					return ;Nip in the bud
 				endif
+				;else continue
 				
-				Debug.Trace("SpawnPoint passed Master Check")
+				Debug.Trace("SpawnPoint passed Master Check, setting script links")
+				SetSpScriptLinks()
 				
-				;Region Level checks/intercept. This will send in local spawn parameters if no intercept takes place.
-				;NOTE: as of version 0.19.01, there are no Regional events that would make this return true, so should always succeed. 
 				if RegionManager.RegionSpawnCheck(Self, iPresetRestriction) ;REGION CHECK: If true, denied
 					;Region script assuming control, kill this thread and disable
 					Debug.Trace("SpawnPoint denied by Region check")
 					InitFailProcedure()
 					return ;Nip in the bud
 				endif
+				;else continue
 				
 				Debug.Trace("SpawnPoint passed Region Check")
 				
@@ -450,26 +451,17 @@ Event OnTimer(int aiTimerID)
 					PrepareLocalSpawn() ;Do Spawning
 					Debug.Trace("SpawnPoint successfully spent")
 					
-				else
-					;Denied by dice, Disable and wait some time before trying again.
+				else ;Denied.
 					Debug.Trace("SpawnPoint denied by dice or Spawntype/Actor disabled")
 					InitFailProcedure()
 				endif
 				
-			else
-				;Failed initial checks.
+			else ;Failed distance/level check. 
 				InitFailProcedure()
 			endif
 			
-		else
-			
-			;Could not GetThread, check if cooldown needs to be activated. 
-			if ThreadController.fFailedSpCooldownTimerClock > 0.0
-				StartTimer(ThreadController.fFailedSpCooldownTimerClock, iFailedSpCooldownTimerID)
-				bFailTimerRunning = true
-				;DEV NOTE: If the Fail Cooldown Timer is off, Point will continuously try to spawn every CellAttach Event it receives.
-			endif
-			
+		else ;Could not GetThread, denied.
+			InitFailProcedure(false)
 		endif
 		
 
@@ -477,17 +469,11 @@ Event OnTimer(int aiTimerID)
 	
 		bFailTimerRunning = false
 		
-	elseif aiTImerID == iSpShortExpiryTimerID
+	elseif aiTimerID == iSpShortExpiryTimerID
 		
-		if !bIsInLoadedArea
-			bShortExpiryTimerRunning = false
-			bShortExpiryTimerExpired = true
-			DisableActorRefs()
-
-		;else do nothing, detach event will refire the timers. 
-		endif
+		DisableActorRefs() ;May fail, checks own conditions now. 
 		
-	elseif aiTImerID == iSpResetTimerID
+	elseif aiTimerID == iSpResetTimerID
 	
 		if FactoryReset(false) ;Not forcing reset. If returns false, restart timers. If true/successfully reset, re-arm the point. 
 			bSpawnpointActive = false
@@ -495,7 +481,7 @@ Event OnTimer(int aiTimerID)
 			StartTimer(RegionManager.fSpResetTimerClock, iSpResetTimerID)
 		endif
 		
-	elseif aiTImerID == iNextLocationTimerID
+	elseif aiTimerID == iNextLocationTimerID
 	
 		PrepareNextTravelLocation()
 	
@@ -541,64 +527,60 @@ Function PrepareLocalSpawn() ;Determine how to proceed
 		InitFailProcedure()
 		return
 	endif
+
+	MasterScript.ShowSpawnWarning() ;Has to be done here, but only shows if enabled on Master. 
 	
-	;Proceed if above passes. 
-	MasterScript.ShowSpawnWarning() ;Only displays if enabled, this is quicker than "check and/then do".
-	
+	Int iNpcCount ;Use for notifying ThreadController of spawn numbers
 	
 	if bIsMultiPoint ;Uses helper objects to create multi-group spawns.  
-
+		iNpcCount = 0 ;Actors only present on Helpers. 
 		PrepareMultiGroupSpawn()
-		
-	elseif !bBlockLocalRandomEvents && iPackageMode != 3 && iPackageMode != 4 
-
-			PrepareSingleGroupSpawn()
-		
-	else ;One of the above checked failed, use "No Event" method
-		
-		PrepareSingleGroupNoEventSpawn() ;Enforced for Mode 3 Ambush and Mode 4 Hold.
 	
+	elseif bBlockLocalRandomEvents || iPackageMode == 3 || iPackageMode == 4 ;Use "No Event" method if any are true.
+		PrepareSingleGroupNoEventSpawn() ;Enforced for Mode 3 Ambush and Mode 4 Hold.
+		iNpcCount = kGroupList.Length
+	else
+		PrepareSingleGroupSpawn()
+		iNpcCount = kGroupList.Length
 	endif
 	
 	bSpawnpointActive = true
-	ThreadController.IncrementActiveSpCount(1)
-	ThreadController.IncrementActiveNpcCount(kGroupList.Length)
-	ThreadController.ReleaseThreads(iThreadsRequired) ;Spawning done, threads can be released.
+	
+	;Encapsulated to a single function call as of version 0.21.01. 
+	ThreadController.ProcessActiveSpawnPoint(iThreadsRequired, iNpcCount, bUseTravelSpellOrIgnoreExpiry, false)
 	
 	StartTimer(RegionManager.fSpResetTimerClock, iSpResetTimerID)
 	
-	Debug.Trace("A SP has successfully fired: " +Self)
+	Debug.Trace("A SpawnPoint has successfully finished spawning: " +Self)
 	
 EndFunction
 
 
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
-;CLEANUP FUNCTIONS
+;CLEANUP/PERFORMANCE FUNCTIONS
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ;Added in version 0.16.01. Simply calls the ThreadController to see if fail cooldown timer needs to be run. 
-Function InitFailProcedure()
-
-	if ThreadController.fFailedSpCooldownTimerClock > 0.0
-		StartTimer(ThreadController.fFailedSpCooldownTimerClock, iFailedSpCooldownTimerID)
+Function InitFailProcedure(Bool abReleaseThreads = true) ;Param is true cos too lazy to enter it in all instances written bar the one that requires false. 
+	
+	Float fFailTimerClock = ThreadController.ProcessFailedSpawnPoint(abReleaseThreads, iThreadsRequired) ;Saves an extra call to ThreadController later.
+	
+	if fFailTimerClock > 0.0 ;By default this timer is set to 5 minutes.
+		StartTimer(fFailTimerClock, iFailedSpCooldownTimerID)
 		bFailTimerRunning = true
 		;DEV NOTE: If the Fail Cooldown Timer is off, Point will continuously try to spawn every CellAttach Event it receives. 
 	endif
-	
-	ThreadController.ReleaseThreads(iThreadsRequired)
 
 EndFunction
 
 
 Function CancelAllTimers()
 	
-	;WARNING: ONLY USE WHEN RESETTING MANUALLY.
-	
+	;WARNING: ONLY USE WHEN FULLY RESETTING MANUALLY.
 	CancelTimer(iSpResetTimerID)
-	
-	if bShortExpiryTimerRunning
-		CancelTimer(iSpShortExpiryTimerID)
-	endif
+	;if bShortExpiryTimerRunning
+	CancelTimer(iSpShortExpiryTimerID)
+	;endif
 	
 EndFunction
 
@@ -606,33 +588,68 @@ EndFunction
 ;When Short Expiry timer expires and SP is not in the loaded area, disable Actors.
 Function DisableActorRefs()
 
-	Int iSize = kGroupList.Length
+	Int iSize
 	Int iCounter
 	
-	while iCounter < iSize
+	if bIsMultiPoint
 	
-		kGroupList[iCounter].Disable()
-		iCounter += 1
-		
-	endwhile
+		iSize = kActiveHelpers.Length
+		while iCounter < iSize
+			(kActiveHelpers[iCounter] as SOTC:SpHelperScript).HelperDisableActorRefs() ;Safe to call, will be ignored if not needed.
+			iCounter += 1
+		endwhile
+		bGroupIsDisabled = true
+		;DEV NOTE: It could be possible that if OnCellAttach/Detached are received quickly in succession, this loop may not have finished.
+		;As such, flag is set after disabling/enabling so if such event occurs, it is ignored. For MultiPoints, Helpers ignore if not needed.
+	
+	elseif !bGroupIsDisabled && !TestActorsInLoadedArea() ;OnCellDetach is unreliable, test if Actors loaded before disabling only. 
+	
+		iSize = kGroupList.Length
+		while iCounter < iSize
+			
+			kGroupList[iCounter].Disable()
+			iCounter += 1
+				
+		endwhile
+		bGroupIsDisabled = true
+		;DEV NOTE: It could be possible that if OnCellAttach/Detached are received quickly in succession, this loop may not have finished.
+		;As such, flag is set after disabling/enabling so if such event occurs, it is ignored.
+	
+	endif
 	
 EndFunction
 
 
 ;If Player re-enters the area before Long Expiry, re-enable the Actors. 
 Function EnableActorRefs()
-
-	Int iSize = kGroupList.Length
+	
+	Int iSize
 	Int iCounter
 	
-	while iCounter < iSize
+	if bIsMultiPoint
 	
-		kGroupList[iCounter].Enable()
-		iCounter += 1
-		
-	endwhile
+		iSize = kActiveHelpers.Length
+		while iCounter < iSize
+			(kActiveHelpers[iCounter] as SOTC:SpHelperScript).HelperEnableActorRefs() ;Safe to call, will be ignored if not needed.
+			iCounter += 1
+		endwhile
+		bGroupIsDisabled = false
+		;DEV NOTE: It could be possible that if OnCellAttach/Detached are received quickly in succession, this loop may not have finished.
+		;As such, flag is set after disabling/enabling so if such event occurs, it is ignored. For MultiPoints, Helpers ignore if not needed.
 	
-	;WARNING: This should be followed by a call to restart the expiry timers whnever this function is called. 
+	elseif bGroupIsDisabled
+	
+		iSize = kGroupList.Length
+		while iCounter < iSize
+			kGroupList[iCounter].Enable()
+			iCounter += 1
+		endwhile
+		bGroupIsDisabled = false
+		;DEV NOTE: It could be possible that if OnCellAttach/Detached are received quickly in succession, this loop may not have finished.
+		;As such, flag is set after disabling/enabling so if such event occurs, it is ignored. 
+	
+	endif
+	;DEV NOTE: This should probably be followed by a call to restart the expiry timers whenever this function is called. 
 	
 EndFunction
 
@@ -642,7 +659,7 @@ Event SOTC:MasterQuestScript.ResetAllActiveSps(SOTC:MasterQuestScript akSender, 
 
 	if FactoryReset((akArgs[0] as Bool), true) ;IF returns true/successfully reset. akArgs is "Force" parameter, "true" is to mark as Event reset. 
 		bSpawnpointActive = false
-		CancelAllTimers() ;Shitcan any running timers
+		CancelAllTimers() ;Shitcan any running timers.
 	endif
 
 EndEvent
@@ -657,14 +674,27 @@ Bool Function FactoryReset(Bool abForceReset = false, Bool abSendEventFlag = fal
 	
 	if !abForceReset ;Force will ignore ANY current conditions (except the above).
 		
-		if bIsInLoadedArea || (iPackageMode == 1 && TestActorsInLoadedArea()) ;Currently loaded, leave it be, restart reset timer. 
+		if TestActorsInLoadedArea() ;Currently loaded, leave it be, restart reset timer. 
 			return false
 			;Next call should be to restart timers etc if necessary (depending where called from). 
 		endif
 		
 	endif
 	
+	;Continue with full reset.
+	Int iNpcCount = 0 ;Use for notifying ThreadController of spawn numbers
 	
+	;Reset/default most Vars now. Shouldn't be leaving this thread so shouldn't be any race conditions.
+	if bPackageEventLockEngaged ;The TravelGroup array must be initialized.
+		kTravelLocGroupList.Clear()
+		bPackageEventLockEngaged = false
+	endif
+	
+	iCurrentLocation = 0
+	iLosCounter = 0
+	bApplyRushPackage = false
+	
+	;Cleanup data. 
 	if bIsMultiPoint ;No groups stored here.
 		
 		CleanupHelperRefs()
@@ -672,7 +702,12 @@ Bool Function FactoryReset(Bool abForceReset = false, Bool abSendEventFlag = fal
 		
 	else ;Single and Interior modes can both use this.
 		
-		CleanupActorRefs() ;Pacakge Alias is no longer removed. Should disappear with the Actors. 
+		if iPackageMode == 3 ;Registration only occurs in Package Mode 3. 
+			UnregisterForDistanceEvents(MasterScript.PlayerRef, Self as ObjectReference)
+		endif
+		
+		iNpcCount = CleanupActorRefs() ;Package Alias is no longer removed. Should disappear with the Actors. 
+		bGroupIsDisabled = false
 		
 	endif
 	
@@ -682,6 +717,7 @@ Bool Function FactoryReset(Bool abForceReset = false, Bool abSendEventFlag = fal
 	
 	if iPropsEnabled > 0
 		kPropParents[iPropsEnabled].Disable()
+		iPropsEnabled = 0
 	endif
 	
 	;Delink scripts in case the instances may be changed later (i.e mod reset) which may cause errors to log.
@@ -689,14 +725,10 @@ Bool Function FactoryReset(Bool abForceReset = false, Bool abSendEventFlag = fal
 	SpawnTypeScript = None
 	RegionManager = None
 	
-	if abSendEventFlag ;Notify ThreadController the reset event for this SP has completed
-		ThreadController.iEventFlagCount += 1
-	endif
-	
-	ThreadController.IncrementActiveSpCount(-1)
+	ThreadController.ProcessActiveSpawnPoint(0, -iNpcCount, bUseTravelSpellOrIgnoreExpiry, abSendEventFlag)
+	bUseTravelSpellOrIgnoreExpiry = false
 	ThreadController = None
-	
-	iLosCounter = 0
+
 	kPackageLocs.Clear() ;Needs to be done everytime now that it's a variable in empty state. 
 	
 	;bSpawnpointActive = false
@@ -706,45 +738,23 @@ Bool Function FactoryReset(Bool abForceReset = false, Bool abSendEventFlag = fal
 	
 EndFunction
 
-
-
-;Used for travelling groups only, if Actors are in loaded area, we'll restart all timers. 
-Bool Function TestActorsInLoadedArea()
-
-	int iCounter = 0
-	int iSize = kGroupList.Length
-	
-	while iCounter < iSize
-		
-		if kGroupList[iCounter].Is3dLoaded() ;If true, Actor is loaded and we will return immediately flagging unsafe to reset.
-			return true
-		endif
-		
-		iCounter += 1
-		
-	endwhile
-	
-	return false ;Safe to reset if we got this far. 
-
-EndFunction
-
  
-Function CleanupActorRefs() ;Pacakge Alias is no longer removed. Should disappear with the Actors.
+Int Function CleanupActorRefs() ;Package Alias is no longer removed. Should disappear with the Actors.
 
 	int iCounter = 0
 	int iSize = kGroupList.Length
         
 	while iCounter < iSize
-
 		;Actors may already be disabled due to Short Expiry timer. Either way we won't disable here. 
+		kGroupList[iCounter].DispelAllSpells()
+		;Added in 0.21.01 to ensure any constant effect spells I may apply don't end up orphaned. May be more added in future so we do all spells.
 		kGroupList[iCounter].Delete()
 		iCounter += 1
-	
 	endwhile
 	
-	ThreadController.IncrementActiveNpcCount(-iSize)
 	kTravelLocGroupList.Clear() ;De-persist so Delete can succeed.
 	kGroupList.Clear() ;De-persist so Delete can succeed. 
+	return iSize ;FactoryReset() will notify ThreadCOntroller of numbers. 
 	
 EndFunction
 
@@ -755,12 +765,10 @@ Function CleanupHelperRefs()
 	int iSize = kActiveHelpers.Length
 	
 	while iCounter < iSize
-	
 		(kActiveHelpers[iCounter] as SOTC:SpHelperScript).HelperFactoryReset()
 		kActiveHelpers[iCounter].Disable()
 		kActiveHelpers[iCounter].Delete()
 		iCounter += 1
-		
 	endwhile
 
 	kActiveHelpers.Clear() ;De-persist so Delete can finish. 
@@ -1111,8 +1119,10 @@ Function PrepareSingleGroupSpawn()
 		
 		elseif iPackageMode == 1 ;Travel Mode
 			
+			bUseTravelSpellOrIgnoreExpiry = true ;Regardless of whether it's used (due to bIgnoreExpiry override it may not) it is quicker to set it anyway.
+			
 			while iCounter < iSize
-				ApplyPackageSingleLocData(SOTC_TravelPackageAlias_Basic, kGroupList[iCounter], kPackageLocs[0])
+				ApplyPackageTravelData(SOTC_TravelPackageAlias_Basic, kGroupList[iCounter], kPackageLocs[0])
 				iCounter += 1
 			endwhile
 			
@@ -1128,19 +1138,19 @@ Function PrepareSingleGroupSpawn()
 			endwhile
 			
 		elseif bApplyRushPackage ;New measures added in V.0.20.01 to send Actors back to spawn loc after rushing the Player in an Ambush, if player escapes etc.
-
+			
+			ObjectReference kSandboxLoc ;The location/linked ref these Actors will go to to Sandbox after Rush stage is complete. 
+			
+			if bRushThePlayer ;Sets sandbox link to spawn loc so if Player escapes, Actors return here.
+				kSandboxLoc = Self as ObjectReference
+			else ;Link to same loc that we a re "rushing" to so we sandbox there.
+				kPackageLocs[0]
+				bUseTravelSpellOrIgnoreExpiry = true
+			endif
+		
 			while iCounter < iSize
-				
-				ApplyPackageSingleLocData(kPackageRush, kGroupList[iCounter], kPackageLocs[0]) ;Location was set correctly above.
-				
-				if bRushThePlayer ;Sets sandbox link to spawn loc so if Player escapes, Actors return here.
-					kGroupList[iCounter].SetLinkedRef(Self as ObjectReference, kPackageKeywords[1])
-				else ;Link to same loc that we a re "rushing" to so we sandbox there.
-					kGroupList[iCounter].SetLinkedRef(kPackageLocs[0], kPackageKeywords[1])
-				endif
-				
+				ApplyPackageRushData(kGroupList[iCounter], kPackageLocs[0], kSandboxLoc, bUseTravelSpellOrIgnoreExpiry) ;Locations were set correctly above.
 				iCounter += 1
-				
 			endwhile
 
 		endif
@@ -1459,10 +1469,11 @@ Function PrepareSingleGroupNoEventSpawn()
 			endif
 		
 		elseif iPackageMode == 1 
+		
+			bUseTravelSpellOrIgnoreExpiry = true ;Regardless of whether it's used (due to bIgnoreExpiry override it may not) it is quicker to set it anyway.
 			
-			iSize = kGroupList.Length
 			while iCounter < iSize
-				ApplyPackageSingleLocData(SOTC_TravelPackageAlias_Basic, kGroupList[iCounter], kPackageLocs[0])
+				ApplyPackageTravelData(SOTC_TravelPackageAlias_Basic, kGroupList[iCounter], kPackageLocs[0])
 				iCounter += 1
 			endwhile
 			
@@ -1473,23 +1484,21 @@ Function PrepareSingleGroupNoEventSpawn()
 		elseif iPackageMode == 2
 
 			;Apply loop
-			iSize = kGroupList.Length
 			while iCounter < iSize
 				ApplyPackagePatrolData(kGroupList[iCounter], iStartLoc)
 				iCounter += 1
 			endwhile
 			
-		elseif iPackageMode == 3 ;Ambush Mode. Should always use this function and not the above Event inclusive one. 
+		elseif iPackageMode == 3 ;Ambush Mode. Should always use this function and not the above Event inclusive one (PrepareSingleGroupSpawn()). 
 			
 			ApplyGroupSneakState()
 			RegisterForDistanceLessThanEvent(MasterScript.PlayerRef, Self as ObjectReference, fAmbushDistance) ;Possibly faster then Game.GetPlayer()
-
+			
 		endif
 		
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 	
 	elseif iPackageMode == 5 ;Interior Mode
-	;DEV NOTE: Package application for Interior Mode must be done during Spawn loop, same as Sandbox/Hold Mode. 
 		
 		iChildPointElectionTracker = new Int [1] ;Necessary evil so linking of Package can be done correctly.
 		
@@ -1540,8 +1549,6 @@ Function PrepareSingleGroupNoEventSpawn()
 		Int iBossCount = (kGroupList.Length) - iRegularActorCount ;Also required for loot system
 		ActorManager.DoLootPass(kGroupList, iBossCount)
 	endif
-	
-	;Lastly, we tell Increment the Active NPC and SP on the Thread Controller
 
 EndFunction
 
@@ -1612,6 +1619,7 @@ Bool abApplySwarmBonus, Int aiStartLoc, Bool abIsBossSpawn, Int aiDifficulty) ;a
 
 		endif
 		
+		Utility.Wait(0.1) ;Artificial wait added in v0.21.01 may help with spawned Actor render stutter. 
 		iCounter +=1
 	
 	endwhile
@@ -1682,6 +1690,7 @@ Bool abApplySwarmBonus, Int aiStartLoc, Bool abIsBossSpawn, Int aiDifficulty) ;a
 			
 		endif
 		
+		Utility.Wait(0.1) ;Artificial wait added in v0.21.01 may help with spawned Actor render stutter. 
 		iCounter +=1
 	
 	endwhile
@@ -1756,6 +1765,7 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint
 			
 		endif
 		
+		Utility.Wait(0.1) ;Artificial wait added in v0.21.01 may help with spawned Actor render stutter. 
 		iCounter +=1
 	
 	endwhile
@@ -1829,6 +1839,7 @@ Bool abApplySwarmBonus, Bool abIsBossSpawn, Int aiDifficulty, Bool abExpendPoint
 			
 		endif
 		
+		Utility.Wait(0.1) ;Artificial wait added in v0.21.01 may help with spawned Actor render stutter. 
 		iCounter +=1
 	
 	endwhile
@@ -1844,14 +1855,31 @@ EndFunction
 ;-----------------------------------------------------------------------------------------------------------------------------------------
 
 ;Used for a multitude of Packages only needing to link to single point, I.E
-;Sandbox/Hold, Rush, Interiors (Sandbox)
+;Sandbox, Hold, Interiors (Sandbox)
 Function ApplyPackageSingleLocData(ReferenceAlias akPackage, Actor akActor, ObjectReference akPackageLoc)
 ;Package must be passed to this one, as it can be used for any Package with only single linked ref requirement.
 
 	akActor.SetLinkedRef(akPackageLoc, kPackageKeywords[0])
 	akPackage.ApplyToRef(akActor) ;Finally apply the data alias with package
 	;As of version 0.16.02, cast spell to Actor to run EvaluatePacakge call in own thread. 
-	kEvalPackageSpell.Cast(akActor, akActor)
+	SOTC_EvalPackageSpell.Cast(akActor, akActor)
+	
+EndFunction
+
+
+;Same as the above, but uses/cast the new (v0.21.01) SOTC_EvalPkgTrackLoadStatusSpell to track Cell attach/detach events for the Actor.
+Function ApplyPackageTravelData(ReferenceAlias akPackage, Actor akActor, ObjectReference akPackageLoc)
+;Package must be passed to this one, as it can be used for any Package with only single linked ref requirement.
+
+	akActor.SetLinkedRef(akPackageLoc, kPackageKeywords[0])
+	akPackage.ApplyToRef(akActor) ;Finally apply the data alias with package
+	
+	;As of version 0.16.02, cast spell to Actor to run EvaluatePacakge call in own thread. This one also track cell attach/detach events.
+	if !bIgnoreExpiry
+		SOTC_EvalPkgTrackLoadStatusSpell.Cast(akActor, akActor)
+	else
+		SOTC_EvalPackageSpell.Cast(akActor, akActor)
+	endif
 	
 EndFunction
 
@@ -1888,8 +1916,25 @@ Function ApplyPackagePatrolData(Actor akActor, Int aiStartLoc)
 	
 	;As of version 0.16.02, cast spell to Actor to run EvaluatePacakge call in own thread. 
 	;akActor.EvaluatePackage() ;And evaluate so no delay
-	kEvalPackageSpell.Cast(akActor, akActor)
+	SOTC_EvalPackageSpell.Cast(akActor, akActor)
 
+EndFunction
+
+
+;For the Rush Package we apply two linked refs, one for the target location and possibly another if we want Actors to return to a different location
+;(i.e we want them to return to their starting location to sandbox once they've reached the Player and maybe the Player escapes the Ambush). 
+Function ApplyPackageRushData(Actor akActor, ObjectReference akRushLoc, ObjectReference akSandboxLoc, Bool abUseTravelSpellOrIgnoreExpiry)
+
+	akActor.SetLinkedRef(akRushLoc, kPackageKeywords[0])
+	akActor.SetLinkedRef(akSandboxLoc, kPackageKeywords[1])
+	SOTC_RushPackageAlias_Basic.ApplyToRef(akActor) ;Finally apply the data alias with package
+	
+	if abUseTravelSpellOrIgnoreExpiry && !bIgnoreExpiry
+		SOTC_EvalPkgTrackLoadStatusSpell.Cast(akActor, akActor)
+	else
+		SOTC_EvalPackageSpell.Cast(akActor, akActor)
+	endif
+	
 EndFunction
 
 
@@ -1964,7 +2009,6 @@ Event Actor.OnPackageEnd(Actor akSender, Package akOldPackage)
 	
 	SwapActorPackageData(akSender, SOTC_TravelPackageAlias_Basic, kSandboxPackages[2]) ;Always use 2048 radius package.
 
-
 EndEvent
 
 
@@ -1973,7 +2017,7 @@ Function SwapActorPackageData(Actor akActor, ReferenceAlias akPackageAliasToRemo
 
 	akPackageAliasToRemove.RemoveFromRef(akActor)
 	akPackageAliasToApply.ApplyToRef(akActor)
-	kEvalPackageSpell.Cast(akActor, akActor) ;Force Evaluate in own thread.
+	SOTC_EvalPackageSpell.Cast(akActor, akActor) ;Force Evaluate in own thread.
 
 EndFunction
 
@@ -1981,42 +2025,21 @@ EndFunction
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
 ;DISTANCE-BASED AMBUSH FUNCTIONS & EVENTS
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
-;Package Mode 3 Handlers.
+;Package Mode 3 Only. Rush Events are handled above. 
 
-Event OnDistanceLessThan(ObjectReference akObj1, ObjectReference akObj2, float afDistance)
-;New measures added in V.0.20.01 to send Actors back to spawn loc after rushing the Player in an Ambush, if player escapes etc.
-;Support Mode 3 Ambush only. 
+Event OnDistanceLessThan(ObjectReference akObj1, ObjectReference akObj2, float afDistance) ;Player and SP = parameters. 
 	
 	Int iCounter
 	Int iSize = kGroupList.Length
-	ObjectReference kPlayer = (MasterScript.PlayerRef) as ObjectReference ;Possibly faster than Game.GetPlayer(), cast for linking. 
 	
 	ApplyGroupSneakState() ;Removes sneak state previously set. 
 	
 	while iCounter < iSize
-		ApplyPackageSingleLocData(kPackageRush, kGroupList[iCounter], kPlayer)
-		kGroupList[iCounter].SetLinkedRef(Self as ObjectReference, kPackageKeywords[1]) ;Sets sandbox link to spawn loc so if Player escapes, Actors return here. 
+		ApplyPackageRushData(kGroupList[iCounter], akObj1, akObj2, false) ;Actors will return to this SP if Player escapes etc. 
 		iCounter += 1
 	endwhile
 	
 EndEvent
-
-
-;Sets all Actors in the Group to start sneaking (or not if called again after).
-Function ApplyGroupSneakState()
-	
-	Int iSize
-	Int iCounter
-	
-	while iCounter < iSize
-		
-		kGroupList[iCounter].StartSneaking()
-		iCounter += 1
-		
-	endwhile
-	
-EndFunction
-
 
 
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -2051,27 +2074,22 @@ Function PrepareMultiGroupSpawn()
 		
 	endif
 	
-	
 	;Now we get the spawn parameters according to Preset & Difficulty
 	;-----------------------------------------------------------------
 	
 	Int iPreset
 	if bForceMasterPreset
-	
 		if iForcedMasterPreset == 777 ;Check if wanting to randomise
 			iPreset = Utility.RandomInt(1,3)
 		else
 			iPreset = iForcedMasterPreset
 		endif
-		
 	else
-	
 		if iSpawnMode == 0
 			iPreset = SpawnTypeScript.iCurrentPreset
 		elseif iSpawnMode == 1
 			iPreset = RegionManager.iCurrentPreset
 		endif
-		
 	endif
 		
 	;Set difficulty for spawning.
@@ -2082,7 +2100,6 @@ Function PrepareMultiGroupSpawn()
 		iDifficulty = RegionManager.iCurrentDifficulty ;Set difficulty for spawning.
 		
 	endif
-	
 	
 	;Now check/get Package locations if required
 	;--------------------------------------------
@@ -2097,7 +2114,7 @@ Function PrepareMultiGroupSpawn()
 		kPackageLocs = kChildPoints
 		iChildPointElectionTracker = new Int [1] ;Necessary evil so linking of Package can be done correctly.
 	else
-		bExpendPoint = true ;Saves more expensive check in loops below.
+		bExpendPoint = true ;We won't want to place another group at same ChildPoint. 
 	endif ;If nothing returned here, we must be using Sandbox package (Helpers will use Self as loc). If not weird things may happen.
 	
 	
@@ -2116,14 +2133,17 @@ Function PrepareMultiGroupSpawn()
 		kPackageToSend = kSandboxPackages[iSandboxRadiusLevel]
 	elseif iPackageMode == 1
 		kPackageToSend = SOTC_TravelPackageAlias_Basic
+		bUseTravelSpellOrIgnoreExpiry = true
 	elseif iPackageMode == 2
 		kPackageToSend = kPatrolPackages[iNumPackageLocsRequired]
 	elseif iPackageMode == 3
-		kPackageToSend = kPackageRush
+		kPackageToSend = SOTC_RushPackageAlias_Basic
 	elseif iPackageMode == 4
 		kPackageToSend = SOTC_HoldPackageAlias_Basic
 	endif
 	
+	;DEV NOTE: Due to a limitation with the way expiry conditions are setup, Helpers cannot ignore expiry for travelling Actors. This is not an issue
+	;as such as we prefer to apply as many performance measures as possible to MultiPoints. Most Actors will probably be dead before travelling anyway. 
 	
 	Int iStartLoc ;Only used if Package Mode 2 - Patrol. 
 	
@@ -2140,11 +2160,10 @@ Function PrepareMultiGroupSpawn()
 			endif
 			
 			kHelper = kSpawnPoint.PlaceAtMe(kMultiPointHelper) ;Place worker
-			;Will auto fire after this function in it's own thread via timer
+			
 			(kHelper as SOTC:SpHelperScript).SetHelperSpawnParams(RegionManager, ActorParamsScriptList[iCounter], iPackageMode, \
-			kPackageToSend, kPackageLocs, bSpreadSpawnsToChildPoints, iPreset, iDifficulty, iStartLoc)
-			;NOTE: Calling this function activates the trigger timer on the helper.
-			;DEV NOTE: Passing of ThreadController was removed in version 0.13.01 to free up a parameter slot. Gets from Region now.
+			kPackageToSend, kPackageLocs, bSpreadSpawnsToChildPoints, iPreset, iDifficulty, iStartLoc, bUseTravelSpellOrIgnoreExpiry)
+			;Will auto fire the helper after this function call in it's own thread via timer there.
 			
 			kActiveHelpers.Add(kHelper) ;Track worker
 			iCounter += 1
@@ -2165,9 +2184,7 @@ Function PrepareMultiGroupSpawn()
 			kHelper = kSpawnPoint.PlaceAtMe(kMultiPointHelper) ;Place worker
 			;Will auto fire after this function in it's own thread via timer
 			(kHelper as SOTC:SpHelperScript).SetHelperSpawnParams(RegionManager, ActorParamsScriptList[0], iPackageMode, \
-			kPackageToSend, kPackageLocs, bSpreadSpawnsToChildPoints, iPreset, iDifficulty, iStartLoc)
-			;NOTE: Calling this function activates the trigger timer on the helper.
-			;DEV NOTE: Passing of ThreadController was removed in version 0.13.01 to free up a parameter slot. Gets from Region now. 
+			kPackageToSend, kPackageLocs, bSpreadSpawnsToChildPoints, iPreset, iDifficulty, iStartLoc, bUseTravelSpellOrIgnoreExpiry)
 			
 			kActiveHelpers.Add(kHelper) ;Track worker
 			iCounter += 1
@@ -2219,5 +2236,56 @@ ObjectReference Function GetChildPoint(Bool abExpendPoint) ;Parameter added in v
 	
 EndFunction
 
+
+;Sets all Actors in the Group to start sneaking (or not if called again after).
+Function ApplyGroupSneakState()
+	
+	Int iSize
+	Int iCounter
+	
+	while iCounter < iSize
+		
+		kGroupList[iCounter].StartSneaking()
+		iCounter += 1
+		
+	endwhile
+	
+EndFunction
+
+
+;Test if Actors have 3d loaded. Added due to certain events being unreliable. 
+Bool Function TestActorsInLoadedArea()
+
+	int iCounter = 0
+	int iSize = kGroupList.Length
+	
+	while iCounter < iSize
+		
+		if kGroupList[iCounter].Is3dLoaded() ;If true, Actor is loaded and we will return immediately flagging unsafe to reset.
+			return true
+		endif
+		
+		iCounter += 1
+		
+	endwhile
+	
+	return false ;Safe to reset if we got this far. 
+
+EndFunction
+
+
+;Tests if the Location data of the SPs cell is valid and cleared. 
+Bool Function CheckSpLocationSafe()
+
+	Location kCurrentLoc = (Self as ObjectReference).GetCurrentLocation()
+	
+	if kCurrentLoc != None && kCurrentLoc.IsCleared()
+		return true
+	else
+		Debug.Trace("Interior Point denied as either location data is not set or it is not cleared. SpawnPoint ID was : " +Self as ObjectReference +" Location was: " +kCurrentLoc)
+		return false
+	endif
+	
+EndFunction
 
 ;-------------------------------------------------------------------------------------------------------------------------------------------------------

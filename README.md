@@ -5,6 +5,10 @@
 
 ## NEWS
 
+### Further optimization and performance measures in update 0.21.01, some new content in RC16A Alpha plugin release. 
+
+[23/09/2018] A rather optimization focused update, afterhaving lost motivation to work on content for the plugin I sat down to implement/expand on the newly added performance features from recent version, and found there was a good number of optimizations to be had, on top of a number of small fixes. I have also touched on content by adding a (whopping, lol) 5 more SpawnPoints to the Alpha plugin, and some work to the Menus :). Next update I plan to bring Region 2 support and a lot more SpawnPoints though, promise :D.  
+
 ### Quick patch to 0.20.02/RC15A
 
 [19/09/2018] During my rush to get a few last things changed, I forgot a few simple lines of code that needed to be added, and a few simple fixes for the Menus. This, at worst, resulted in no spawns! This patch fixes that. 
@@ -105,12 +109,62 @@ Please be patient while work continues on both a working test file and official 
 
 ## UPDATE LOG
 
-##### [19/09/2018] SpawnEngine updated to version 0.20.02.180917, Alpha candidate updated to RC15A
+##### [23/09/2018] SpawnEngine updated to version 0.21.01.180923, Alpha candidate updated to RC16A
+
+###### HOUSEKEEPING:
+- Update NPP lang file for new class and functions.
+- Further additions/cleaning of commentary.
+- Some changes/updates to SpawnPointScript Property descriptions.
+
+###### MAJOR/MINOR FEATURE UPDATES/CHANGES/ADDITIONS:
+- [MAJOR] Added new class, EvalPkgTrackLoadStatusEffectScript. A modified version of the current EvalPackageEffectScript that tracks OnCellAttach/Detach events for the Actor, and disables them if they are unloaded for so long. This has also been extended to MultiPoint mode SpawnPoints (previously no measures in place). This is an extension of performance measures added in 0.18.01 and only applied to travelling/roaming mobs (the less of these instances, the better of course). SpawnPoint will Dispel this script on cleanup to prevent orphans in saves. 
+- [MAJOR] Added Travelling Actor NPC limit to ThreadController. As it implies, can now enforce limit on travelling NPCs separate from overall NPC limit. 
+
+###### SCRIPT OPTIMIZATION/REVISION/FIXES:
+- Removed Bool check from SpawnPointScript for Expiry Timer. Was supposed to stop log spam and prevent doing unecessary work, but it doesn't spam anyway and just adds a tiny amount of latency in hindsight.
+- Changed kEvalPackageSpell Property type to SOTC_EvalPackageSPell so it auto fills. Wasn't really necessary, should have been done like that to begin with. Won't affect plugin as this is inherited on all instances.
+- Changed kRushPackage Property type to SOTC_RushPackage01 so it auto fills. Same as above.
+- Added Property for new evaluate and track spell to SpawnPointScript and SpHelperScript.
+- Added Actor expiry/performance measures to SpHelperScript. Fully supports MultiPoint mode now. 
+- Reinstated ApplyPackageTravelLoop() function to both Sp scripts for the purpose of applying correct Spell.
+- Decreased fire timers on SpawnPoints, no longer over a hundred milliseconds. May end up that way anyway due to engine problems/latency with timers. 
+- Added MasterScript as Property of SpHelperScript. Was previously removed to keep it "Property-free", but not only has that stance changed, it is pointless for the most part. Removed code that set it. 
+- Fixed/Added unregistration for OnDistanceLessThan() event for Package Mode 3 (Ambush). Forgot to add this. Probably was keeping Multi-Point helpers persistent, which would have posed a big problem in the long run. 
+- Fixed bad order of linking refs/applying Package for Rush Package events on SpawnPoint. As a result, I've reinstated ApplyPackageRushData() function and encapsulated most of the functionality to this for better effect, and optimized work outside this block. Although this problem did not affect SpHelperScript, added same function there for consistency. In both cases, the same performance measures have been added RE disabling expired Actors, for both local and travelling instances. 
+- Removed redundant setting of iSize value during PrepareSingleGroupNoEventSpawn() function on SpawnPointScript. Only being set once now. 
+- Slight optimization to SpawnPointScript initial firing procedure, now setting script links after Master dice roll. 
+- Fix SpawnPoint not checking for Player level restriction if SP was flagged as bInteriorPoint. Have now moved this to it's own check with own function that will also check if Location was None, and Trace it if so. 
+- Made slight optimization to checks deciding which initial spawn function to use on SpawnPointScript. Instead of having to evaluate all 3 conditions, only one of three conditions has to pass to force the "No Event" spawn function. 
+- Reduced default value of fSafeDistanceFromPlayer to 4096.0 units (1 full cell length).
+- Optimized SpawnPointScript incrementing ThreadController counters by encapsulating all work to a single function call, which will be used both on successful spawn and reset. Saves about 6 or so separate calls to the TC.  
+- Fixed verbose code when GetThread failed on SpawnPoint. Redirected to existing function. Optimized said function by removing multiple calls to ThreadController by encapsulating all work to a function which returns the Fail TImer Clock.  
+- Removed bool flag from SpawnPointScript, bIsInLoadedArea. Purpose was to track load status without using latent checks but this is realised to be unreliable as OnCellDetach may never fire correctly. The expiry timer will however check a newly added bGroupIsDisabled variable to ensure groups aren't enabled/disabled when they already are, and the TestActorsInLoadedArea() function is used before disabling so it can be aborted entirely if they are (it is faster to abandon disabling any of the Actors then to test each one individually on both disable/enable calls).  
+- Removed redundant checks from FactoryReset() function on SpawnPointScript and added missing Vars that weren't being reset.
+- Added secondary, dynamic bool flag "bUseTravelSpellOrIgnoreExpiry" to go hand in hand with new Eval/Track Actor methods introduced this version. Used for either or both the purposes its name implies, depending on the set mode. 
+- Added artifical 0.1 second Wait timer between Actors initially being spawned. This might help with stutter some might experience when many Actors are created in quick succession. May remove this in future if no results. Although it is generally good practice to have wait timers in while loops, it was not added in this case as the Actor placement/creation was generally thought to be latent enough.
+- Removed redundant bRandomizeEzs bool flag from SpawnPointScript.
+- Extended optimizations made to ThreadController/SpawnPointScript to SpHelperScript. Was probably more important here due to possibly many instances. 
+
+###### PLUGIN CHANGES:
+- Add new Spell, EvalPkgTrackLoadStatusEffect to go along with new Class. Filled/added as Property on SpawnPointScript and MultiPointHelper. 
+- Restricted a SpawnPoint placed near Robotics scrap yard to use Master Preset 1 (SOTC) values from Class 3 (Rare) settings, lowered sandbox radius to 512 units and forced "easy" difficulty level. Mirelurks were completely invading the place when other spawns were present. They may still do :)
+- Rename "Max Simultaneous SpawnPoints" Menu option in Performance Menu to "Max Simultaneous Spawn Threads" for extra clarity. Previous name change was even more confusing, lol.
+- Add new Performance settings Menu, Max Travelling Actors. Added Info item to Info/Help section for this also. 
+- Expanded info under Performance Menu - Info/Help - Max Simultaneous Spawn Threads item. 
+- Add "Vanilla Mode" information item to Main Menu - Info/Help Menu. 
+- Add ChildPoints to SOTC_SandboxPoint_00114 and rebalance values.
+- Added 5 more SpawnPoints in Region 1, 3 Sandbox, 1 Travel, 1 Sniper.
+- Set cap of MaxNPCs to 2000 and updated Menu accordingly. Button/option "1000" now shows "(DEFAULT)" next to it. 
+- Set cap for MaxSPs to 500 and updated Menu accordingly. Changed menu to redraw instead of show an update message.
+- Fix default values for some options (mostly related to above) on ThreadController base object. 
+
+------
+##### [19/09/2018] SpawnEngine updated to version 0.20.02.180919, Alpha candidate updated to RC15A
 
 ###### SCRIPT OPTIMIZATION/REVISION/FIXES:
 - Fix SpawnPointScript not being able to access the ThreadController duting initial checks. Was an oversight when changing order of checks. 
 - Fix SpawnPointScript spamming Papyrus errors OnCellDetach() when ThreadController isn't set yet. This wasn't actually checking if SP was active first. Another oversight.
-- Fix RegionManager not incrementing Active Region Count on ThreadController. Code was non-existant for some reason, maybe I accidentally deleted it when cleaning other parts of the setup function. 
+- Fix RegionManager not incrementing Active Region Count on ThreadController. Caused setting new Preset to never unlock Menu. Code was non-existant for some reason, maybe I accidentally deleted it when cleaning other parts of the setup function. 
 
 ###### PLUGIN CHANGES:
 - Fix another mispelling of Auxiliary, namely the name of the holotape. 
@@ -130,7 +184,7 @@ Please be patient while work continues on both a working test file and official 
 
 ###### SCRIPT OPTIMIZATION/REVISION/FIXES:
 - Fixed instancing of new RegionPersistentDataStore. 
-- Somewhat revamped AI procedures again on SpawnPointScript. Removed kPackage Property, and now all required Packages are set o nthe base instance. This should make things a bit more future proof. As for Sandbox packages, can now define a new Integer Property for the "level" of Sandbox radius to apply (0 = 512, 1 = 1024, 2 = 2048, 3 = 3072). iNumPackageLocsRequired is used to grab correct Patrol Package as well when using that mode. HoldPosition mode has been assigned to Package Mode 4 and Interior Mode moved to Mode 5. 
+- Somewhat revamped AI procedures again on SpawnPointScript. Removed kPackage Property, and now all required Packages are set on the base instance. This should make things a bit more future proof. As for Sandbox packages, can now define a new Integer Property for the "level" of Sandbox radius to apply (0 = 512, 1 = 1024, 2 = 2048, 3 = 3072). iNumPackageLocsRequired is used to grab correct Patrol Package as well when using that mode. HoldPosition mode has been assigned to Package Mode 4 and Interior Mode moved to Mode 5. 
 - Removed confusing use of iNumPackageLocsRequired when using Package Mode 0 (Sandbox). Likely be never used and as mentioned, adds confusion. 
 - New measures added to send Actors back to spawn loc after rushing the Player in an Ambush, if player escapes etc. Previously they would just keep following the Player regardless. 
 - No longer removing Package Alias Data on SpawnPointScript or SpHelperScript when cleaning up. Data should be deleted along with the Actors so fairly pointless to have been doing this anyway. 
@@ -223,7 +277,7 @@ Please be patient while work continues on both a working test file and official 
 - Converted SpResetClock Property on RegionManager to a float. Was an oversight. 
 
 ###### PLUGIN CHANGES:
--Coming in 0.19.02 release candidate. 
+- Coming in 0.20.01 release candidate. 
 
 ------
 ##### [02/09/2018] SpawnEngine updated to version 0.18.01.180902

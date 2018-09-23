@@ -57,6 +57,14 @@ Function Fragment_Terminal_08(ObjectReference akTerminalRef)
 EndFunction
 ;END FRAGMENT
 
+;BEGIN FRAGMENT Fragment_Terminal_09
+Function Fragment_Terminal_09(ObjectReference akTerminalRef)
+;BEGIN CODE
+(SOTC_MasterQuest as SOTC:MasterQuestScript).ThreadController.SetMenuVars("MaxTravelNPCs")
+;END CODE
+EndFunction
+;END FRAGMENT
+
 ;END FRAGMENT CODE - Do not edit anything between this and the begin comment
 
 Quest Property SOTC_MasterQuest Auto Const

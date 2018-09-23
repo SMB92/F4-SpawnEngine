@@ -1269,7 +1269,6 @@ Function ShowSpawnWarning()
 	if bSpawnWarningEnabled
 
 		Int i = Utility.RandomInt(1,2)
-		
 		if i == 1
 			Debug.Notification("You hear movement in the distance")
 		elseif i == 2

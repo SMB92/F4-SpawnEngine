@@ -89,38 +89,6 @@ Function Fragment_Terminal_12(ObjectReference akTerminalRef)
 EndFunction
 ;END FRAGMENT
 
-;BEGIN FRAGMENT Fragment_Terminal_13
-Function Fragment_Terminal_13(ObjectReference akTerminalRef)
-;BEGIN CODE
-(SOTC_MasterQuest as SOTC:MasterQuestScript).ThreadController.SetMenuVars("MaxNPCs", true, 2500)
-;END CODE
-EndFunction
-;END FRAGMENT
-
-;BEGIN FRAGMENT Fragment_Terminal_14
-Function Fragment_Terminal_14(ObjectReference akTerminalRef)
-;BEGIN CODE
-(SOTC_MasterQuest as SOTC:MasterQuestScript).ThreadController.SetMenuVars("MaxNPCs", true, 3000)
-;END CODE
-EndFunction
-;END FRAGMENT
-
-;BEGIN FRAGMENT Fragment_Terminal_15
-Function Fragment_Terminal_15(ObjectReference akTerminalRef)
-;BEGIN CODE
-(SOTC_MasterQuest as SOTC:MasterQuestScript).ThreadController.SetMenuVars("MaxNPCs", true, 4000)
-;END CODE
-EndFunction
-;END FRAGMENT
-
-;BEGIN FRAGMENT Fragment_Terminal_16
-Function Fragment_Terminal_16(ObjectReference akTerminalRef)
-;BEGIN CODE
-(SOTC_MasterQuest as SOTC:MasterQuestScript).ThreadController.SetMenuVars("MaxNPCs", true, 5000)
-;END CODE
-EndFunction
-;END FRAGMENT
-
 ;END FRAGMENT CODE - Do not edit anything between this and the begin comment
 
 Quest Property SOTC_MasterQuest Auto Const

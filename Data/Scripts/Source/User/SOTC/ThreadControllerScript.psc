@@ -38,11 +38,14 @@ Group Dynamic
 	{ Number of active SpawnPoints. }
 	
 	Int Property iActiveNpcCount Auto 
-	{ Number of currently managed NPCs. }
+	{ Number of currently active NPCs. }
+	
+	Int Property iActiveTravellingNpcCount Auto
+	{ Number of currently active travelling NPCs. }
 	
 	Int Property iEventFlagCount Auto
 	{ Init 0. Used for Master Events, instances can use this to flag themselves as completed event blocks. }
-	
+
 EndGroup
 
 
@@ -52,10 +55,13 @@ Group Settings
 	{ Initialise 4 (Default). Set in Menu. Max no of Spawnpoints allowed to be working simultaneously. }
 
 	Int Property iMaxNumActiveSps = 300 Auto
-	{ Initialise 300 (Default). Set in Menu. Max no of Spawnpoints allowed to be active at any one time. }
+	{ Initialise 300 (Default). Set in Menu. Max no. of Spawnpoints allowed to be active at any one time. }
 
 	Int Property iMaxNumActiveNPCs = 1000 Auto
-	{ Initialise 1000 (Default). Set in Menu. Max no of spawned NPCs allowed to be active at any one time. }
+	{ Initialise 1000 (Default). Set in Menu. Max no. of spawned NPCs allowed to be active at any one time. }
+	
+	Int Property iMaxNumTravellingNPCs = 200 Auto
+	{ Initialise 200 (Default). Set in Menu. Max no. of Travelling NPCs allowed. }
 
 	Float Property fNextSpCooldownTimerClock = 0.0 Auto
 	{ Init 0 by default (Disabled). Set in Menu. Limit before another SP can fire. Has major effect on balance.
@@ -104,6 +110,13 @@ Function SetMenuVars(string asSetting, bool abSetValues = false, Int aiValue01 =
 			iMaxNumActiveNPCs = aiValue01
 		endif
 		SOTC_Global01.SetValue(iMaxNumActiveNPCs as Float)
+		
+	elseif asSetting == "MaxTravelNPCs"
+		
+		if abSetValues
+			iMaxNumTravellingNPCs = aiValue01
+		endif
+		SOTC_Global01.SetValue(iMaxNumTravellingNPCs as Float)
 		
 	elseif asSetting == "MaxSPs"
 	
@@ -207,10 +220,49 @@ Function ReleaseThreads(int aiThreadsToRelease)
 EndFunction
 
 
+;Added in version 0.21.01 to reduce calls to this script from a single SpawnPoint. A SP now passes all info in one call. 
+Function ProcessActiveSpawnPoint(Int aiThreadCount, Int aiNpcCount, Bool abIncrementTravellingNpcCount, Bool abIncrementEventFlag)
+	
+	iActiveSpCount += 1
+	iActiveNpcCount +=  aiNpcCount
+	if abIncrementTravellingNpcCount
+		iActiveTravellingNpcCount += aiNpcCount
+	endif
+	
+	iActiveThreadCount -= aiThreadCount
+	
+	if abIncrementEventFlag ;Added to this function also so stil la single call for all uses on SpawnPoint. 
+		iEventFlagCount += 1
+	endif
+	
+EndFunction
+
+
+;Saves multiple calls to TC when an SP fails to spawn and needs to release threads and get the fail cooldown timer clock. 
+Float Function ProcessFailedSpawnPoint(Bool abReleaseThreads, Int iThreadCount)
+
+	if abReleaseThreads
+		ReleaseThreads(iThreadCount)
+	endif
+	
+	return fFailedSpCooldownTimerClock
+	
+EndFunction
+
+
 Int Function IncrementActiveNpcCount(Int aiIncrement) ;Increment 0 to simply return the value. 
 
 	iActiveNpcCount +=  aiIncrement
 	return iActiveNpcCount
+	;Functions calling this do not explicitly need to do anything with return value.
+	
+EndFunction
+
+
+Int Function IncrementActiveTravellingNpcCount(Int aiIncrement) ;Increment 0 to simply return the value. 
+
+	iActiveTravellingNpcCount +=  aiIncrement
+	return iActiveTravellingNpcCount
 	;Functions calling this do not explicitly need to do anything with return value.
 	
 EndFunction
