@@ -1,6 +1,6 @@
-<p align="center"> # SPAWNENGINE:INTRODUCTION 
-<p align="center"> ### A Mod by S. “SMB92” Bradey & J. “BigAndFlabby” Ostrus 
-<p align="center"> #### Written by S. Bradey 
+# <p align="center"> SPAWNENGINE:INTRODUCTION 
+### <p align="center"> A Mod by S. “SMB92” Bradey & J. “BigAndFlabby” Ostrus 
+#### <p align="center"> Written by S. Bradey 
  
  
 ### *What is SpawnEngine?*
