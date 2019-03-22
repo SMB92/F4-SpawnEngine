@@ -1,6 +1,9 @@
 # <p align="center"> SPAWNENGINE:INTRODUCTION 
 ### <p align="center"> A Mod by S. “SMB92” Bradey & J. “BigAndFlabby” Ostrus 
 #### <p align="center"> Written by S. Bradey 
+
+#### VERSION STATUS: v0.21.03.181103 ALPHA RELEASE CANDIDATE: 16 (RC16A) 
+#### NOTICE: Github repository contains source code and compiled pex ONLY, current playable alpha release available on Discord server to members only. ESM is not currently open source. 
  
  
 ### *What is SpawnEngine?*
@@ -12,9 +15,9 @@ Formerly known as “Spawns of the Commonwealth” during development, the goal 
 
 The mod essentially delivers spawns through hand placed “SpawnPoints” (a scripted marker). SpawnPoints make use of the “OnCellAttach” event, which means that they begin to execute the very moment the cell they are in loads, and if they pass all their conditions/dice rolls/checks etc, will immediately begin to produce spawns, placed at the SpawnPoint itself, or possibly surrounding markers if provided (more on this later). This may sound somewhat predictable, and in a number of cases that is, but it is by far the safest approach. This is something that has been an important focus in building the mod, and much has been done to provide as much diversity as possible.  
  
-So, while this may seem fairly simple, there is a massive, mostly scripted back-end that holds and provides data to these SpawnPoints, which would otherwise be “dumb” without. The SpawnPoint itself is a very powerful object/class that can be subject to a multitude of configurations including balance options, delivery methods and simple AI packages procedures. To give some loose examples of what this means for you:  
+So, while this may seem fairly simple, there is a massive, mostly scripted back-end that holds and provides data to these SpawnPoints, which would otherwise be “dumb” without. The SpawnPoint itself is a very powerful object/class that can be subject to a multitude of configurations including balance options, delivery methods and simple AI packages/procedures. To give some loose examples of what this means for you:  
 - Some SpawnPoints may not fire until the Player reaches a certain level, or a certain Preset mode is selected.  
-- Some spawns may be travelling, some may be sandboxing, some may be spread across a wider area (thus requiring a different tactical approach), some may be waiting for the perfect chance to take you head off from the rooftops and some may be waiting for you to get close enough for their chance to strike (or perhaps just come running at you from out of the blue the moment they come into existence). 
+- Some spawns may be travelling, some may be sandboxing, some may be spread across a wider area (thus requiring a different tactical approach), some may be waiting for the perfect chance to take your head off from the rooftops and some may be waiting for you to get close enough for their chance to strike (or perhaps just come running at you from out of the blue the moment they come into existence). 
 - Some spawns may be much more difficult than usual (those dark and empty corners of the world may not be so empty anymore!). 
 - Some spawns may appear in extremely large numbers, and you may even run into multiple groups of NPCs having it out with each other.  In short, you won’t just expect to see simple mobs of NPCs standing in the middle of the road all the time, in fact you might not see them at all until it’s all too late…. 
 
@@ -28,7 +31,7 @@ This mod was not built with hack and slash in mind, a lot of attention has been 
 
 ### *What about save games, bloat and persistence?*
 
-Inevitably there are many aspects of the mod that are required to be “persistent” which means these things are always loaded in memory, and present in your save games. While the mod does actively clean up a lot of the data it produces, you will likely observe an increase in save game size once the mod is first initialised, and observe varying sizes thereafter (which is again, highly dependant on the settings you choose, such as how often clean up takes place/how long to keep spawns around etc etc). This also means that the memory usage of the game will be higher, as these things are always loaded, but this increase should not be significant from the back-end alone, however may become rather high with extremely large numbers of active spawns.  
+Inevitably there are many aspects of the mod that are required to be “persistent” which means these things are always loaded in memory, and present in your save games. While the mod does actively clean up a lot of the data it produces, you will likely observe an increase in save game size once the mod is first initialised, and observe varying sizes thereafter (which is again, highly dependant on the settings you choose, such as how often clean up takes place/how long to keep spawns around etc etc). This also means that the memory usage of the game will be higher, as these things are always loaded. This increase should not be significant from the back-end alone, however may become rather high with extremely large numbers of active spawns.  
 
 
 ### *So, what does this mod edit? How about Compatibility?*
@@ -45,7 +48,7 @@ Absolutely! This mod was made with extensions in mind, it is very easy to integr
 
 ### *Is this mod “balanced”? Will spawns wreck my game?*
 
-This mod has been made with a heavy vanilla focus, much care has been taken with SpawnPoint placement as to fit in with/enhance the vanilla game. On top of that, there is an included “Vanilla” mode which outright disables any SpawnPoints that may have been considered to risky to run with the vanilla experience, particularly for people on new games. There are also several SpawnPoints that won’t even work unless a certain Preset level is selected, as previously mentioned. If you find that you don’t like my default settings, you’d be please to know that just about everything is user configurable. And when I say just about everything, I mean just about everything. An in-depth, highly quality holotape menu is provided so you can edit everything to your hearts content.  
+This mod has been made with a heavy vanilla focus, much care has been taken with SpawnPoint placement as to fit in with/enhance the vanilla game. On top of that, there is an included “Vanilla” mode which outright disables any SpawnPoints that may have been considered too risky to run with the vanilla experience, particularly for people on new games. There are also several SpawnPoints that won’t even work unless a certain Preset level is selected, as previously mentioned. If you find that you don’t like my default settings, you’d be please to know that just about everything is user configurable. And when I say just about everything, I mean just about everything. An in-depth, highly quality holotape menu is provided so you can edit everything to your hearts content.  
 
 
 ### *Installation/Uninstallation*
@@ -62,7 +65,7 @@ Constructive criticism is welcome, compliments all the same, but trolling compla
  
 ### *How long is this mod going to take?!?*
 
-Keep in mind that I (SMB92) am I only one man, and I am a very busy man with a family and fulltime job, so progress is fairly slow, but I am committed to seeing this through. More features and more areas will be covered over time, and as I produce more documentation I suspect more addons will come too. It has been a long road, and still a long road ahead. Your patience is appreciated while work continues, as with all good things, it takes time. And it will come to an end.  
+Keep in mind that I (SMB92) am only one man, and I am a very busy man with a family and fulltime job, so progress is fairly slow, but I am committed to seeing this through. More features and more areas will be covered over time, and as I produce more documentation I suspect more addons will come too. It has been a long road, and still a long road ahead. Your patience is appreciated while work continues, as with all good things, it takes time. And it will come to an end.  
 
  
 ### *Some history about the mod & credits*
